@@ -16,5 +16,10 @@ event_names = ["이력서작성_최초등록","이력서작성_추가등록","�
 check = df[(df["{activity_kind}"] == "event")&(df['{event_name}'].isin(event_names))]
 check['{event_name}'].unique()
 
-prep_df = df[(df["{activity_kind}"] == "event")&(df['{event_name}'].isin(event_names))].pivot_table(index='{adid}',values='{event_name}',aggfunc='count').reset_index()
-prep_df[prep_df['{event_name}']>=10].rename(columns={'{event_name}':'counts'}).to_csv("C:/Users/공용/Documents/매드업/data_check.csv", encoding='utf-8-sig', index=False)
+prep_df = check.pivot_table(index='{adid}',values='{event_name}',aggfunc='count').reset_index()
+
+prep_df_over10 = prep_df[prep_df['{event_name}']>=10].rename(columns={'{event_name}':'counts'})
+# check로 정의해둔 df 기준으로 피버팅하도록 수정, 조건에 해당하는 데이터는 별도 변수로 할당
+
+prep_df_over10.to_csv(dr.download_dir + "/data_check.csv", encoding='utf-8-sig', index=False)
+# 로컬 download 디렉토리에 저장되도록 수정
