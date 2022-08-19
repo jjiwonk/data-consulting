@@ -23,11 +23,11 @@ def get_column_dict(sheet_data):
     column_dict = dict(zip(sheet_data_column['원본 리포트 기준'], sheet_data_column['태블로 RD']))
     return column_dict
 
-def client_rd_read(column_dict):
+def client_rd_read(column_dict, encoding = 'utf-8-sig'):
     use_cols = column_dict.keys()
     ## 광고주 리포트 데이터 가져오기
     raw_data = pd.read_csv(tableau_info.raw_dir + f'/{tableau_info.account_name}/{tableau_info.result_name}_{rdate.yearmonth}.csv',
-                           usecols=use_cols, encoding='utf-8-sig')
+                           usecols=use_cols, encoding=encoding)
 
     raw_data = raw_data.rename(columns=column_dict)
     raw_data = raw_data.loc[pd.to_datetime(raw_data['날짜']).dt.month == rdate.day_1.month]
@@ -110,7 +110,7 @@ sheet_data = tableau_custom_sheet(document.doc)
 column_dict = get_column_dict(sheet_data)
 
 # 드롭박스에 적재된 광고주 리포트 RD 불러오기
-raw_data = client_rd_read(column_dict)
+raw_data = client_rd_read(column_dict, 'utf-8-sig')
 
 # 캠페인 정보 시트 불러오기
 campaign_sheet = campaign_info_sheet()
