@@ -90,20 +90,20 @@ def jobkorea_active_user(organic_df, paid_df) :
 
     return jk_total_pivot
 
-def albamon_adjust_read():
+def albamon_adjust_read(encoding='utf-8-sig'):
     ### 알바몬
     am_raw_files = os.listdir(am_raw_dir + f'/{rdate.month_name}')
     folders = [f for f in am_raw_files if len(f) == 9]
 
     dtypes = {
-        '{adid}': pa.string(),
-        '{created_at}': pa.string(),
-        '{network_name}': pa.string(),
-        '{app_name}': pa.string()
+        'adid': pa.string(),
+        'created_at': pa.string(),
+        'network_name': pa.string(),
+        'app_name': pa.string()
     }
     index_columns = list(dtypes.keys())
     convert_ops = pacsv.ConvertOptions(column_types=dtypes, include_columns=index_columns)
-    ro = pacsv.ReadOptions(block_size=10 << 20)
+    ro = pacsv.ReadOptions(block_size=10 << 20, encoding = encoding)
 
     table_list = []
     for period in folders:
@@ -119,22 +119,24 @@ def albamon_adjust_read():
     return adjust_df
 
 def albamon_active_user(adjust_df):
-    adjust_df = adjust_df.sort_values(['{adid}', '{created_at}'])
-    adjust_df = adjust_df.loc[adjust_df['{adid}'] != '']
+    adjust_df = adjust_df.sort_values(['adid', 'created_at'])
+    adjust_df = adjust_df.loc[adjust_df['adid'] != '']
 
     def unixtime(x):
         return datetime.datetime.fromtimestamp(int(x)).strftime('%Y-%m-%d')
 
-    adjust_df['Date'] = adjust_df['{created_at}'].apply(unixtime)
-    del adjust_df['{created_at}']
+    # adjust_df['Date'] = adjust_df['created_at'].apply(unixtime)
+    # del adjust_df['created_at']
+    adjust_df['Date'] = adjust_df['created_at']
+    del adjust_df['created_at']
     adjust_df.info()
     adjust_df['Month'] = pd.to_datetime(adjust_df['Date'].values).month
     adjust_df = adjust_df.loc[adjust_df['Month'] == rdate.day_1.month]
-    adjust_df = adjust_df.drop_duplicates(['{adid}', 'Date'], keep='first')
+    adjust_df = adjust_df.drop_duplicates(['adid', 'Date'], keep='first')
     adjust_df['DAU'] = 1
     adjust_df['MAU'] = 0
 
-    id_arr = np.array(adjust_df['{adid}'])
+    id_arr = np.array(adjust_df['adid'])
     mau_arr = np.array(adjust_df['MAU'])
 
     for i, id in enumerate(id_arr):
@@ -150,10 +152,10 @@ def albamon_active_user(adjust_df):
         mau_arr[i] = mau
     adjust_df['MAU'] = mau_arr
 
-    adjust_df_pivot = adjust_df.pivot_table(index=['Date', '{app_name}', '{network_name}'], values=['DAU', 'MAU'],
+    adjust_df_pivot = adjust_df.pivot_table(index=['Date', 'app_name', 'network_name'], values=['DAU', 'MAU'],
                                             aggfunc='sum')
     adjust_df_pivot = adjust_df_pivot.reset_index()
-    adjust_df_pivot = adjust_df_pivot.rename(columns={'{network_name}': 'media_source', '{app_name}': 'platform'})
+    adjust_df_pivot = adjust_df_pivot.rename(columns={'network_name': 'media_source', 'app_name': 'platform'})
     adjust_df_pivot['platform'] = adjust_df_pivot['platform'].apply(
         lambda x: 'android' if x == 'com.albamon.app' else 'ios')
     adjust_df_pivot['Business'] = '알바몬'
@@ -174,7 +176,7 @@ organic_df = jobkorea_organic_read()
 paid_df = jobkorea_paid_read(columns = organic_df.columns)
 jobkorea_active_user(organic_df, paid_df)
 
-adjust_df = albamon_adjust_read()
+adjust_df = albamon_adjust_read(encoding='cp949')
 albamon_active_user(adjust_df)
 
 file_concat()
