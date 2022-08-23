@@ -12,13 +12,13 @@ raw_dir = dr.dropbox_dir + '/광고사업부/4. 광고주/무신사/★ 무신�
 def musinsa_rawdata_read():
     raw_files = os.listdir(raw_dir)
     raw_files = [f for f in raw_files if '.csv' in f]
-    raw_files = [f for f in raw_files if (int(str(f)[-8:]) >= 20220601) | (int(str(f)[-8:]) <= 20220731)]
+    raw_files = [f for f in raw_files if (int(str(f)[-12:-4]) >= 20220601) | (int(str(f)[-12:-4]) <= 20220731)]
 
     dtypes = {
         'attributed_touch_type' : pa.string(),
         'event_name': pa.string(),
         'is_primary_attribution' : pa.string(),
-        'customer_id' : pa.string()
+        'customer_user_id' : pa.string()
     }
     index_columns = list(dtypes.keys())
     convert_ops = pacsv.ConvertOptions(column_types=dtypes, include_columns=index_columns)
@@ -26,11 +26,9 @@ def musinsa_rawdata_read():
 
     table_list = []
     for f in raw_files:
-        try:
-            temp = pacsv.read_csv(raw_dir + '/' + f, convert_options=convert_ops, read_options=ro)
-        except:
-            print(f)
+        temp = pacsv.read_csv(raw_dir + '/' + f, convert_options=convert_ops, read_options=ro)
         table_list.append(temp)
+
 
     print('원본 데이터 Read 완료')
 
