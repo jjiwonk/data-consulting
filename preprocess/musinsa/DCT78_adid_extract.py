@@ -26,9 +26,9 @@ def musinsa_rawdata_read():
     for f in raw_files:
         try:
             temp = pacsv.read_csv(raw_dir + '/' + f, convert_options=convert_ops, read_options=ro)
+            table_list.append(temp)
         except:
             print(f)
-        table_list.append(temp)
 
     print('오가닉 데이터 Read 완료')
 
