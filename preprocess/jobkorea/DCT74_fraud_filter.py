@@ -71,32 +71,35 @@ def jobkorea_active_user(organic_df, paid_df) :
     jk_total_df['Date'] = jk_total_df['event_time'].dt.date
     jk_total_df = jk_total_df.drop_duplicates(['appsflyer_id', 'Date'], keep='first')
     def device_check(df):
-        if 'samsung' in df['device_model'] or 'lge' in df['device_model'] or 'lenovo' in df['device_model']:
-            return 1
+        if df['platform'] == 'android':
+            if 'samsung' in df['device_model'] or 'lge' in df['device_model'] or 'lenovo' in df['device_model']:
+                return 1
+            else:
+                return 0
         else:
-            return 0
+            return 1
     jk_total_df['device_not_fraud'] = jk_total_df.apply(device_check, axis=1).astype(bool)
-
     def country_check(data):
         if data == 'KR':
             return 1
         else:
             return 0
-    jk_total_df['region_not_fraud'] = jk_total_df['country_code'].map(country_check).astype(bool)
+    jk_total_df['country_not_fraud'] = jk_total_df['country_code'].map(country_check).astype(bool)
+    def language_check(df):
+        if df['platform'] == 'android':
+            if df['language'] == '한국어':
+                return 1
+            else:
+                return 0
+        else:
+            if df['language'] in ['ko-KR','en-KR','']:
+                return 1
+            else:
+                return 0
 
-    def language_check(data):
-        if data == '한국어':
-            return 1
-        else:
-            return 0
-    jk_total_df['language_not_fraud'] = jk_total_df['language'].map(language_check).astype(bool)
+    jk_total_df['language_not_fraud'] = jk_total_df.apply(language_check, axis=1).astype(bool)
     jk_total_df = jk_total_df.drop(['device_model', 'country_code', 'language'], axis=1)
-    def fraud_check(df):
-        if df['device_not_fraud'] == 1 and df['region_not_fraud'] == 1 and df['language_not_fraud'] == 1:
-            return 1
-        else:
-            return 0
-    jk_total_df['is_not_fraud'] = jk_total_df.apply(fraud_check, axis=1).astype(bool)
+
     jk_total_df['DAU'] = 1
     jk_total_df['MAU'] = 0
 
@@ -116,9 +119,15 @@ def jobkorea_active_user(organic_df, paid_df) :
         mau_arr[i] = mau
     jk_total_df['MAU'] = mau_arr
 
-    jk_total_pivot = jk_total_df.pivot_table(index = ['Date', 'platform', 'media_source', 'device_not_fraud', 'region_not_fraud', 'language_not_fraud', 'is_not_fraud'],
+    jk_total_pivot = jk_total_df.pivot_table(index = ['Date', 'platform', 'media_source', 'device_not_fraud', 'country_not_fraud', 'language_not_fraud', 'is_not_fraud'],
                                              values = ['DAU','MAU'], aggfunc='sum')
     jk_total_pivot = jk_total_pivot.reset_index()
+    def fraud_check(df):
+        if df['device_not_fraud'] == True and df['country_not_fraud'] == True and df['language_not_fraud'] == True:
+            return 1
+        else:
+            return 0
+    jk_total_pivot['is_not_fraud'] = jk_total_pivot.apply(fraud_check, axis=1).astype(bool)
     jk_total_pivot['Business'] = '잡코리아'
     jk_total_pivot.to_csv(result_dir + f'/jk_mau_data_fraud_check_{rdate.yearmonth}.csv', index=False, encoding = 'utf-8-sig')
 
@@ -136,7 +145,7 @@ def albamon_adjust_read():
         '{app_name}': pa.string(),
         '{device_name}': pa.string(),
         '{device_manufacturer}':  pa.string(),
-        '{region}': pa.string(),
+        '{country}': pa.string(),
         '{language}': pa.string()
     }
     index_columns = list(dtypes.keys())
@@ -154,44 +163,52 @@ def albamon_adjust_read():
 
     table = pa.concat_tables(table_list)
     adjust_df = table.to_pandas()
+    adjust_df[['{adid}', '{network_name}', '{app_name}']] = adjust_df[['{adid}', '{network_name}', '{app_name}']].astype('category')
     return adjust_df
 
 def albamon_active_user(adjust_df):
     adjust_df.info()
-    adjust_df = adjust_df.sort_values(['{adid}', '{created_at}'])
     adjust_df = adjust_df.loc[adjust_df['{adid}'] != '']
+    # adjust_df[['{adid}', '{network_name}', '{app_name}']] = adjust_df[['{adid}', '{network_name}', '{app_name}']].astype('category')
+    def unixtime(x):
+        return datetime.datetime.fromtimestamp(int(x)).strftime('%Y-%m-%d')
+    adjust_df['Date'] = adjust_df['{created_at}'].map(unixtime)
+    # 6초*100
+    del adjust_df['{created_at}']
+    adjust_df = adjust_df.drop_duplicates(['{adid}', 'Date'], keep='first')
+    adjust_df = adjust_df.sort_values(['{adid}', 'Date'])
+    adjust_df['Month'] = pd.to_datetime(adjust_df['Date'].values).month
+    adjust_df['Month'] = adjust_df['Month'].astype('int8')
+    adjust_df = adjust_df.loc[adjust_df['Month'] == rdate.day_1.month]
+    adjust_df['Date'] = adjust_df['Date'].astype('category')
+    print('Date 처리완료')
+
     def device_check(df):
         if df['{device_name}'] != 'Xiaomi' and df['{device_manufacturer}'] not in ['Xiaomi','Blackshark','TCL','Huawei']:
             return 1
         else:
             return 0
     adjust_df['device_not_fraud'] = adjust_df.apply(device_check, axis=1).astype(bool)
-    def region_check(data):
+    adjust_df = adjust_df.drop(['{device_name}','{device_manufacturer}'], axis=1)
+    # 8초*100
+    print('device_check 완료')
+    def country_check(data):
         if data == 'kr':
             return 1
         else:
             return 0
-    adjust_df['region_not_fraud'] = adjust_df['{region}'].map(region_check).astype(bool)
-
+    adjust_df['country_not_fraud'] = adjust_df['{country}'].map(country_check).astype(bool)
+    adjust_df = adjust_df.drop(['{country}'], axis=1)
+    print('country_check 완료')
     def language_check(data):
-        if data == 'ko':
+        if data in ['ko','']:
             return 1
         else:
             return 0
     adjust_df['language_not_fraud'] = adjust_df['{language}'].map(language_check).astype(bool)
-    adjust_df = adjust_df.drop(['{device_name}','{device_manufacturer}','{region}','{language}'], axis=1)
-    adjust_df[['{adid}', '{network_name}', '{app_name}']] = adjust_df[['{adid}', '{network_name}', '{app_name}']].astype('category')
-    def unixtime(x):
-        return datetime.datetime.fromtimestamp(int(x)).strftime('%Y-%m-%d')
-    adjust_df['Date'] = adjust_df['{created_at}'].apply(unixtime)
-    del adjust_df['{created_at}']
-    adjust_df['Month'] = pd.to_datetime(adjust_df['Date'].values).month
-    adjust_df['Month'] = adjust_df['Month'].astype('int8')
-    adjust_df = adjust_df.loc[adjust_df['Month'] == rdate.day_1.month]
-    adjust_df['Date'] = adjust_df['Date'].astype('category')
+    adjust_df = adjust_df.drop(['{language}'], axis=1)
+    print('language_check 완료')
 
-    adjust_df.info()
-    adjust_df = adjust_df.drop_duplicates(['{adid}', 'Date'], keep='first')
     adjust_df['DAU'] = 1
     adjust_df['MAU'] = 0
 
@@ -211,27 +228,27 @@ def albamon_active_user(adjust_df):
         mau_arr[i] = mau
     adjust_df['MAU'] = mau_arr
 
-    def fraud_check(df):
-        if df['device_not_fraud'] == 1 and df['region_not_fraud'] == 1 and df['language_not_fraud'] == 1:
-            return 1
-        else:
-            return 0
-    adjust_df['is_not_fraud'] = adjust_df.apply(fraud_check, axis=1).astype(bool)
-    adjust_df_pivot = adjust_df.pivot_table(index=['Date', '{app_name}', '{network_name}', 'device_not_fraud', 'region_not_fraud', 'language_not_fraud', 'is_not_fraud'],
+    adjust_df_pivot = adjust_df.pivot_table(index=['Date', '{app_name}', '{network_name}', 'device_not_fraud', 'country_not_fraud', 'language_not_fraud'],
                                             values=['DAU', 'MAU'],
                                             aggfunc='sum')
     adjust_df_pivot = adjust_df_pivot.reset_index()
+    def fraud_check(df):
+        if df['device_not_fraud'] == 1 and df['country_not_fraud'] == 1 and df['language_not_fraud'] == 1:
+            return 1
+        else:
+            return 0
+    adjust_df_pivot['is_not_fraud'] = adjust_df_pivot.apply(fraud_check, axis=1).astype(bool)
+
     adjust_df_pivot = adjust_df_pivot.rename(columns={'{network_name}': 'media_source', '{app_name}': 'platform'})
-    adjust_df_pivot['platform'] = adjust_df_pivot['platform'].apply(
-        lambda x: 'android' if x == 'com.albamon.app' else 'ios')
+    adjust_df_pivot['platform'] = adjust_df_pivot['platform'].apply(lambda x: 'android' if x == 'com.albamon.app' else 'ios')
     adjust_df_pivot['Business'] = '알바몬'
     adjust_df_pivot.to_csv(result_dir + f'/am_mau_data_fraud_check_{rdate.yearmonth}.csv', index=False, encoding='utf-8-sig')
-
+    print('active_user 추출완료')
     return adjust_df_pivot
 
 def file_concat():
-    jk_data = pd.read_csv(result_dir + f'/jk_mau_data_fraud_check_{rdate.yearmonth}.csv')
-    am_data = pd.read_csv(result_dir + f'/am_mau_data_fraud_check_{rdate.yearmonth}.csv')
+    jk_data = pd.read_csv(result_dir + '/jk_mau_data_fraud_check_202207.csv')
+    am_data = pd.read_csv(result_dir + '/am_mau_data_fraud_check_202207.csv')
     total_data = pd.concat([jk_data, am_data], sort=False, ignore_index= True)
 
     total_data.to_csv(result_dir + '/total_mau_data_fraud_check.csv', index=False, encoding = 'utf-8-sig')
@@ -244,7 +261,6 @@ jk_active_df = jobkorea_active_user(organic_df, paid_df)
 
 adjust_df = albamon_adjust_read()
 # 로드에 약 3분 소요
-albamon_active_user(adjust_df)
+am_active_df = albamon_active_user(adjust_df)
 # 처리에 약 36분 소요
-
 file_concat()
