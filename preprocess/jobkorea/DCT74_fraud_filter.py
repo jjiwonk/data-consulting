@@ -70,6 +70,7 @@ def jobkorea_active_user(organic_df, paid_df) :
     jk_total_df = jk_total_df.sort_values(['appsflyer_id', 'event_time'])
     jk_total_df['Date'] = jk_total_df['event_time'].dt.date
     jk_total_df = jk_total_df.drop_duplicates(['appsflyer_id', 'Date'], keep='first')
+    jk_total_df['language'] = jk_total_df['language'].fillna('')
     def device_check(df):
         if df['platform'] == 'android':
             if 'samsung' in df['device_model'] or 'lge' in df['device_model'] or 'lenovo' in df['device_model']:
@@ -93,6 +94,8 @@ def jobkorea_active_user(organic_df, paid_df) :
                 return 0
         else:
             if df['language'] in ['ko-KR','en-KR','']:
+                return 1
+            elif df['language'] is None:
                 return 1
             else:
                 return 0
@@ -119,7 +122,7 @@ def jobkorea_active_user(organic_df, paid_df) :
         mau_arr[i] = mau
     jk_total_df['MAU'] = mau_arr
 
-    jk_total_pivot = jk_total_df.pivot_table(index = ['Date', 'platform', 'media_source', 'device_not_fraud', 'country_not_fraud', 'language_not_fraud', 'is_not_fraud'],
+    jk_total_pivot = jk_total_df.pivot_table(index = ['Date', 'platform', 'media_source', 'device_not_fraud', 'country_not_fraud', 'language_not_fraud'],
                                              values = ['DAU','MAU'], aggfunc='sum')
     jk_total_pivot = jk_total_pivot.reset_index()
     def fraud_check(df):
