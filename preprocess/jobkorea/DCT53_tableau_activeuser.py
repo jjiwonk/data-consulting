@@ -24,7 +24,8 @@ def jobkorea_organic_read():
         'AppsFlyer ID': pa.string(),
         'Event Time': pa.string(),
         'Media Source': pa.string(),
-        'Platform': pa.string()
+        'Platform': pa.string(),
+        'Campaign' : pa.string()
     }
     index_columns = list(dtypes.keys())
     convert_ops = pacsv.ConvertOptions(column_types=dtypes, include_columns=index_columns)
@@ -44,7 +45,8 @@ def jobkorea_organic_read():
         'AppsFlyer ID': 'appsflyer_id',
         'Event Time': 'event_time',
         'Media Source': 'media_source',
-        'Platform': 'platform'
+        'Platform': 'platform',
+        'Campaign' : 'campaign'
     })
     return organic_df
 
@@ -83,7 +85,7 @@ def jobkorea_active_user(organic_df, paid_df) :
         mau_arr[i] = mau
     jk_total_df['MAU'] = mau_arr
 
-    jk_total_pivot = jk_total_df.pivot_table(index = ['Date', 'platform', 'media_source'], values = ['DAU','MAU'], aggfunc='sum')
+    jk_total_pivot = jk_total_df.pivot_table(index = ['Date', 'platform', 'media_source', 'campaign'], values = ['DAU','MAU'], aggfunc='sum')
     jk_total_pivot = jk_total_pivot.reset_index()
     jk_total_pivot['Business'] = '잡코리아'
     jk_total_pivot.to_csv(result_dir + f'/jk_mau_data_{rdate.yearmonth}.csv', index=False, encoding = 'utf-8-sig')
