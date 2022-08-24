@@ -3,6 +3,7 @@ import setting.directory as dr
 import pyarrow as pa
 import pyarrow.csv as pacsv
 import pandas as pd
+import datetime
 import numpy as np
 from datetime import datetime, timedelta
 import openpyxl
@@ -10,6 +11,7 @@ import openpyxl
 finda_dir = dr.dropbox_dir + '/광고사업부/데이터컨설팅/데이터 분석 프로젝트/핀다/DCT84'
 raw_dir = finda_dir + '/(매드잇x핀다) RE 데이터 중 UA 볼륨 영향도 측정 관련 데이터 분석_0819'
 result_dir = finda_dir + '/DCT86'
+
 
 def get_raw_df(raw_dir):
     dtypes = {
@@ -38,115 +40,143 @@ def get_raw_df(raw_dir):
     raw_df = table.to_pandas()
     return raw_df
 
-### paid data 전처리 ###
-paid_raw_dir = raw_dir + '/paid'
-paid_re_raw_df = get_raw_df(paid_raw_dir + '/re')
-paid_ua_raw_df = get_raw_df(paid_raw_dir + '/ua')
-paid_raw_df = pd.concat([paid_re_raw_df,paid_ua_raw_df], sort=False, ignore_index=True)
-paid_raw_df = paid_raw_df.rename(columns={'Attributed Touch Type':'attributed_touch_type', 'Attributed Touch Time':'attributed_touch_time',
-                                          'Install Time':'install_time', 'Event Time':'event_time', 'Event Name':'event_name',
-                                          'Media Source':'media_source', 'Campaign':'campaign', 'AppsFlyer ID':'appsflyer_id', 'Is Retargeting':'is_retargeting'})
-# paid 데이터 로드
 
-paid_raw_df[['install_time','attributed_touch_time','event_time']] = paid_raw_df[['install_time','attributed_touch_time','event_time']].apply(pd.to_datetime)
-# 날짜타입 datetime형으로 변경
+def paid_data_prep():
+    ### paid data 전처리 ###
+    paid_raw_dir = raw_dir + '/paid'
+    paid_re_raw_df = get_raw_df(paid_raw_dir + '/re')
+    paid_ua_raw_df = get_raw_df(paid_raw_dir + '/ua')
+    paid_raw_df = pd.concat([paid_re_raw_df, paid_ua_raw_df], sort=False, ignore_index=True)
+    paid_raw_df = paid_raw_df.rename(columns=
+                                     {'Attributed Touch Type': 'attributed_touch_type',
+                                      'Attributed Touch Time': 'attributed_touch_time',
+                                      'Install Time': 'install_time',
+                                      'Event Time': 'event_time',
+                                      'Event Name': 'event_name',
+                                      'Media Source': 'media_source',
+                                      'Campaign': 'campaign', 'AppsFlyer ID': 'appsflyer_id',
+                                      'Is Retargeting': 'is_retargeting'})
+    # paid 데이터 로드
 
-paid_raw_df['ctit'] = paid_raw_df['install_time'] - paid_raw_df['attributed_touch_time']
-paid_raw_df['itet'] = paid_raw_df['event_time'] - paid_raw_df['install_time']
-# ctit, itet 계산
+    paid_raw_df[['install_time', 'attributed_touch_time', 'event_time']] = paid_raw_df[
+        ['install_time', 'attributed_touch_time', 'event_time']].apply(pd.to_datetime)
+    # 날짜타입 datetime형으로 변경
+    paid_raw_df['ctit'] = (paid_raw_df['install_time'] - paid_raw_df['attributed_touch_time']).apply(lambda x : datetime.timedelta.total_seconds(x))
+    paid_raw_df['itet'] = (paid_raw_df['event_time'] - paid_raw_df['install_time']).apply(lambda x : datetime.timedelta.total_seconds(x))
+    # ctit, itet 계산
 
-paid_raw_df['is_retargeting'] = paid_raw_df['is_retargeting'].apply(str.lower)
-def campaign_type(data):
-    if (data == 'TRUE')|(data == 'true'):
-        return 're'
-    else:
-        return 'ua'
-paid_raw_df['campaign_type'] = paid_raw_df['is_retargeting'].map(campaign_type)
+    paid_raw_df['is_retargeting'] = paid_raw_df['is_retargeting'].apply(str.lower)
 
-def time_cleansing(df):
-    if df['media_source']=='Apple Search Ads':
-        return df['install_time']
-    else:
-        return df['attributed_touch_time']
-paid_raw_df['attributed_touch_time'] = paid_raw_df.apply(time_cleansing, axis=1)
-# Apple Search Ads 데이터 클리닝
-# 30초 소요
+    # 예외처리
 
-paid_raw_df.loc[paid_raw_df['media_source']!='moloco_int'] = paid_raw_df.loc[paid_raw_df['media_source']!='moloco_int'].apply(lambda x: x.replace('MobidaysAgency_','Madit_'))
-paid_raw_df.loc[paid_raw_df['media_source']!='moloco_int'] = paid_raw_df.loc[paid_raw_df['media_source']!='moloco_int'].apply(lambda x: x.replace('Mobi_','Madit_'))
-def switch(df):
-    campaign = {'madit_ka-friend_loan_br_mo_reach_total':'Madit_KA-FRIEND_LOAN_BR_MO_REACH_TOTAL',
-                'MobidaysAgency_KA-BIZ_LOAN_NU_AEO-CONT_220307': 'Madit_KA-BIZ_LOAN_NU_iOS_AEO-CONT_220307',
-                'alwayson_loan': 'Mobi_Finda_AOS_Viewedlahome',
-                'Madit_CAULY_LOAN_NU_AOS_REWARD-CPE': 'Madit_CAULY_LOAN_NU_AOS_NCPI_220622',
-                'Madit_TIKTOK_LOAN_NU_AOS_AEO-VIEWED-AUTO_220712': 'Madit_TIKTOK_LOAN_NU_AOS_AEO-VIEWED-AM_220712',
-                '468706157': 'Madit_AppleSearchAds_0826',
-                '500973516': 'Madit_AppleSearchAds_Comp_1203',
-                '492604880': 'Madit_AppleSearchAds_Brand_1104',
-                '1078291510': 'Madit_ASA_LOAN_NU_iOS_BAU-MAIA_220629',
-                '1071110978': 'Madit_ASA_LOAN_NU_iOS_SEARCHMATCH_220617'}.get(df['campaign'], df['campaign'])
-    return campaign
-paid_raw_df['campaign'] = paid_raw_df.apply(switch, axis=1)
-def edit_campaign(df):
-    if (df['media_source']=='kakao')&(df['campaign']!='talk'):
-        return ''
-    elif (df['campaign_type']=='ua')&(df['campaign'] in ['992682','992393']):
-        return ''
-    elif (df['campaign_type']=='re')&(df['media_source']=='cauly_int'):
-        return 'Madit_CAULY_LOAN_RT_AOS_CPC_220714'
-    elif (df['campaign_type']=='ua')&(df['media_source']=='tnk_int'):
-        return 'Madit_TNK_LOAN_NU_AOS_REWARD-CPA_220715'
-    else:
-        return df['campaign']
-paid_raw_df['campaign'] = paid_raw_df.apply(edit_campaign, axis=1)
-# 캠페인명 변경 및 삭제
-# 1분30초 소요
+    # Apple Search Ads 데이터 클리닝
+    # 30초 소요
+    paid_raw_df.loc[paid_raw_df['media_source']=='Apple Search Ads', 'attributed_touch_time'] = paid_raw_df['install_time']
 
-wb = openpyxl.load_workbook(raw_dir + '/(핀다) 가공용 캠페인리스트_220819.xlsx')
-ws = wb['캠페인 리스트']
-data = ws.values
-columns = next(data)[0:]
-campaign_list = pd.DataFrame(data, columns=columns)
-# campaign_unique_list = campaign_list[['캠페인','캠페인 구분']]
-# campaign_unique_list['캠페인 구분'] = campaign_unique_list['캠페인 구분'].apply(lambda x: 'true' if x == 'Retargeting' else 'false')
-# paid_raw_campaign_list = paid_raw_df[['campaign','is_retargeting']].drop_duplicates(keep='first')
-# campaign_compare = pd.merge(campaign_unique_list, paid_raw_campaign_list, how='outer', left_on=['캠페인','캠페인 구분'], right_on=['campaign','is_retargeting'])
-# campaign_compare.to_csv(dr.download_dir + '/edited_campaign_check.csv', encoding='utf-8-sig')
-# 캠페인 구분 = is_retargeting 매핑여부 확인 => OK
-def organic_check(df):
-    if (df['ctit'] >= timedelta(days=7.5)) | (df['itet'] >= timedelta(days=30)) | (df['attributed_touch_type'] == 'impression'):
-        return 'Organic'
-    elif df['campaign'] not in campaign_list['캠페인'].values:
-        return 'Organic'
-    else:
-        return 'Paid'
-paid_raw_df['is_organic'] = paid_raw_df.apply(organic_check, axis=1)
-# paid 내 organic 데이터 필터링
-# 1분 10초 소요
-def campaign_type_fix(df):
-    if df['is_organic'] == 'Organic':
-        return ''
-    else:
-        return df['campaign_type']
-paid_raw_df['campaign_type'] = paid_raw_df.apply(campaign_type_fix, axis=1)
-# 캠페인 타입 정제
 
-media_dict = campaign_list[['캠페인','매체']].drop_duplicates('캠페인')
-paid_raw_df['media'] = ''
-def media_check(data):
-    return media_dict.loc[media_dict['캠페인']==data]['매체'].values[0]
-paid_raw_df.loc[paid_raw_df['is_organic']=='Paid']['media'] = paid_raw_df.loc[paid_raw_df['is_organic']=='Paid']['campaign'].apply(media_check)
+    paid_raw_df.loc[paid_raw_df['media_source'] != 'moloco_int', 'campaign'] = paid_raw_df['campaign'].apply(lambda x: x.replace('MobidaysAgency_', 'Madit_'))
+    paid_raw_df.loc[paid_raw_df['media_source'] != 'moloco_int', 'campaign'] = paid_raw_df['campaign'].apply(lambda x: x.replace('Mobi_', 'Madit_'))
+
+    campaign_df = pd.DataFrame([],columns=['campaign'])
+    temp = {'madit_ka-friend_loan_br_mo_reach_total': 'Madit_KA-FRIEND_LOAN_BR_MO_REACH_TOTAL',
+                    'MobidaysAgency_KA-BIZ_LOAN_NU_AEO-CONT_220307': 'Madit_KA-BIZ_LOAN_NU_iOS_AEO-CONT_220307',
+                    'alwayson_loan': 'Mobi_Finda_AOS_Viewedlahome',
+                    'Madit_CAULY_LOAN_NU_AOS_REWARD-CPE': 'Madit_CAULY_LOAN_NU_AOS_NCPI_220622',
+                    'Madit_TIKTOK_LOAN_NU_AOS_AEO-VIEWED-AUTO_220712': 'Madit_TIKTOK_LOAN_NU_AOS_AEO-VIEWED-AM_220712',
+                    '468706157': 'Madit_AppleSearchAds_0826',
+                    '500973516': 'Madit_AppleSearchAds_Comp_1203',
+                    '492604880': 'Madit_AppleSearchAds_Brand_1104',
+                    '1078291510': 'Madit_ASA_LOAN_NU_iOS_BAU-MAIA_220629',
+                    '1071110978': 'Madit_ASA_LOAN_NU_iOS_SEARCHMATCH_220617'}
+    temp.values()
+
+    def switch(df):
+        campaign = {'madit_ka-friend_loan_br_mo_reach_total': 'Madit_KA-FRIEND_LOAN_BR_MO_REACH_TOTAL',
+                    'MobidaysAgency_KA-BIZ_LOAN_NU_AEO-CONT_220307': 'Madit_KA-BIZ_LOAN_NU_iOS_AEO-CONT_220307',
+                    'alwayson_loan': 'Mobi_Finda_AOS_Viewedlahome',
+                    'Madit_CAULY_LOAN_NU_AOS_REWARD-CPE': 'Madit_CAULY_LOAN_NU_AOS_NCPI_220622',
+                    'Madit_TIKTOK_LOAN_NU_AOS_AEO-VIEWED-AUTO_220712': 'Madit_TIKTOK_LOAN_NU_AOS_AEO-VIEWED-AM_220712',
+                    '468706157': 'Madit_AppleSearchAds_0826',
+                    '500973516': 'Madit_AppleSearchAds_Comp_1203',
+                    '492604880': 'Madit_AppleSearchAds_Brand_1104',
+                    '1078291510': 'Madit_ASA_LOAN_NU_iOS_BAU-MAIA_220629',
+                    '1071110978': 'Madit_ASA_LOAN_NU_iOS_SEARCHMATCH_220617'}.get(df['campaign'], df['campaign'])
+        return campaign
+
+    paid_raw_df['campaign'] = paid_raw_df.apply(switch, axis=1)
+
+    def edit_campaign(df):
+        if (df['media_source'] == 'kakao') & (df['campaign'] != 'talk'):
+            return ''
+        elif (df['campaign_type'] == 'ua') & (df['campaign'] in ['992682', '992393']):
+            return ''
+        elif (df['campaign_type'] == 're') & (df['media_source'] == 'cauly_int'):
+            return 'Madit_CAULY_LOAN_RT_AOS_CPC_220714'
+        elif (df['campaign_type'] == 'ua') & (df['media_source'] == 'tnk_int'):
+            return 'Madit_TNK_LOAN_NU_AOS_REWARD-CPA_220715'
+        else:
+            return df['campaign']
+
+    paid_raw_df['campaign'] = paid_raw_df.apply(edit_campaign, axis=1)
+    # 캠페인명 변경 및 삭제
+    # 1분30초 소요
+
+    wb = pd.read_excel(raw_dir + '/(핀다) 가공용 캠페인리스트_220819.xlsx', sheet_name = '캠페인 리스트')
+    wb = openpyxl.load_workbook(raw_dir + '/(핀다) 가공용 캠페인리스트_220819.xlsx')
+    ws = wb['캠페인 리스트']
+    data = ws.values
+    columns = next(data)[0:]
+    campaign_list = pd.DataFrame(data, columns=columns)
+
+    # campaign_unique_list = campaign_list[['캠페인','캠페인 구분']]
+    # campaign_unique_list['캠페인 구분'] = campaign_unique_list['캠페인 구분'].apply(lambda x: 'true' if x == 'Retargeting' else 'false')
+    # paid_raw_campaign_list = paid_raw_df[['campaign','is_retargeting']].drop_duplicates(keep='first')
+    # campaign_compare = pd.merge(campaign_unique_list, paid_raw_campaign_list, how='outer', left_on=['캠페인','캠페인 구분'], right_on=['campaign','is_retargeting'])
+    # campaign_compare.to_csv(dr.download_dir + '/edited_campaign_check.csv', encoding='utf-8-sig')
+    # 캠페인 구분 = is_retargeting 매핑여부 확인 => OK
+    def organic_check(df):
+        if (df['ctit'] >= timedelta(days=7.5)) | (df['itet'] >= timedelta(days=30)) | (
+                df['attributed_touch_type'] == 'impression'):
+            return 'Organic'
+        elif df['campaign'] not in campaign_list['캠페인'].values:
+            return 'Organic'
+        else:
+            return 'Paid'
+
+    paid_raw_df['is_organic'] = paid_raw_df.apply(organic_check, axis=1)
+
+    # paid 내 organic 데이터 필터링
+    # 1분 10초 소요
+    def campaign_type_fix(df):
+        if df['is_organic'] == 'Organic':
+            return ''
+        else:
+            return df['campaign_type']
+
+    paid_raw_df['campaign_type'] = paid_raw_df.apply(campaign_type_fix, axis=1)
+    # 캠페인 타입 정제
+
+    media_dict = campaign_list[['캠페인', '매체']].drop_duplicates('캠페인')
+    paid_raw_df['media'] = ''
+
+    def media_check(data):
+        return media_dict.loc[media_dict['캠페인'] == data]['매체'].values[0]
+
+    paid_raw_df.loc[paid_raw_df['is_organic'] == 'Paid']['media'] = \
+    paid_raw_df.loc[paid_raw_df['is_organic'] == 'Paid']['campaign'].apply(media_check)
 
 
 ### organic data 전처리 ###
 organic_raw_dir = raw_dir + '/오가닉'
 organic_raw_df = get_raw_df(organic_raw_dir)
-organic_raw_df = organic_raw_df.rename(columns={'Attributed Touch Type':'attributed_touch_type', 'Attributed Touch Time':'attributed_touch_time',
-                                                'Install Time':'install_time', 'Event Time':'event_time', 'Event Name':'event_name',
-                                                'Media Source':'media_source', 'Campaign':'campaign', 'AppsFlyer ID':'appsflyer_id'})
+organic_raw_df = organic_raw_df.rename(
+    columns={'Attributed Touch Type': 'attributed_touch_type', 'Attributed Touch Time': 'attributed_touch_time',
+             'Install Time': 'install_time', 'Event Time': 'event_time', 'Event Name': 'event_name',
+             'Media Source': 'media_source', 'Campaign': 'campaign', 'AppsFlyer ID': 'appsflyer_id'})
 # organic 데이터 로드
 
-organic_raw_df[['install_time','attributed_touch_time','event_time']] = organic_raw_df[['install_time','attributed_touch_time','event_time']].apply(pd.to_datetime)
+organic_raw_df[['install_time', 'attributed_touch_time', 'event_time']] = organic_raw_df[
+    ['install_time', 'attributed_touch_time', 'event_time']].apply(pd.to_datetime)
 # 날짜타입 datetime형으로 변경
 
 organic_raw_df['ctit'] = organic_raw_df['install_time'] - organic_raw_df['attributed_touch_time']
@@ -156,12 +186,13 @@ organic_raw_df['itet'] = organic_raw_df['event_time'] - organic_raw_df['install_
 organic_raw_df['is_organic'] = 'Organic'
 # media_source organic 기입
 
-raw_df = pd.concat([paid_raw_df, organic_raw_df], sort=False, ignore_index= True)
+raw_df = pd.concat([paid_raw_df, organic_raw_df], sort=False, ignore_index=True)
 raw_df.to_csv(result_dir + '/finda_preprocessed_raw_data.csv', index=False, encoding='utf-8-sig')
 # raw 데이터 추출
 
 # 40초 소요
-install_raw_df = raw_df.loc[raw_df['event_name']=='install']
-install_raw_df.drop_duplicates(subset=['appsflyer_id','install_time'], keep='first').to_csv(result_dir + '/first_touch_extract_install_data.csv', index=False, encoding='utf-8-sig')
+install_raw_df = raw_df.loc[raw_df['event_name'] == 'install']
+install_raw_df.drop_duplicates(subset=['appsflyer_id', 'install_time'], keep='first').to_csv(
+    result_dir + '/first_touch_extract_install_data.csv', index=False, encoding='utf-8-sig')
 # install 데이터 추출
 # 20초 소요
