@@ -12,7 +12,7 @@ raw_dir = dr.dropbox_dir + '/광고사업부/4. 광고주/무신사/★ 무신�
 def musinsa_rawdata_read():
     raw_files = os.listdir(raw_dir)
     raw_files = [f for f in raw_files if '.csv' in f]
-    raw_files = [f for f in raw_files if (int(str(f)[-12:-4]) >= 20220601) | (int(str(f)[-12:-4]) <= 20220731)]
+    raw_files = [f for f in raw_files if (int(str(f)[-12:-4]) >= 20220601) & (int(str(f)[-12:-4]) <= 20220722)]
 
     dtypes = {
         'attributed_touch_type' : pa.string(),
@@ -44,8 +44,8 @@ def musinsa_rawdata_read():
         'is_primary_attribution' : pa.string(),
         'attribution_lookback': pa.string(),
         'carrier': pa.string(),
-        'collected_at': pa.string(),
-        'customer_user_id' : pa.string()
+        # 'collected_at': pa.string(),
+        'customer_user_id': pa.string()
     }
     index_columns = list(dtypes.keys())
     convert_ops = pacsv.ConvertOptions(column_types=dtypes, include_columns=index_columns)
@@ -53,9 +53,11 @@ def musinsa_rawdata_read():
 
     table_list = []
     for f in raw_files:
-        temp = pacsv.read_csv(raw_dir + '/' + f, convert_options=convert_ops, read_options=ro)
-        table_list.append(temp)
-
+        try:
+            temp = pacsv.read_csv(raw_dir + '/' + f, convert_options=convert_ops, read_options=ro)
+            table_list.append(temp)
+        except:
+            print(f)
 
     print('원본 데이터 Read 완료')
 
@@ -71,6 +73,6 @@ con2 = (df['event_name'] == 'first_purchase')
 con3 = (df['is_primary_attribution'] == 'TRUE')
 
 filtered_data = df.loc[con1 & con2 & con3]
-filtered_data['customer_id'] = filtered_data['customer_id'].fillna(0)
+filtered_data['customer_user_id'] = filtered_data['customer_user_id'].fillna(0)
 filtered_data.to_csv(dr.download_dir + "/musinsa_first_purchase_log_with_cuid.csv", encoding='utf-8-sig', index=False)
 # 로컬 download 디렉토리에 저장되도록 수정
