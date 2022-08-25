@@ -71,7 +71,7 @@ df.is_primary_attribution = df.is_primary_attribution.apply(str.lower)
 
 con1 = (df['attributed_touch_type'] == 'click')
 con2 = (df['event_name'] == 'first_purchase')
-con3 = (df['is_primary_attribution'] == 'TRUE')
+con3 = (df['is_primary_attribution'] == 'true')
 
 filtered_data = df.loc[con1 & con2 & con3]
 filtered_data['customer_user_id'] = filtered_data['customer_user_id'].fillna(0)
