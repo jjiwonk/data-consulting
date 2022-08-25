@@ -67,6 +67,7 @@ def musinsa_rawdata_read():
     return df
 
 df = musinsa_rawdata_read()
+df.is_primary_attribution = df.is_primary_attribution.apply(str.lower)
 
 con1 = (df['attributed_touch_type'] == 'click')
 con2 = (df['event_name'] == 'first_purchase')
