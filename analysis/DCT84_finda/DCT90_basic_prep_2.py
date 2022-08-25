@@ -82,7 +82,7 @@ def paid_data_prep():
     paid_re_raw_df = get_raw_df(paid_raw_dir + '/re')
     paid_ua_raw_df = get_raw_df(paid_raw_dir + '/ua')
     paid_raw = pd.concat([paid_re_raw_df, paid_ua_raw_df], sort=False, ignore_index=True)
-
+    del paid_re_raw_df, paid_ua_raw_df
 
     # paid 데이터 로드
     paid_raw_df = paid_raw.copy()
@@ -113,6 +113,7 @@ def paid_data_prep():
     columns = ['매체 (Display)' , '캠페인', '캠페인 구분', '캠페인 라벨', 'OS']
     campaign_list = campaign_list[columns]
     campaign_list = campaign_list.rename(columns = {'캠페인' : 'campaign'})
+    campaign_list = campaign_list.drop_duplicates('campaign')
 
     paid_raw_df_labeling = paid_raw_df.merge(campaign_list, on = 'campaign', how = 'left')
 
@@ -141,7 +142,7 @@ def paid_data_prep():
             return 'Organic'
 
         if (event_name in ['install', 're-engagement', 're-attribution']) :
-            if (ctit >= 864000) :
+            if (ctit >= 648000) :
                 return 'Organic'
         else :
             if (itet >= 2592000):
@@ -154,8 +155,10 @@ def paid_data_prep():
 
 def sample_data_pivot(data):
     data['Date'] = pd.to_datetime(data['event_time']).dt.date
+    data['Month'] = pd.to_datetime((data['event_time'])).dt.month
     data['Cnt'] = 1
-    data_pivot = data.pivot_table(index = ['Date', 'media_source', 'campaign', '매체 (Display)', '캠페인 구분', '캠페인 라벨',  'is_organic'],
+    data = data.drop_duplicates(['Month', 'event_name', 'appsflyer_id'])
+    data_pivot = data.pivot_table(index = ['Date', 'media_source', 'campaign', '매체 (Display)',  'is_organic'],
                                   columns = 'event_name', values = 'Cnt', aggfunc = 'sum')
     data_pivot = data_pivot.reset_index()
     data_pivot.to_csv(result_dir + '/finda_data_pivot.csv', index=False, encoding='utf-8-sig')
@@ -172,10 +175,10 @@ def organic_data_prep():
     # media_source organic 기입
     return organic_raw_df
 
-def cohort_by_media(data):
+def paid_organic_concat():
     paid_raw_df = paid_data_prep()
 
-    paid_df = paid_raw_df[['install_time', 'event_time', 'event_name', '매체 (Display)', 'media_source', 'event_value', 'appsflyer_id', 'is_organic']]
+    paid_df = paid_raw_df[['install_time', 'event_time', 'event_name', '매체 (Display)', 'media_source', 'campaign','event_value', 'appsflyer_id', 'is_organic', '캠페인 구분']]
     paid_df.loc[paid_df['is_organic']=='Organic', '매체 (Display)']= 'Organic'
     paid_df.loc[paid_df['is_organic'] == 'Organic', 'media_source'] = 'Organic'
     organic_df = organic_data_prep()
@@ -183,21 +186,97 @@ def cohort_by_media(data):
     raw_df = pd.concat([paid_df, organic_df], sort=False, ignore_index=True)
     raw_df['Cnt'] = 1
     raw_df.to_csv(result_dir + '/finda_preprocessed_raw_data.csv', index=False, encoding='utf-8-sig')
+    return raw_df
 
-    install_data = raw_df.loc[(raw_df['event_name']=='install') & (raw_df['is_organic']=='Paid')]
+def install_data_prep(raw_df, is_organic = True):
+    install_data = raw_df.loc[(raw_df['event_name']=='install')]
+    if is_organic == False:
+        install_data = install_data.loc[install_data['is_organic'] == 'Paid']
+    install_data['install_time'] = pd.to_datetime(install_data['install_time'])
     install_data = install_data.sort_values('install_time')
     install_data = install_data.drop_duplicates('appsflyer_id', keep = 'first')
+    install_data = install_data.rename(columns={'매체 (Display)': 'install_source'})
+    return install_data
 
-    install_data = install_data[['매체 (Display)', 'appsflyer_id']]
-    install_data = install_data.rename(columns = {'매체 (Display)' : 'install_source'})
-
+def loan_data_prep(raw_df, is_organic = True, unique = False) :
     loan_data = raw_df.loc[raw_df['event_name']=='loan_contract_completed']
+    if is_organic == False:
+        loan_data = loan_data.loc[loan_data['is_organic'] == 'Paid']
+    loan_data['install_time'] = pd.to_datetime(loan_data['event_time'])
+    loan_data = loan_data.sort_values(['appsflyer_id', 'event_time'])
+    if unique == True:
+        loan_data = loan_data.drop_duplicates('appsflyer_id')
+    return loan_data
 
-    # loan_data_pivot = loan_data.pivot_table(index = ['매체 (Display)'], values = 'Cnt', aggfunc = 'sum').reset_index()
-    # loan_data_pivot = loan_data_pivot.sort_values('Cnt', ascending=False)
+def retargeting_loan_by_install_source(raw_df):
+    install_data = install_data_prep(raw_df, is_organic=True)
+    loan_data = loan_data_prep(raw_df)
 
-    loan_data_merge = loan_data.merge(install_data, on = 'appsflyer_id', how = 'inner')
-    loan_data_merge_pivot = loan_data_merge.pivot_table(index = ['install_source', '매체 (Display)'], values ='Cnt', aggfunc='sum')
+    loan_data_re = loan_data.loc[loan_data['캠페인 구분']=='Retargeting']
+    loan_data_re = loan_data_re.loc[loan_data_re['is_organic']=='Paid']
+    loan_data_re = loan_data_re.sort_values(['event_time'])
+    loan_data_re = loan_data_re.drop_duplicates('appsflyer_id')
+
+    loan_data_merge = loan_data_re.merge(install_data, on = 'appsflyer_id', how = 'left')
+    loan_data_merge['install_source'] = loan_data_merge['install_source'].fillna('Unknown')
+    loan_data_merge_pivot = loan_data_merge.pivot_table(index = ['매체 (Display)','install_source'], values ='Cnt', aggfunc='sum')
     loan_data_merge_pivot = loan_data_merge_pivot.reset_index()
     loan_data_merge_pivot = loan_data_merge_pivot.sort_values('Cnt', ascending=False)
-    return loan_data_merge_pivot
+    loan_data_merge_pivot.to_csv(result_dir + '/retargeting_loan_by_install_source.csv', index=False, encoding = 'utf-8-sig')
+
+def arpu_by_install_source(raw_df):
+    install_data = install_data_prep(raw_df, is_organic=False)
+    loan_data = loan_data_prep(raw_df)
+
+    loan_data_pivot = loan_data.pivot_table(index = ['appsflyer_id'], values = 'Cnt', aggfunc='sum').reset_index()
+
+    install_data_merge= install_data.merge(loan_data_pivot, on ='appsflyer_id', how = 'inner')
+    install_data_merge['Cnt'] = install_data_merge['Cnt'].fillna(0)
+    install_data_merge['Revenue'] = install_data_merge['Cnt'] * 300000
+    install_data_merge['Month'] = pd.to_datetime(install_data_merge['install_time']).dt.month
+    install_data_merge_pivot = install_data_merge.pivot_table(index = ['Month', 'install_source'], values=['Revenue','Cnt'],
+                                                              aggfunc={'Revenue':'sum','Cnt':'count'}).reset_index()
+    install_data_merge_pivot['ARPU'] = install_data_merge_pivot['Revenue'] / install_data_merge_pivot['Cnt']
+    install_data_merge_pivot.to_csv(result_dir + '/arpu_by_install_source.csv', index=False, encoding ='utf-8-sig')
+
+def retention_by_source(raw_df):
+    loan_data = loan_data_prep(raw_df)
+    loan_data = loan_data[['event_time', '매체 (Display)','appsflyer_id', 'is_organic', '캠페인 구분', 'Cnt', 'Date', 'Month']]
+
+    # 2회 이상 대출 받은 사람 추적
+    loan_data_copy = loan_data.iloc[1:]
+    loan_data_copy = loan_data_copy.append(loan_data_copy.iloc[0])
+    loan_data_copy = loan_data_copy[['appsflyer_id', 'event_time']].rename(columns = {'appsflyer_id' : 'appsflyer_id_comp',
+                                                                                      'event_time' : 'event_time_comp'})
+    loan_data_copy.index = loan_data.index
+
+    loan_data_concat = pd.concat([loan_data, loan_data_copy], sort=False, axis=1)
+
+    def loan_complete_term(row):
+        if row['appsflyer_id'] == row['appsflyer_id_comp'] :
+            return (pd.to_datetime(row['event_time_comp']) - pd.to_datetime(row['event_time'])).days
+        else :
+            return -1
+
+    loan_data_concat['loan_term'] = loan_data_concat.apply(loan_complete_term, axis = 1)
+    loan_data_concat.to_csv(result_dir + '/loan_data_with_term.csv', index=False, encoding= 'utf-8-sig')
+
+    install_data = install_data_prep(raw_df, is_organic=False)
+    loan_data_unique = loan_data.drop_duplicates(['appsflyer_id'])
+    loan_data_unique = loan_data_unique[['appsflyer_id', 'Cnt']]
+    loan_data_unique = loan_data_unique.rename(columns = {'Cnt' : 'User'})
+    install_data_merge = install_data.merge(loan_data_unique, on ='appsflyer_id', how = 'inner')
+
+
+    loan_data_retention = loan_data_concat.loc[loan_data_concat['loan_term']>0]
+    loan_data_retention = loan_data_retention.drop_duplicates(['appsflyer_id'])
+    loan_data_retention = loan_data_retention[['appsflyer_id', 'Cnt']]
+    loan_data_retention = loan_data_retention.rename(columns = {'Cnt' : 'Retention'})
+
+    install_data_merge = install_data_merge.merge(loan_data_retention, on = 'appsflyer_id', how='left')
+    install_data_merge['install_source'] = install_data_merge['install_source'].fillna('Unknown')
+    install_data_merge['Retention'] = install_data_merge['Retention'].fillna(0)
+
+    install_data_merge_pivot = install_data_merge.pivot_table(index = ['install_source'], values = ['User', 'Retention'], aggfunc = 'sum')
+    install_data_merge_pivot = install_data_merge_pivot.reset_index()
+    install_data_merge_pivot.to_csv(result_dir + '/retention_by_install_source.csv', index=False, encoding = 'utf-8-sig')
