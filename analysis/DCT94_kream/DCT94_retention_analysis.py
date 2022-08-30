@@ -10,6 +10,7 @@ raw_dir = dr.dropbox_dir + '/광고사업부/4. 광고주/크림/앱스플라이
 result_dir = dr.download_dir
 
 def kream_rawdata_read(start_date, end_date):
+    # raw 데이터 read
     raw_files = os.listdir(raw_dir)
     raw_files = [f for f in raw_files if [year for year in list(range(int(str(start_date)[:-2]),int(str(end_date)[:-2])+1)) if str(year) in f]]
     raw_files = [f for f in raw_files if (int(str(f)[-10:-4]) >= start_date) & (int(str(f)[-10:-4]) <= end_date)]
@@ -20,35 +21,13 @@ def kream_rawdata_read(start_date, end_date):
         'install_time': pa.string(),
         'event_time': pa.string(),
         'event_name': pa.string(),
-        'event_revenue_krw': pa.string(),
         'media_source': pa.string(),
-        'channel': pa.string(),
-        'keywords': pa.string(),
-        'keyword_id': pa.string(),
-        'campaign': pa.string(),
-        'campaign_id': pa.string(),
-        'adset': pa.string(),
-        'adset_id': pa.string(),
-        'ad': pa.string(),
         'site_id': pa.string(),
         'sub_site_id': pa.string(),
-        'sub_param_1': pa.string(),
-        'sub_param_2': pa.string(),
-        'sub_param_3': pa.string(),
-        'sub_param_4': pa.string(),
-        'sub_param_5': pa.string(),
         'appsflyer_id': pa.string(),
-        'advertising_id': pa.string(),
-        'idfa': pa.string(),
-        'android_id': pa.string(),
-        'idfv': pa.string(),
         'platform': pa.string(),
         'device_type': pa.string(),
         'is_retargeting': pa.string(),
-        'retargeting_conversion_type': pa.string(),
-        'is_primary_attribution': pa.string(),
-        'attribution_lookback': pa.string(),
-        'carrier': pa.string(),
         'year': pa.string(),
         'month': pa.string(),
         'day': pa.string()
