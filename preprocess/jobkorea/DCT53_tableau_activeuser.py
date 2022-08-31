@@ -169,7 +169,7 @@ def file_concat():
     total_data = pd.concat([jk_data, am_data], sort=False, ignore_index= True)
 
     total_data_raw = pd.read_csv(result_dir + '/total_mau_data.csv')
-    total_data_raw = total_data_raw.loc[pd.to_datetime(total_data_raw['Date']).dt.date < rdate.today]
+    total_data_raw = total_data_raw.loc[pd.to_datetime(total_data_raw['Date']).dt.date < rdate.start_day]
     total_data_raw = pd.concat([total_data_raw, total_data], ignore_index=True)
 
     total_data_raw.to_csv(result_dir + '/total_mau_data.csv', index=False, encoding = 'utf-8-sig')
