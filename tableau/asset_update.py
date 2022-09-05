@@ -10,18 +10,22 @@ import datetime
 asset_dir = dr.dropbox_dir + '/광고사업부/데이터컨설팅/Tableau/asset'
 
 def modify_check():
-    # 수정 날짜 확인
-    mtime = os.path.getmtime(asset_dir + f'/total_asset_data_{rdate.yearmonth}.csv')
+    try :
+        # 수정 날짜 확인
+        mtime = os.path.getmtime(asset_dir + f'/total_asset_data_{rdate.yearmonth}.csv')
 
-    def unixtime(x):
-        return datetime.datetime.fromtimestamp(int(x)).strftime('%Y-%m-%d')
+        def unixtime(x):
+            return datetime.datetime.fromtimestamp(int(x)).strftime('%Y-%m-%d')
 
-    mdate = unixtime(mtime)
+        mdate = unixtime(mtime)
 
-    if rdate.today.strftime('%Y-%m-%d') == mdate:
-        print('오늘은 이미 다른 분이 업데이트를 하셨네요')
-        return 1
-    else:
+        if rdate.today.strftime('%Y-%m-%d') == mdate:
+            print('오늘은 이미 다른 분이 업데이트를 하셨네요')
+            return 1
+        else:
+            print('코드 실행 감사드립니다 업데이트 시작합니다!')
+            return 0
+    except :
         print('코드 실행 감사드립니다 업데이트 시작합니다!')
         return 0
 
