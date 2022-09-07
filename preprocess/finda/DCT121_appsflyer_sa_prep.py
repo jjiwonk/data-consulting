@@ -66,16 +66,10 @@ def get_raw_df(raw_dir, required_date):
         table_list.append(temp)
     table = pa.concat_tables(table_list)
     raw_df = table.to_pandas()
-
     raw_df.media_source = raw_df.media_source.str.lower()
-    raw_df = raw_df.loc[((raw_df['platform']=='android')&(raw_df['media_source']
-                                                         .isin(['naver_sa_mo_main', '네이버sa', 'naversa', 'kakaosa',
+    raw_df = raw_df.loc[raw_df['media_source'].isin(['naver_sa_mo_main', '네이버sa', 'naversa', 'kakaosa',
                                                                 'googlesa', 'naver_sa_mo_direct', 'naversamo', 'naversapc',
-                                                                'googlesamo', 'googlesapc', 'googleadsword_int'])))|
-                        ((raw_df['platform']=='ios')&(raw_df['media_source']
-                                                         .isin(['naver_sa_mo_main', '네이버sa', 'naversa', 'kakaosa',
-                                                                'googlesa', 'naversamo', 'naversapc',
-                                                                'googlesamo', 'googlesapc', 'googleadsword_int'])))]
+                                                                'googlesamo', 'googlesapc', 'googleadwords_int'])]
     return raw_df
 
 def prep_data(raw_df):
@@ -84,30 +78,29 @@ def prep_data(raw_df):
     prep_df['event_date'] = prep_df['event_time'].apply(lambda x: x.date()).apply(str)
 
     # install 데이터 가공 :: event_name in ['install','re-attribution','re-engagement']
-    prep_df = prep_df.drop(index=raw_df.loc[(prep_df['event_name'].isin(['install','re-attribution','re-engagement']))
-                                           &(prep_df['media_source']=='naversamo')&(prep_df['event_date'] == '2022-08-02')].index)
-    prep_df = prep_df.drop(index=prep_df.loc[(raw_df['event_name'].isin(['install','re-attribution','re-engagement']))
-                                            &(prep_df['media_source']=='googleadwords_int')&(~prep_df['channel'].isin(['ACI_Search','ACE_Search']))].index)
-    prep_df = prep_df.drop(index=prep_df.loc[(raw_df['event_name'].isin(['install','re-attribution','re-engagement']))
-                                             &(prep_df['attributed_touch_type']!='click')].index)
-    prep_df['CTIT'] = (prep_df['install_time'] - prep_df['attributed_touch_time']).apply(lambda x: x.total_seconds())
     prep_df = prep_df.drop(index=prep_df.loc[(prep_df['event_name'].isin(['install','re-attribution','re-engagement']))
-                          &(prep_df['CTIT'] > 60*60*24*7.5)].index)
+                                           &(prep_df['media_source']=='naversamo')&(prep_df['event_date'] == '2022-08-02')].index)
+    prep_df = prep_df.drop(index=prep_df.loc[(prep_df['event_name'].isin(['install','re-attribution','re-engagement']))
+                                            &(prep_df['media_source']=='googleadwords_int')&(~prep_df['channel'].isin(['Search']))].index)
+    prep_df = prep_df.drop(index=prep_df.loc[(prep_df['event_name'].isin(['install','re-attribution','re-engagement']))
+                                             &(prep_df['attributed_touch_type']!='click')].index)
+    prep_df['CTIT'] = (prep_df['install_time'] - prep_df['attributed_touch_time']).apply(lambda x: x.days)
+    prep_df = prep_df.drop(index=prep_df.loc[(prep_df['event_name'].isin(['install','re-attribution','re-engagement']))
+                                             &(prep_df['CTIT'] > 7)].index)
 
     # in-app events 데이터 가공 :: event_name in ['Viewed LA Home','Clicked Signup Completion Button','loan_contract_completed','MD_complete_view']
-    prep_df = prep_df.drop(index=raw_df.loc[(prep_df['event_name'].isin(['Viewed LA Home','Clicked Signup Completion Button','loan_contract_completed','MD_complete_view']))
+    prep_df = prep_df.drop(index=prep_df.loc[(prep_df['event_name'].isin(['Viewed LA Home','Clicked Signup Completion Button','loan_contract_completed','MD_complete_view']))
                                            &(prep_df['media_source']=='naversamo')&(prep_df['event_date'] == '2022-08-02')].index)
-    prep_df = prep_df.drop(index=prep_df.loc[(raw_df['event_name'].isin(['Viewed LA Home','Clicked Signup Completion Button','loan_contract_completed','MD_complete_view']))
-                                             & (prep_df['media_source'] == 'googleadwords_int') & (
-                                                 ~prep_df['channel'].isin(['ACI_Search', 'ACE_Search']))].index)
-    prep_df = prep_df.drop(index=prep_df.loc[(raw_df['event_name'].isin(['Viewed LA Home','Clicked Signup Completion Button','loan_contract_completed','MD_complete_view']))
+    prep_df = prep_df.drop(index=prep_df.loc[(prep_df['event_name'].isin(['Viewed LA Home','Clicked Signup Completion Button','loan_contract_completed','MD_complete_view']))
+                                             & (prep_df['media_source'] == 'googleadwords_int') & (~prep_df['channel'].isin(['Search']))].index)
+    prep_df = prep_df.drop(index=prep_df.loc[(prep_df['event_name'].isin(['Viewed LA Home','Clicked Signup Completion Button','loan_contract_completed','MD_complete_view']))
                                              & (prep_df['attributed_touch_type'] != 'click')].index)
     prep_df = prep_df.drop(
         index=prep_df.loc[(prep_df['event_name'].isin(['Viewed LA Home','Clicked Signup Completion Button','loan_contract_completed','MD_complete_view']))
-                          & (prep_df['CTIT'] > 60*60*24*7.5)].index)
-    prep_df['ITET'] = (prep_df['event_time'] - prep_df['install_time']).apply(lambda x: x.total_seconds())
+                          & (prep_df['CTIT'] > 7)].index)
+    prep_df['ITET'] = (prep_df['event_time'] - prep_df['install_time']).apply(lambda x: x.days)
     prep_df = prep_df.drop(index=prep_df.loc[(prep_df['event_name'].isin(['Viewed LA Home','Clicked Signup Completion Button','loan_contract_completed','MD_complete_view']))
-                                             &(prep_df['ITET'] > 60*60*24*30.5)].index)
+                                             &(prep_df['ITET'] > 30)].index)
 
     prep_df = prep_df.drop(columns=['CTIT','ITET'])
 
@@ -150,4 +143,3 @@ required_date = '2022-09-06'
 raw_df = get_raw_df(raw_dir, required_date)
 prep_df = prep_data(raw_df)
 download_df(prep_df, required_date, result_dir)
-
