@@ -84,7 +84,7 @@ def prep_data(raw_df):
                                             &(prep_df['media_source']=='googleadwords_int')&(~prep_df['channel'].isin(['Search']))].index)
     prep_df = prep_df.drop(index=prep_df.loc[(prep_df['event_name'].isin(['install','re-attribution','re-engagement']))
                                              &(prep_df['attributed_touch_type']!='click')].index)
-    prep_df['CTIT'] = (prep_df['install_time'] - prep_df['attributed_touch_time']).apply(lambda x: x.days)
+    prep_df['CTIT'] = (prep_df['install_time'] - prep_df['attributed_touch_time']).apply(lambda x: x.total_seconds()/(60*60*24))
     prep_df = prep_df.drop(index=prep_df.loc[(prep_df['event_name'].isin(['install','re-attribution','re-engagement']))
                                              &(prep_df['CTIT'] > 7)].index)
 
@@ -98,7 +98,7 @@ def prep_data(raw_df):
     prep_df = prep_df.drop(
         index=prep_df.loc[(prep_df['event_name'].isin(['Viewed LA Home','Clicked Signup Completion Button','loan_contract_completed','MD_complete_view']))
                           & (prep_df['CTIT'] > 7)].index)
-    prep_df['ITET'] = (prep_df['event_time'] - prep_df['install_time']).apply(lambda x: x.days)
+    prep_df['ITET'] = (prep_df['event_time'] - prep_df['install_time']).apply(lambda x: x.total_seconds()/(60*60*24))
     prep_df = prep_df.drop(index=prep_df.loc[(prep_df['event_name'].isin(['Viewed LA Home','Clicked Signup Completion Button','loan_contract_completed','MD_complete_view']))
                                              &(prep_df['ITET'] > 30)].index)
 
@@ -110,35 +110,34 @@ def download_df(prep_df, required_date, result_dir):
     date = datetime.datetime.strptime(required_date, '%Y-%m-%d').strftime('%m%d')
     writer = pd.ExcelWriter(result_dir + f'/종합_{date}.xlsx', engine='xlsxwriter', engine_kwargs={'options':{'strings_to_urls': False}})
 
+    # 데이터 구분
     loan_total = prep_df.loc[prep_df['event_name']=='loan_contract_completed'].reset_index(drop=True)
     loan_total.loc[:,'event_name'] = 'loan_contract_completed TOTAL'
-    loan_total.to_excel(writer, sheet_name='event(대출실행_TOTAL)', index=False)
-
-    prep_unique = prep_df.sort_values(by='event_time').drop_duplicates(['event_name', 'appsflyer_id'], keep='first')
-    install_total = prep_unique.loc[prep_df['event_name'].isin(['install','re-engagement','re-attribution'])].reset_index(drop=True)
-    install_total.to_excel(writer, sheet_name='install(total)', index=False)
-    event_total = prep_unique.loc[prep_df['event_name'].isin(['Viewed LA Home','Clicked Signup Completion Button','loan_contract_completed','MD_complete_view'])]
-    event_total = pd.concat([event_total, loan_total], axis=0).reset_index(drop=True)
-    event_total.to_excel(writer, sheet_name='event(total)', index=False)
-
+    install_total = prep_df.loc[prep_df['event_name'].isin(['install','re-engagement','re-attribution'])].reset_index(drop=True)
+    prep_unique = prep_df.sort_values(by='event_time').drop_duplicates(['is_retargeting', 'event_name', 'appsflyer_id'], keep='first')
+    event_total = prep_unique.loc[prep_unique['event_name'].isin(['Viewed LA Home','Clicked Signup Completion Button','loan_contract_completed','MD_complete_view'])]
     ua_install = install_total.loc[install_total['is_retargeting']=='False'].reset_index(drop=True)
     re_install = install_total.loc[install_total['is_retargeting']=='True'].reset_index(drop=True)
-    ua_install.to_excel(writer, sheet_name='install(UA)', index=False)
-    re_install.to_excel(writer, sheet_name='install(RE)', index=False)
-
     ua_event = event_total.loc[event_total['is_retargeting']=='False'].reset_index(drop=True)
     re_event = event_total.loc[event_total['is_retargeting']=='True'].reset_index(drop=True)
+
+    # 데이터 출력
+    install_total.to_excel(writer, sheet_name='install(total)', index=False)
+    event_total = pd.concat([event_total, loan_total], axis=0).reset_index(drop=True)
+    event_total.to_excel(writer, sheet_name='event(total)', index=False)
+    ua_install.to_excel(writer, sheet_name='install(UA)', index=False)
+    re_install.to_excel(writer, sheet_name='install(RE)', index=False)
     ua_event.to_excel(writer, sheet_name='event(UA)', index=False)
     re_event.to_excel(writer, sheet_name='event(RE)', index=False)
-
+    loan_total.to_excel(writer, sheet_name='event(대출실행_TOTAL)', index=False)
     writer.close()
     print('download success')
 
 
 raw_dir = dr.dropbox_dir + '/광고사업부/4. 광고주/핀다_7팀/2. 리포트/자동화리포트/appsflyer_prism'
 result_dir = dr.download_dir
-# yyyy-mm-dd 형식으로 입력
-required_date = '2022-09-06'
+# 전일자 yyyy-mm-dd 형식으로 입력
+required_date = '2022-09-07'
 
 raw_df = get_raw_df(raw_dir, required_date)
 prep_df = prep_data(raw_df)
