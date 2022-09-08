@@ -102,7 +102,9 @@ def prep_data(raw_df):
     prep_df = prep_df.drop(index=prep_df.loc[(prep_df['event_name'].isin(['Viewed LA Home','Clicked Signup Completion Button','loan_contract_completed','MD_complete_view']))
                                              &(prep_df['ITET'] > 30)].index)
 
-    prep_df = prep_df.drop(columns=['CTIT','ITET'])
+    prep_df.loc[prep_df['keywords'].isin(['', '{keyword']),'keywords'] = '-'
+    prep_df.loc[prep_df['campaign'] == '', 'campaign'] = '-'
+    prep_df.loc[prep_df['adset'] == '', 'adset'] = '-'
 
     return prep_df
 
@@ -116,20 +118,22 @@ def download_df(prep_df, required_date, result_dir):
     install_total = prep_df.loc[prep_df['event_name'].isin(['install','re-engagement','re-attribution'])].reset_index(drop=True)
     prep_unique = prep_df.sort_values(by='event_time').drop_duplicates(['is_retargeting', 'event_name', 'appsflyer_id'], keep='first')
     event_total = prep_unique.loc[prep_unique['event_name'].isin(['Viewed LA Home','Clicked Signup Completion Button','loan_contract_completed','MD_complete_view'])]
-    ua_install = install_total.loc[install_total['is_retargeting']=='False'].reset_index(drop=True)
-    re_install = install_total.loc[install_total['is_retargeting']=='True'].reset_index(drop=True)
-    ua_event = event_total.loc[event_total['is_retargeting']=='False'].reset_index(drop=True)
-    re_event = event_total.loc[event_total['is_retargeting']=='True'].reset_index(drop=True)
+    event_total = pd.concat([event_total, loan_total], axis=0).reset_index(drop=True)
+
+    install_summary = install_total[['attributed_touch_type', 'event_date', 'media_source', 'keywords', 'ad', 'campaign', 'adset', 'is_retargeting', 'event_time']]
+    install_summary['is_retargeting'] = install_summary['is_retargeting'].apply(lambda x: 'RE' if x == 'True' else 'UA')
+    install_summary = install_summary.rename(columns={'is_retargeting':'ua/re'})
+    event_summary = event_total[['attributed_touch_type', 'event_date', 'media_source', 'keywords', 'ad', 'campaign', 'adset', 'event_name', 'is_retargeting', 'event_time', 'attributed_touch_time', 'ITET']]
+    event_summary['is_retargeting'] = event_summary['is_retargeting'].apply(lambda x: 'RE' if x == 'True' else 'UA')
+    event_summary['차이(date)'] = event_summary['ITET'].astype(np.int)
+    event_summary = event_summary.rename(columns={'is_retargeting': 'ua/re','ITET':'차이(time)'})
 
     # 데이터 출력
+    install_summary.to_excel(writer, sheet_name='install(summary)', index=False)
+    event_summary.to_excel(writer, sheet_name='event(summary)', index=False)
     install_total.to_excel(writer, sheet_name='install(total)', index=False)
-    event_total = pd.concat([event_total, loan_total], axis=0).reset_index(drop=True)
     event_total.to_excel(writer, sheet_name='event(total)', index=False)
-    ua_install.to_excel(writer, sheet_name='install(UA)', index=False)
-    re_install.to_excel(writer, sheet_name='install(RE)', index=False)
-    ua_event.to_excel(writer, sheet_name='event(UA)', index=False)
-    re_event.to_excel(writer, sheet_name='event(RE)', index=False)
-    loan_total.to_excel(writer, sheet_name='event(대출실행_TOTAL)', index=False)
+
     writer.close()
     print('download success')
 
