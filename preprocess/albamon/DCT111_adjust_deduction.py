@@ -76,7 +76,7 @@ def deduction_calculate(df,file_name):
 
     event_df['con0_D0'] = 0
     event_df.loc[(event_df['ITET']>0) | (pd.to_datetime(event_df['engagement_time']).dt.month!=rdate.day_1.month)|
-                 (pd.to_datetime(event_df['created_at']).dt.date>rdate.start_day), 'con0_D0'] = 1
+                 (pd.to_datetime(event_df['created_at']).dt.date<rdate.start_day), 'con0_D0'] = 1
 
     event_df.loc[event_df['Country']!='kr', 'con1_country'] = 1
     event_df.loc[event_df['language']!='ko', 'con2_language'] = 1
