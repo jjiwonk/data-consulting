@@ -103,9 +103,10 @@ def prep_data(raw_df):
     prep_df = prep_df.drop(index=prep_df.loc[(prep_df['event_name'].isin(['Viewed LA Home','Clicked Signup Completion Button','loan_contract_completed','MD_complete_view']))
                                              &(prep_df['ITET'] > 30)].index)
 
-    prep_df.loc[prep_df['keywords'].isin(['', '{keyword']),'keywords'] = '-'
+    prep_df.loc[prep_df['keywords'].isin(['', '{keyword}']),'keywords'] = '-'
     prep_df.loc[prep_df['campaign'] == '', 'campaign'] = '-'
     prep_df.loc[prep_df['adset'] == '', 'adset'] = '-'
+    prep_df.loc[prep_df['ad'] == '', 'ad'] = '-'
 
     return prep_df
 
