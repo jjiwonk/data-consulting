@@ -38,6 +38,7 @@ def client_rd_read(column_dict, encoding = 'utf-8-sig'):
 
     for col in value_columns:
         if col in columns:
+            raw_data[col] = raw_data[col].fillna(0)
             if raw_data[col].dtypes == 'object':
                 raw_data[col] = raw_data[col].str.strip()
                 raw_data[col] = raw_data[col].str.replace('-', '0')
