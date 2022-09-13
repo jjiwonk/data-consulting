@@ -52,12 +52,13 @@ def get_raw_df(raw_dir, required_date):
     ro = pacsv.ReadOptions(block_size=10 << 20)
     table_list = []
 
-    files = os.listdir(raw_dir)
-    files = [f for f in files if '.csv' in f]
-
     given_date = datetime.datetime.strptime(required_date,'%Y-%m-%d')
+    date_check = given_date.strftime('%Y%m')
     start_date = given_date.replace(day=1).strftime('%Y%m%d')
     end_date = given_date.strftime('%Y%m%d')
+
+    files = os.listdir(raw_dir)
+    files = [f for f in files if '.csv' in f and str(f)[-12:-6] == date_check]
     raw_files = [f for f in files if
                  (int(str(f)[-12:-4]) >= int(start_date)) & (int(str(f)[-12:-4]) <= int(end_date))]
 
@@ -141,7 +142,7 @@ def download_df(prep_df, required_date, result_dir):
 raw_dir = dr.dropbox_dir + '/광고사업부/4. 광고주/핀다_7팀/2. 리포트/자동화리포트/appsflyer_prism'
 result_dir = dr.download_dir
 # 전일자 yyyy-mm-dd 형식으로 입력
-required_date = '2022-09-07'
+required_date = '2022-09-02'
 
 raw_df = get_raw_df(raw_dir, required_date)
 prep_df = prep_data(raw_df)
