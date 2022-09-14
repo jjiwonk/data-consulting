@@ -67,6 +67,7 @@ def deduction_data(raw_dir, required_date):
             print(e)
     table = pa.concat_tables(table_list)
     raw_df = table.to_pandas()
+    raw_df = raw_df.loc[raw_df['media_source'] == 'appier_int']
     raw_df[['attributed_touch_time', 'install_time', 'event_time']] = raw_df[
         ['attributed_touch_time', 'install_time', 'event_time']].apply(pd.to_datetime)
 
