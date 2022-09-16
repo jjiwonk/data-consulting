@@ -4,15 +4,20 @@ import numpy as np
 import pyarrow as pa
 import pyarrow.csv as pacsv
 import setting.directory as dr
-import setting.report_date as rd
+import setting.report_date as rdate
 import datetime
 
-
+# 디렉토리
 raw_dir = dr.dropbox_dir + '/광고사업부/4. 광고주/잡코리아/!자동화리포트/raw_data/appsflyer_prism'
 result_dir = dr.dropbox_dir + '/광고사업부/4. 광고주/잡코리아/디덕션'
 
+# 전역변수
+detarget_device = ['allwinner', 'GIONEE', 'HONOR', 'HUAWEI', 'Infinix', 'iQOO', 'Itel', 'OnePlus', 'OPPO', 'POCO',
+                    'realme', 'Redmi', 'sharp', 'TECNO', 'TGnCo', 'tufen', 'umidigi', 'vivo', 'Xiaomi', 'ZTE',
+                    'SMARTISAN', 'Lenovo', 'google']
+media_source = ['appier_int']
 
-def deduction_data(raw_dir, required_date):
+def deduction_data(raw_dir, required_date, media_source):
     dtypes = {
         'attributed_touch_type': pa.string(),
         'attributed_touch_time': pa.string(),
@@ -67,23 +72,23 @@ def deduction_data(raw_dir, required_date):
             print(e)
     table = pa.concat_tables(table_list)
     raw_df = table.to_pandas()
-    raw_df = raw_df.loc[raw_df['media_source'] == 'appier_int']
+    raw_df = raw_df.loc[raw_df['media_source'].isin(media_source)]
     raw_df[['attributed_touch_time', 'install_time', 'event_time']] = raw_df[
         ['attributed_touch_time', 'install_time', 'event_time']].apply(pd.to_datetime)
 
     return raw_df
 
 
-def deduction_calculate(required_date, df, file_name):
+def deduction_calculate(required_date, df, file_name, detarget_device, media_source):
     df['ITET'] = df['event_time'] - df['install_time']
     df['Date'] = df['event_time'].apply(lambda x: x.date())
 
     df[['con1_event', 'con2_country', 'con3_language', 'con4_carrier', 'con5_device', 'con6_osv', 'con7_appv',
         'con8_sdkv', 'con9_over3(reattr)', 'con10_lastm']] = 0
 
-    detarget_event = ['signup_all', 'business_signup_complete', 'job_apply_complete_mobile',
+    target_event = ['signup_all', 'business_signup_complete', 'job_apply_complete_mobile',
                       'job_apply_complete_homepage', 'resume_complete']
-    df.loc[df['event_name'].isin(detarget_event), 'con1_event'] = 1
+    df.loc[~(df['event_name'].isin(target_event)), 'con1_event'] = 1
     # con1_event
 
     df.loc[df['country_code'] != 'KR', 'con2_country'] = 1
@@ -97,10 +102,7 @@ def deduction_calculate(required_date, df, file_name):
     df.loc[(df['platform'] == 'android') & ~(df['carrier'].isin(target_carrier)), 'con4_carrier'] = 1
     # con4_carrier
 
-    detarget_device = [x.lower() for x in
-                       ['allwinner', 'GIONEE', 'HONOR', 'HUAWEI', 'Infinix', 'iQOO', 'Itel', 'OnePlus', 'OPPO', 'POCO',
-                        'realme', 'Redmi', 'sharp', 'TECNO', 'TGnCo', 'tufen', 'umidigi', 'vivo', 'Xiaomi', 'ZTE',
-                        'SMARTISAN', 'Lenovo']]
+    detarget_device = [x.lower() for x in detarget_device]
     df['device_model_name'] = df['device_model'].apply(lambda x: x.split('::')[0]).str.lower()
     df.loc[df['device_model_name'].isin(detarget_device), 'con5_device'] = 1
     # con5_device
@@ -176,7 +178,7 @@ def deduction_calculate(required_date, df, file_name):
     # con9_over3(reattr)
 
     lastm_date = required_date.replace(day=1) - datetime.timedelta(days=1)
-    lastm_df = deduction_data(raw_dir, lastm_date)
+    lastm_df = deduction_data(raw_dir, lastm_date, media_source)
     lastm_deductioin_idfa = over3_check_func(lastm_df)
     df.loc[df['idfa'].isin(lastm_deductioin_idfa), 'con10_lastm'] = 1
     # con10_lastm
@@ -198,7 +200,7 @@ def deduction_calculate(required_date, df, file_name):
     result_df.to_csv(result_dir + '/' + file_name, index=False, encoding='utf-8-sig')
 
 
-required_date = rd.day_1
-df = deduction_data(raw_dir, rd.day_1)
-file_name = f'{rd.month_name} 디덕션 적용.csv'
-deduction_calculate(required_date, df, file_name)
+required_date = rdate.day_1
+df = deduction_data(raw_dir, rdate.day_1, media_source)
+file_name = f'{rdate.month_name} 디덕션 적용.csv'
+deduction_calculate(required_date, df, file_name, detarget_device, media_source)
