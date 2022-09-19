@@ -163,14 +163,20 @@ def albamon_active_user(adjust_df):
     adjust_df_pivot['Business'] = '알바몬'
     adjust_df_pivot.to_csv(result_dir + f'/am_mau_data_{rdate.yearmonth}.csv', index=False, encoding='utf-8-sig')
 
-def file_concat():
+def file_concat(jk_paid_media=[], am_paid_media=[]):
     jk_data = pd.read_csv(result_dir + f'/jk_mau_data_{rdate.yearmonth}.csv')
+    jk_data.loc[jk_data['media_source'].isin(jk_paid_media), '구분'] = 'Paid'
+
     am_data = pd.read_csv(result_dir + f'/am_mau_data_{rdate.yearmonth}.csv')
+    am_data.loc[am_data['media_source'].isin(am_paid_media), '구분'] = 'Paid'
+
     total_data = pd.concat([jk_data, am_data], sort=False, ignore_index= True)
+    total_data['구분'] = total_data['구분'].fillna('Organic')
 
     total_data_raw = pd.read_csv(result_dir + '/total_mau_data.csv')
     total_data_raw = total_data_raw.loc[pd.to_datetime(total_data_raw['Date']).dt.date < rdate.start_day]
     total_data_raw = pd.concat([total_data_raw, total_data], ignore_index=True)
+    total_data_raw['Date'] = pd.to_datetime(total_data_raw['Date']).dt.date
 
     total_data_raw.to_csv(result_dir + '/total_mau_data.csv', index=False, encoding = 'utf-8-sig')
 
@@ -181,4 +187,8 @@ jobkorea_active_user(organic_df, paid_df)
 adjust_df = albamon_adjust_read(encoding='cp949')
 albamon_active_user(adjust_df)
 
-file_concat()
+jk_paid_media = ['Facebook Ads', 'Apple Search Ads','googleadwords_int', 'criteonew_int',  'kakao_bb']
+am_paid_media = ['Apple Search Ads', 'Cauly', 'Appier', 'Google Ads ACI', 'Google Ads ACE', 'RTB house',
+                 'facebook_display', 'Criteo', 'Everytime', 'Naver SA', 'Google Ads SA', 'Google Ads Performance Max',
+                 'kakao', 'Kakao SA', 'Facebook Installs', 'Instagram Installs']
+file_concat(jk_paid_media, am_paid_media)
