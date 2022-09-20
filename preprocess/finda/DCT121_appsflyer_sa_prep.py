@@ -82,7 +82,7 @@ def get_raw_df(raw_dir, required_date, media_source):
 def prep_data(raw_df):
     prep_df = raw_df
     prep_df[['attributed_touch_time','install_time','event_time']] = prep_df[['attributed_touch_time','install_time','event_time']].apply(pd.to_datetime)
-    prep_df['event_date'] = prep_df['event_time'].apply(lambda x: x.date()).apply(str)
+    prep_df['event_date'] = pd.to_datetime(prep_df['event_time']).dt.date
 
     # install 데이터 가공 :: event_name in ['install','re-attribution','re-engagement']
     prep_df = prep_df.drop(index=prep_df.loc[(prep_df['event_name'].isin(['install','re-attribution','re-engagement']))
