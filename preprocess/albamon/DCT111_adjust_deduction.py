@@ -26,6 +26,7 @@ def deduction_data():
         'mnc': pa.string(),
         'device_manufacturer' : pa.string(),
         'app_version' : pa.string(),
+        'app_version_short': pa.string(),
         'sdk_version': pa.string(),
         'os_version': pa.string()
     }
@@ -82,6 +83,10 @@ def deduction_calculate(df,file_name):
     event_df.loc[event_df['language']!='ko', 'con2_language'] = 1
     event_df.loc[~(event_df['mccmnc'].isin([45002,45007,45006,45004,45007,45003,45005,45012,45011,45008,45010,4502,4507,4506,4504,4503,4505,4508])), 'con3_mccmnc'] = 1
     event_df.loc[(event_df['network_name']=='Cauly')&(event_df['mccmnc']==45010), 'con3_mccmnc'] = 0
+
+    # iOS 예외처리
+    event_df.loc[event_df['app_name']=='iOS', ['con2_language', 'con3_mccmnc']] = 0
+
     device_list = ['allwinner','GIONEE','HONOR','HUAWEI','Infinix','iQOO','Itel',
                    'OnePlus','OPPO','POCO','realme','Redmi','sharp','TECNO','TGnCo','tufen','umidigi','vivo','Xiaomi','ZTE','Xiaomi','Huawei']
     event_df.loc[(event_df['device_manufacturer'].str.len()>0)&(event_df['device_manufacturer'].isin(device_list)), 'con4_device'] = 1
@@ -89,7 +94,13 @@ def deduction_calculate(df,file_name):
 
     def app_version_check(row):
         os = row['app_name']
-        version = row['app_version'].split('.')
+
+        if os == 'AOS':
+            col_name = 'app_version'
+        elif os == 'iOS' :
+            col_name = 'app_version_short'
+
+        version = row[col_name].split('.')
 
         if len(version) < 3:
             return 1
