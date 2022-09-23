@@ -1,5 +1,8 @@
 import setting.directory as dr
 
+#!pip install selenium
+#!pip install datetime
+#!pip install warnings
 from spreadsheet import spreadsheet
 import pandas as pd
 import numpy as np
@@ -9,43 +12,78 @@ import datetime
 import warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
 
-ADVERTISER = 'jobkorea'
-GOOGLE_DOC = 'https://docs.google.com/spreadsheets/d/1B1wqyOMxqyShtSH0WboaQ-ozkFJ_ArtMA2jp-84kbTY/edit?pli=1#gid=1167985123'
-ID = '확장소재_ID'
-CHECKER = 'validation_checker'
-URL = 'link1_url'
+
+doc = spreadsheet.spread_document_read('https://docs.google.com/spreadsheets/d/14i42NrpnA_9k8nCgyc4Y5KssLP8tOOXUyzYw0un7qXY/edit#gid=211027705')
+ADVERTISER = '잡코리아'
+result_dir = dr.download_dir
 
 
-def get_url_check_list(ID, CHECKER, URL, GOOGLE_DOC):
-    doc = spreadsheet.spread_document_read(GOOGLE_DOC)
-    values = spreadsheet.spread_sheet(doc, 'url_check')
-    url_check_list = values[[ID, CHECKER, URL]].replace('', np.nan).dropna().reset_index(drop=True)
+def get_url_check_list(doc, ADVERTISER):
+    url_check_list = spreadsheet.spread_sheet(doc, ADVERTISER).reset_index(drop=True)
+    url_check_list = url_check_list[['id', 'url']].replace('', np.nan).dropna().reset_index(drop=True)
 
     return url_check_list
 
 
-def landing_check(url_check_list, ID, CHECKER, URL):
-    result_df = pd.DataFrame(columns=[ID, CHECKER, URL])
+def link_validation_check(url_check_list, checker):
+    result_df = pd.DataFrame(columns=['id', 'url', 'checker'])
     for index, row in url_check_list.iterrows():
-        driver = webdriver.Chrome('D:/Github/data-consulting/crawler/chromedriver')
-        url = row[URL]
+        driver = webdriver.Chrome(dr.dropbox_dir + '/광고사업부/데이터컨설팅/token/chromedriver')
+        url = row['url']
         try:
             print(url)
             driver.get(url)
             driver.implicitly_wait(500)
             page_source = driver.page_source
-            if '과도한 접속 시도' in page_source:
-                print('ERROR: 잡코리아 접속 제한 이슈로 보안문자 입력 후 코드 재시작이 필요합니다.')
-                break
-            if row[CHECKER] in page_source:
-                result_df = result_df.append(row)
+            for val in checker:
+                if val in page_source:
+                    row['checker'] = val
+                    result_df = result_df.append(row)
         except Exception as e:
             print(f'{e}\n url 문제 발생:', url)
         driver.quit()
 
     return result_df
 
-url_check_list = get_url_check_list(ID, CHECKER, URL, GOOGLE_DOC)
-result_df = landing_check(url_check_list, ID, CHECKER, URL)
-time = datetime.datetime.now(timezone("Asia/Seoul")).strftime("%y년_%m월_%d일_%H시")
-result_df.to_csv(dr.download_dir+f'/{ADVERTISER}_link_validation_check_result_{time}.csv', index=False, encoding='utf-8-sig')
+
+def landing_expired_check(url_check_list):
+    landing_expired_result_df = pd.DataFrame(columns=['id', 'url'])
+    return landing_expired_result_df
+
+
+def redirect_check(url_check_list):
+    redirect_result_df = pd.DataFrame(columns=['id', 'url'])
+    return redirect_result_df
+
+
+def download_df(link_validation_result_df, landing_expired_result_df, redirect_result_df, result_dir):
+    time = datetime.datetime.now(timezone("Asia/Seoul")).strftime("%y년_%m월_%d일_%H시")
+    writer = pd.ExcelWriter(result_dir + f'/{ADVERTISER}_랜딩페이지_점검_{time}.xlsx', engine='xlsxwriter', engine_kwargs={'options': {'strings_to_urls': False}})
+    link_validation_result_df.to_excel(writer, sheet_name = 'link_validation_check', index=False)
+    # landing_expired_result_df.to_excel(writer, sheet_name='landing_expired_check', index=False)
+    # redirect_result_df.to_excel(writer, sheet_name='redirect_check', index=False)
+    writer.close()
+
+
+def landing_check_solution_exec(doc, ADVERTISER):
+    url_check_list = get_url_check_list(doc, ADVERTISER)
+
+    total_index = spreadsheet.spread_sheet(doc, 'TOTAL')
+    total_index = total_index.drop_duplicates('업체명', keep='last')
+    index = total_index.loc[total_index['업체명'] == ADVERTISER].reset_index(drop=True)
+
+    link_validation_result_df = pd.DataFrame(columns=['id', 'url'])
+    landing_expired_result_df = pd.DataFrame(columns=['id', 'url'])
+    redirect_result_df = pd.DataFrame(columns=['id', 'url'])
+    if index['문장 패턴 검색'].values == 'TRUE':
+        checker = index['검색 문구'][0].split('/')
+        link_validation_result_df = link_validation_check(url_check_list, checker)
+    elif index['접속 불가 점검(미구현)'].values == 'TRUE':
+        landing_expired_result_df = landing_expired_check(url_check_list)
+    elif index['리다이렉트 점검(미구현)'].values == 'TRUE':
+        redirect_result_df = redirect_check(url_check_list)
+
+    download_df(link_validation_result_df, landing_expired_result_df, redirect_result_df, result_dir)
+
+
+landing_check_solution_exec(doc, ADVERTISER)
