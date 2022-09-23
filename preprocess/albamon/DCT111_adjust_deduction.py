@@ -25,7 +25,8 @@ def deduction_data():
         'mcc' : pa.string(),
         'mnc': pa.string(),
         'device_manufacturer' : pa.string(),
-        'app_version' : pa.string(),
+        'gps_adid' : pa.string(),
+        'idfa': pa.string(),
         'app_version_short': pa.string(),
         'sdk_version': pa.string(),
         'os_version': pa.string()
@@ -122,6 +123,10 @@ def deduction_calculate(df,file_name):
 
     event_df['con6_appv'] = event_df.apply(app_version_check, axis = 1)
     event_df['con7_sdkv'] = 0
+
+    # adid AOS/IOS 구분 조건 추가
+    event_df['adid'] = event_df.apply(lambda x: x['gps_adid'] if 'AOS' in x['app_name'] else x['idfa'], axis=1)
+    event_df = event_df.drop(['gps_adid','idfa'], axis=1)
 
     sort_df = event_df[['adid', 'event_name', 'created_at']].sort_values(['adid', 'event_name', 'created_at'])
     sort_df['created_at'] = pd.to_datetime(sort_df['created_at'])
