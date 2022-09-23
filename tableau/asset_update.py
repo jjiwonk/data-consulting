@@ -31,21 +31,31 @@ def modify_check():
 
 def facebook_read():
     ## 페이스북
-    facebook = pd.read_csv(asset_dir + f'/facebook_ad_image_asset_daily_report_{rdate.yearmonth}.csv', encoding= 'utf-8-sig')
-    facebook = facebook.loc[pd.notnull(facebook['image_asset'])]
-    facebook['소재 URL'] = facebook['image_asset'].apply(lambda x : json.loads(x)['url'] if x != '{}' else '')
-    facebook['소재 유형'] = facebook['image_asset'].apply(lambda x : json.loads(x)['name'] if x != '{}' else '')
-    facebook['소재 유형'] = facebook['소재 유형'].str.upper()
+    facebook_img = pd.read_csv(asset_dir + f'/facebook_ad_image_asset_daily_report_{rdate.yearmonth}.csv',
+                               encoding='utf-8-sig')
+    facebook_img = facebook_img.loc[pd.notnull(facebook_img['image_asset'])]
+    facebook_img['소재 URL'] = facebook_img['image_asset'].apply(lambda x: json.loads(x)['url'] if x != '{}' else '')
+    facebook_img['소재 유형'] = 'image'
+    facebook_img = facebook_img[['owner_id', 'campaign_name', 'adset_name', 'ad_name', '소재 유형', '소재 URL', 'collected_at']]
 
-    size_pat = re.compile('\d{3,4}X\d{3,4}')
-    facebook['소재 유형'] = facebook['소재 유형'].apply(lambda x : size_pat.findall(x)[0] if size_pat.search(x) else '-')
-    facebook = facebook.rename(columns =
-                               {'campaign_name' : '캠페인',
-                                'adset_name' : '광고그룹',
-                                'ad_name' : '소재' })
+    facebook_vid = pd.read_csv(asset_dir + f'/facebook_ad_video_asset_daily_report_{rdate.yearmonth}.csv',
+                               encoding='utf-8-sig')
+    facebook_vid = facebook_vid.loc[pd.notnull(facebook_vid['video_asset'])]
+    facebook_vid['소재 URL'] = facebook_vid['video_asset'].apply(
+        lambda x: 'https://facebook.com' + json.loads(x)['url'] if x != '{}' else '')
+    facebook_vid['소재 유형'] = 'video'
+    facebook_vid = facebook_vid[['owner_id', 'campaign_name', 'adset_name', 'ad_name', '소재 유형', '소재 URL', 'collected_at']]
 
-    facebook = facebook[['owner_id', '캠페인', '광고그룹', '소재', '소재 유형','소재 URL']]
-    facebook = facebook.drop_duplicates(['owner_id', '캠페인', '광고그룹', '소재'])
+    facebook = pd.concat([facebook_img, facebook_vid], axis=0, ignore_index=True)
+    facebook = facebook.rename(columns=
+                               {'campaign_name': '캠페인',
+                                'adset_name': '광고그룹',
+                                'ad_name': '소재'})
+
+    facebook = facebook.sort_values(['owner_id', '캠페인', '광고그룹', '소재', '소재 유형', 'collected_at'],
+                                    ascending=[True, True, True, True, False, True])
+    facebook = facebook.drop_duplicates(['owner_id', '캠페인', '광고그룹', '소재'], keep='last')
+    facebook = facebook[['owner_id', '캠페인', '광고그룹', '소재', '소재 유형', '소재 URL']]
     facebook['매체'] = '페이스북'
     return facebook
 
