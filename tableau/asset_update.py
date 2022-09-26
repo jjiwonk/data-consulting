@@ -38,11 +38,9 @@ def facebook_read():
     facebook_img['소재 유형'] = 'image'
     facebook_img = facebook_img[['owner_id', 'campaign_name', 'adset_name', 'ad_name', '소재 유형', '소재 URL', 'collected_at']]
 
-    facebook_vid = pd.read_csv(asset_dir + f'/facebook_ad_video_asset_daily_report_{rdate.yearmonth}.csv',
-                               encoding='utf-8-sig')
+    facebook_vid = pd.read_csv(asset_dir + f'/facebook_ad_video_asset_daily_report_{rdate.yearmonth}.csv', encoding='utf-8-sig')
     facebook_vid = facebook_vid.loc[pd.notnull(facebook_vid['video_asset'])]
-    facebook_vid['소재 URL'] = facebook_vid['video_asset'].apply(
-        lambda x: 'https://facebook.com' + json.loads(x)['thumbnail_url'] if x != '{}' else '')
+    facebook_vid['소재 URL'] = facebook_vid['video_asset'].apply(lambda x: json.loads(x)['thumbnail_url'] if x != '{}' else '')
     facebook_vid['소재 유형'] = 'video'
     facebook_vid = facebook_vid[['owner_id', 'campaign_name', 'adset_name', 'ad_name', '소재 유형', '소재 URL', 'collected_at']]
 
