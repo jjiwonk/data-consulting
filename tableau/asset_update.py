@@ -42,7 +42,7 @@ def facebook_read():
                                encoding='utf-8-sig')
     facebook_vid = facebook_vid.loc[pd.notnull(facebook_vid['video_asset'])]
     facebook_vid['소재 URL'] = facebook_vid['video_asset'].apply(
-        lambda x: 'https://facebook.com' + json.loads(x)['url'] if x != '{}' else '')
+        lambda x: 'https://facebook.com' + json.loads(x)['thumbnail_url'] if x != '{}' else '')
     facebook_vid['소재 유형'] = 'video'
     facebook_vid = facebook_vid[['owner_id', 'campaign_name', 'adset_name', 'ad_name', '소재 유형', '소재 URL', 'collected_at']]
 
