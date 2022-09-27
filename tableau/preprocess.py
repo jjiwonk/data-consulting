@@ -95,16 +95,17 @@ def data_exception(raw_merged, asset_data, doc):
         media = exception_sheet.iloc[i]['매체']
         name = exception_sheet.iloc[i]['이름']
         alt = exception_sheet.iloc[i]['대체 값']
+        target = exception_sheet.iloc[i]['대상 매체']
 
         if func == 'EXCLUDE':
             raw_merged = raw_merged.loc[~((raw_merged['매체'] == media) & (raw_merged[col] == name))]
         elif func == 'REPLACE':
             raw_merged.loc[((raw_merged['매체'] == media) & (raw_merged[col] == name)), name] = alt
         elif func == 'MAPPING':
-            raw_merged.loc[raw_merged['매체'] == alt, '소재 URL'] = raw_merged.loc[:, '소재'].apply(
+            raw_merged.loc[raw_merged['매체'] == target, '소재 URL'] = raw_merged.loc[:, '소재'].apply(
                 lambda x: asset_list.loc[(asset_list['매체'] == media) & (asset_list['소재'] == x), '소재 URL'].values[0] if len(
                     asset_list.loc[(asset_list['매체'] == media) & (asset_list['소재'] == x), '소재 URL'].values) > 0 else '')
-            raw_merged.loc[raw_merged['매체'] == alt, '소재 유형'] = raw_merged.loc[:, '소재 URL'].apply(lambda x: asset_list.loc[asset_list['소재 URL'] == x, '소재 유형'].values[0] if len(
+            raw_merged.loc[raw_merged['매체'] == target, '소재 유형'] = raw_merged.loc[:, '소재 URL'].apply(lambda x: asset_list.loc[asset_list['소재 URL'] == x, '소재 유형'].values[0] if len(
                     asset_list.loc[asset_list['소재 URL'] == x, '소재 유형'].values) > 0 else '')
 
     # creative_raw = creative_raw.loc[creative_raw['매체'].isin(['페이스북', '카카오', '구글'])]
