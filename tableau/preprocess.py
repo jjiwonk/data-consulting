@@ -111,7 +111,7 @@ sheet_data = tableau_custom_sheet(document.doc)
 column_dict = get_column_dict(sheet_data)
 
 # 드롭박스에 적재된 광고주 리포트 RD 불러오기
-raw_data = client_rd_read(column_dict, 'cp949')
+raw_data = client_rd_read(column_dict, 'utf-8-sig')
 
 # 캠페인 정보 시트 불러오기
 campaign_sheet = campaign_info_sheet(document.campaign_doc)
