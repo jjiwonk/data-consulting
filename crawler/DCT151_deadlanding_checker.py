@@ -11,6 +11,8 @@ from pytz import timezone
 import datetime
 import warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
+import time
+start = time.time()
 
 
 doc = spreadsheet.spread_document_read('https://docs.google.com/spreadsheets/d/14i42NrpnA_9k8nCgyc4Y5KssLP8tOOXUyzYw0un7qXY/edit#gid=211027705')
@@ -27,13 +29,19 @@ def get_url_check_list(doc, ADVERTISER):
 
 def link_validation_check(url_check_list, checker):
     result_df = pd.DataFrame(columns=['id', 'url', 'checker'])
+    options = webdriver.ChromeOptions()
+    options.add_argument('headless')
+    options.add_argument('window-size=1920x1080')
+    options.add_argument("disable-gpu")
+    options.add_argument("user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.100 Safari/537.36")
+
+    driver = webdriver.Chrome(executable_path=dr.dropbox_dir + '/광고사업부/데이터컨설팅/token/chromedriver', options=options)
+    recheck_list = pd.DataFrame(columns=['id', 'url'])
     for index, row in url_check_list.iterrows():
-        driver = webdriver.Chrome(dr.dropbox_dir + '/광고사업부/데이터컨설팅/token/chromedriver')
         url = row['url']
         try:
             print(url)
             driver.get(url)
-            driver.implicitly_wait(500)
             page_source = driver.page_source
             for val in checker:
                 if val in page_source:
@@ -41,7 +49,25 @@ def link_validation_check(url_check_list, checker):
                     result_df = result_df.append(row)
         except Exception as e:
             print(f'{e}\n url 문제 발생:', url)
-        driver.quit()
+            if 'timeout' in e:
+                recheck_list = recheck_list.append(row)
+                driver.quit()
+                driver = webdriver.Chrome(executable_path=dr.dropbox_dir + '/광고사업부/데이터컨설팅/token/chromedriver', options=options)
+
+    for index, row in recheck_list.iterrows():
+        url = row['url']
+        try:
+            print(url)
+            driver.get(url)
+            page_source = driver.page_source
+            for val in checker:
+                if val in page_source:
+                    row['checker'] = val
+                    result_df = result_df.append(row)
+        except Exception as e:
+            print(f'{e}\n url 문제 발생:', url)
+
+    driver.quit()
 
     return result_df
 
@@ -84,6 +110,8 @@ def landing_check_solution_exec(doc, ADVERTISER):
         redirect_result_df = redirect_check(url_check_list)
 
     download_df(link_validation_result_df, landing_expired_result_df, redirect_result_df, result_dir)
+    print('download success')
+    print('time :', time.time() - start)
 
 
 landing_check_solution_exec(doc, ADVERTISER)

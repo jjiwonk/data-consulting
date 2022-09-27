@@ -63,13 +63,16 @@ def get_raw_df(raw_dir, required_date):
     return raw_df
 
 def prep_df(n_raw_df, g_raw_df, doc):
-    n_raw_df['date'] = n_raw_df['date'].apply(lambda x: pd.to_datetime(x).date())
     n_raw_df = n_raw_df.loc[~(n_raw_df['campaign_name'] == '핀다_BS')]
-    n_raw_df.loc[:, 'cost'] = n_raw_df.loc[:, 'cost'].apply(lambda x: pd.to_numeric(x) * 1.1 / 1000000)
+    n_raw_df['date'] = n_raw_df['date'].apply(lambda x: pd.to_datetime(x).date())
+    n_raw_df[['impression','click','cost']] = n_raw_df[['impression','click','cost']].apply(lambda x: pd.to_numeric(x))
+    n_raw_df.loc[:, 'cost'] = n_raw_df.loc[:, 'cost'].apply(lambda x: x * 1.1)
     # 네이버 가공
 
     g_raw_df['segments_date'] = g_raw_df['segments_date'].apply(lambda x: pd.to_datetime(x).date())
-    g_raw_df['sum_metrix'] = pd.to_numeric(g_raw_df['impressions']) + pd.to_numeric(g_raw_df['clicks']) + pd.to_numeric(g_raw_df['cost_micros'])
+    g_raw_df[['impressions', 'clicks', 'cost_micros']] = g_raw_df[['impressions', 'clicks', 'cost_micros']].apply(lambda x: pd.to_numeric(x))
+    g_raw_df['cost_micros'] = g_raw_df['cost_micros'].apply(lambda x: x / 1000000)
+    g_raw_df['sum_metrix'] = g_raw_df['impressions'] + g_raw_df['clicks'] + g_raw_df['cost_micros']
     g_raw_df = g_raw_df.loc[g_raw_df['sum_metrix'] > 0]
     def utm_content(list):
         for x in list:
