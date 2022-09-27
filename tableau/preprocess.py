@@ -88,6 +88,16 @@ def data_exception(raw_merged, asset_data, doc):
         (exception_sheet['체크박스'] == 'TRUE') & (exception_sheet['광고주'] == tableau_info.account_name)]
     exception_sheet.index = range(0, len(exception_sheet))
     asset_list = asset_data.drop_duplicates(['매체', '소재'], keep='last')
+    asset_dict = {
+        '페이스북': dict(zip(asset_list.loc[asset_list['매체'] == '페이스북']['소재'].values, asset_list.loc[asset_list['매체'] == '페이스북']['소재 URL'].values)),
+        '카카오': dict(zip(asset_list.loc[asset_list['매체'] == '카카오']['소재'].values, asset_list.loc[asset_list['매체'] == '카카오']['소재 URL'].values)),
+        '구글': dict(zip(asset_list.loc[asset_list['매체'] == '구글']['소재'].values, asset_list.loc[asset_list['매체'] == '구글']['소재 URL'].values))
+    }
+    categ_dict = {
+        '페이스북': dict(zip(asset_list.loc[asset_list['매체'] == '페이스북']['소재 URL'].values, asset_list.loc[asset_list['매체'] == '페이스북']['소재 유형'].values)),
+        '카카오': dict(zip(asset_list.loc[asset_list['매체'] == '카카오']['소재 URL'].values, asset_list.loc[asset_list['매체'] == '카카오']['소재 유형'].values)),
+        '구글': dict(zip(asset_list.loc[asset_list['매체'] == '구글']['소재 URL'].values, asset_list.loc[asset_list['매체'] == '구글']['소재 유형'].values))
+    }
 
     for i in exception_sheet.index:
         func = exception_sheet.iloc[i]['방식']
@@ -102,11 +112,12 @@ def data_exception(raw_merged, asset_data, doc):
         elif func == 'REPLACE':
             raw_merged.loc[((raw_merged['매체'] == media) & (raw_merged[col] == name)), name] = alt
         elif func == 'MAPPING':
-            raw_merged.loc[raw_merged['매체'] == target, '소재 URL'] = raw_merged.loc[:, '소재'].apply(
-                lambda x: asset_list.loc[(asset_list['매체'] == media) & (asset_list['소재'] == x), '소재 URL'].values[0] if len(
-                    asset_list.loc[(asset_list['매체'] == media) & (asset_list['소재'] == x), '소재 URL'].values) > 0 else '')
-            raw_merged.loc[raw_merged['매체'] == target, '소재 유형'] = raw_merged.loc[:, '소재 URL'].apply(lambda x: asset_list.loc[asset_list['소재 URL'] == x, '소재 유형'].values[0] if len(
-                    asset_list.loc[asset_list['소재 URL'] == x, '소재 유형'].values) > 0 else '')
+            if alt == '':
+                raw_merged.loc[raw_merged['매체'] == target, '소재 URL'] = raw_merged.loc[:, '소재'].apply(lambda x: asset_dict[media][x] if x in asset_dict[media].keys() else '')
+                raw_merged.loc[raw_merged['매체'] == target, '소재 유형'] = raw_merged.loc[:, '소재 URL'].apply(lambda x: categ_dict[media][x] if x in categ_dict[media].keys() else '')
+            else:
+                raw_merged.loc[raw_merged['매체'] == target, '소재 URL'] = raw_merged.loc[:, '소재'].apply(lambda x: asset_dict[alt][x] if x in asset_dict[alt].keys() else '')
+                raw_merged.loc[raw_merged['매체'] == target, '소재 유형'] = raw_merged.loc[:, '소재 URL'].apply(lambda x: categ_dict[alt][x] if x in categ_dict[alt].keys() else '')
 
     # creative_raw = creative_raw.loc[creative_raw['매체'].isin(['페이스북', '카카오', '구글'])]
 
@@ -151,7 +162,7 @@ raw_merged = raw_data.merge(asset_data, on=['매체', '캠페인', '광고그룹
 except_raw_final = data_exception(raw_merged, asset_data, document.doc)
 
 # 드롭박스 저장
-except_raw_final.to_csv(tableau_info.result_dir + f'/{tableau_info.account_name}/tableau_creative_rd_{tableau_info.result_name}_{rdate.yearmonth}.csv', index=False, encoding='utf-8-sig')
-# except_raw_final.to_csv(dr.download_dir + f'/tableau_creative_rd_{tableau_info.result_name}_{rdate.yearmonth}_2.csv',index=False, encoding='utf-8-sig')
+# except_raw_final.to_csv(tableau_info.result_dir + f'/{tableau_info.account_name}/tableau_creative_rd_{tableau_info.result_name}_{rdate.yearmonth}.csv', index=False, encoding='utf-8-sig')
+except_raw_final.to_csv(dr.download_dir + f'/tableau_creative_rd_{tableau_info.result_name}_{rdate.yearmonth}_2.csv',index=False, encoding='utf-8-sig')
 print('download success')
 print('time: ', time.time() - start)
