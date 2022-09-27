@@ -87,17 +87,6 @@ def data_exception(raw_merged, asset_data, doc):
     exception_sheet = exception_sheet.loc[
         (exception_sheet['체크박스'] == 'TRUE') & (exception_sheet['광고주'] == tableau_info.account_name)]
     exception_sheet.index = range(0, len(exception_sheet))
-    asset_list = asset_data.drop_duplicates(['매체', '소재'], keep='last')
-    asset_dict = {
-        '페이스북': dict(zip(asset_list.loc[asset_list['매체'] == '페이스북']['소재'].values, asset_list.loc[asset_list['매체'] == '페이스북']['소재 URL'].values)),
-        '카카오': dict(zip(asset_list.loc[asset_list['매체'] == '카카오']['소재'].values, asset_list.loc[asset_list['매체'] == '카카오']['소재 URL'].values)),
-        '구글': dict(zip(asset_list.loc[asset_list['매체'] == '구글']['소재'].values, asset_list.loc[asset_list['매체'] == '구글']['소재 URL'].values))
-    }
-    categ_dict = {
-        '페이스북': dict(zip(asset_list.loc[asset_list['매체'] == '페이스북']['소재 URL'].values, asset_list.loc[asset_list['매체'] == '페이스북']['소재 유형'].values)),
-        '카카오': dict(zip(asset_list.loc[asset_list['매체'] == '카카오']['소재 URL'].values, asset_list.loc[asset_list['매체'] == '카카오']['소재 유형'].values)),
-        '구글': dict(zip(asset_list.loc[asset_list['매체'] == '구글']['소재 URL'].values, asset_list.loc[asset_list['매체'] == '구글']['소재 유형'].values))
-    }
 
     for i in exception_sheet.index:
         func = exception_sheet.iloc[i]['방식']
@@ -112,6 +101,23 @@ def data_exception(raw_merged, asset_data, doc):
         elif func == 'REPLACE':
             raw_merged.loc[((raw_merged['매체'] == media) & (raw_merged[col] == name)), name] = alt
         elif func == 'MAPPING':
+            asset_list = asset_data.drop_duplicates(['매체', '소재'], keep='last')
+            asset_dict = {
+                '페이스북': dict(zip(asset_list.loc[asset_list['매체'] == '페이스북']['소재'].values,
+                                 asset_list.loc[asset_list['매체'] == '페이스북']['소재 URL'].values)),
+                '카카오': dict(zip(asset_list.loc[asset_list['매체'] == '카카오']['소재'].values,
+                                asset_list.loc[asset_list['매체'] == '카카오']['소재 URL'].values)),
+                '구글': dict(zip(asset_list.loc[asset_list['매체'] == '구글']['소재'].values,
+                               asset_list.loc[asset_list['매체'] == '구글']['소재 URL'].values))
+            }
+            categ_dict = {
+                '페이스북': dict(zip(asset_list.loc[asset_list['매체'] == '페이스북']['소재 URL'].values,
+                                 asset_list.loc[asset_list['매체'] == '페이스북']['소재 유형'].values)),
+                '카카오': dict(zip(asset_list.loc[asset_list['매체'] == '카카오']['소재 URL'].values,
+                                asset_list.loc[asset_list['매체'] == '카카오']['소재 유형'].values)),
+                '구글': dict(zip(asset_list.loc[asset_list['매체'] == '구글']['소재 URL'].values,
+                               asset_list.loc[asset_list['매체'] == '구글']['소재 유형'].values))
+            }
             if alt == '':
                 raw_merged.loc[raw_merged['매체'] == target, '소재 URL'] = raw_merged.loc[:, '소재'].apply(lambda x: asset_dict[media][x] if x in asset_dict[media].keys() else '')
                 raw_merged.loc[raw_merged['매체'] == target, '소재 유형'] = raw_merged.loc[:, '소재 URL'].apply(lambda x: categ_dict[media][x] if x in categ_dict[media].keys() else '')
