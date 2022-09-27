@@ -51,7 +51,7 @@ def campaign_info_sheet(campaign_doc):
 
     campaign_sheet = spreadsheet.spread_sheet(campaign_doc, '캠페인 정보')
     campaign_sheet = campaign_sheet.loc[campaign_sheet['광고주'] == tableau_info.account_name]
-    campaign_sheet = campaign_sheet.loc[campaign_sheet['매체'].isin(['페이스북', '카카오', '구글'])]
+    campaign_sheet = campaign_sheet.loc[campaign_sheet['매체'].isin(['네이버', '카카오', '구글'])]
     campaign_sheet = campaign_sheet[
         ['매체', '광고 상품', '캠페인', '광고그룹', '최적화 엔진', '캠페인 구분', '오디언스', 'OS', 'KPI', '캠페인 라벨']]
     campaign_sheet = campaign_sheet.drop_duplicates(['매체', '캠페인', '광고그룹'], keep='last')
