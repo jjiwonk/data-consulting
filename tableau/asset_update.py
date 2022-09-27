@@ -35,13 +35,13 @@ def facebook_read():
                                encoding='utf-8-sig')
     facebook_img = facebook_img.loc[pd.notnull(facebook_img['image_asset'])]
     facebook_img['소재 URL'] = facebook_img['image_asset'].apply(lambda x: json.loads(x)['url'] if x != '{}' else '')
-    facebook_img['소재 유형'] = 'image'
+    facebook_img['소재 유형'] = 'IMAGE'
     facebook_img = facebook_img[['owner_id', 'campaign_name', 'adset_name', 'ad_name', '소재 유형', '소재 URL', 'collected_at']]
 
     facebook_vid = pd.read_csv(asset_dir + f'/facebook_ad_video_asset_daily_report_{rdate.yearmonth}.csv', encoding='utf-8-sig')
     facebook_vid = facebook_vid.loc[pd.notnull(facebook_vid['video_asset'])]
     facebook_vid['소재 URL'] = facebook_vid['video_asset'].apply(lambda x: json.loads(x)['thumbnail_url'] if x != '{}' else '')
-    facebook_vid['소재 유형'] = 'video'
+    facebook_vid['소재 유형'] = 'VIDEO'
     facebook_vid = facebook_vid[['owner_id', 'campaign_name', 'adset_name', 'ad_name', '소재 유형', '소재 URL', 'collected_at']]
 
     facebook = pd.concat([facebook_img, facebook_vid], axis=0, ignore_index=True)
@@ -62,7 +62,8 @@ def kakao_read():
     kakao = pd.read_csv(asset_dir + f'/kakao_all_creative_list_{rdate.yearmonth}.csv', encoding= 'utf-8-sig')
     kakao = kakao.loc[pd.notnull(kakao['image'])]
     kakao['소재 URL'] = kakao['image'].apply(lambda x : 'https:' + json.loads(x)['url'] if x != '{}' else '')
-    kakao.columns
+    kakao['video'] = kakao['video'].fillna('{}')
+    kakao.loc[kakao['format'] == 'VIDEO_NATIVE', '소재 URL'] = kakao['video'].apply(lambda x: 'https:' + json.loads(x)['url'].split('?')[0] if x != '{}' else '')
 
     kakao = kakao.rename(columns = {'campaign_name' : '캠페인', 'adgroup_name' : '광고그룹','creative_name' : '소재', 'format' : '소재 유형'})
     kakao = kakao[['owner_id', '캠페인', '광고그룹', '소재', '소재 유형','소재 URL']]
