@@ -122,8 +122,8 @@ def data_exception(raw_merged, asset_data, doc):
                 raw_merged.loc[raw_merged['매체'] == target, '소재 URL'] = raw_merged.loc[:, '소재'].apply(lambda x: asset_dict[media][x] if x in asset_dict[media].keys() else '')
                 raw_merged.loc[raw_merged['매체'] == target, '소재 유형'] = raw_merged.loc[:, '소재 URL'].apply(lambda x: categ_dict[media][x] if x in categ_dict[media].keys() else '')
             else:
-                raw_merged.loc[raw_merged['매체'] == target, '소재 URL'] = raw_merged.loc[:, '소재'].apply(lambda x: asset_dict[alt][x] if x in asset_dict[alt].keys() else '')
-                raw_merged.loc[raw_merged['매체'] == target, '소재 유형'] = raw_merged.loc[:, '소재 URL'].apply(lambda x: categ_dict[alt][x] if x in categ_dict[alt].keys() else '')
+                raw_merged.loc[raw_merged['매체'] == target, '소재 URL'] = raw_merged.loc[:, alt].apply(lambda x: asset_dict[media][x] if x in asset_dict[media].keys() else '')
+                raw_merged.loc[raw_merged['매체'] == target, '소재 유형'] = raw_merged.loc[:, '소재 URL'].apply(lambda x: categ_dict[media][x] if x in categ_dict[media].keys() else '')
 
     # creative_raw = creative_raw.loc[creative_raw['매체'].isin(['페이스북', '카카오', '구글'])]
 
