@@ -169,6 +169,6 @@ except_raw_final = data_exception(raw_merged, asset_data, document.doc)
 
 # 드롭박스 저장
 # except_raw_final.to_csv(tableau_info.result_dir + f'/{tableau_info.account_name}/tableau_creative_rd_{tableau_info.result_name}_{rdate.yearmonth}.csv', index=False, encoding='utf-8-sig')
-except_raw_final.to_csv(tableau_info.result_dir + f'/tableau_creative_rd_{tableau_info.result_name}_{rdate.yearmonth}.csv',index=False, encoding='utf-8-sig')
+except_raw_final.to_csv(tableau_info.result_dir + f'/{tableau_info.account_name}/tableau_creative_rd_{tableau_info.result_name}_{rdate.yearmonth}_test.csv',index=False, encoding='utf-8-sig')
 print('download success')
 print('time: ', time.time() - start)
