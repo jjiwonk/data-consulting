@@ -150,7 +150,7 @@ sheet_data = tableau_custom_sheet(document.doc)
 column_dict = get_column_dict(sheet_data)
 
 # 드롭박스에 적재된 광고주 리포트 RD 불러오기
-raw_data = client_rd_read(sheet_data, column_dict, 'cp949')
+raw_data = client_rd_read(sheet_data, column_dict, 'utf-8-sig')
 
 # 캠페인 정보 시트 불러오기
 campaign_sheet = campaign_info_sheet(document.campaign_doc)
@@ -169,6 +169,6 @@ except_raw_final = data_exception(raw_merged, asset_data, document.doc)
 
 # 드롭박스 저장
 # except_raw_final.to_csv(tableau_info.result_dir + f'/{tableau_info.account_name}/tableau_creative_rd_{tableau_info.result_name}_{rdate.yearmonth}.csv', index=False, encoding='utf-8-sig')
-except_raw_final.to_csv(dr.download_dir + f'/tableau_creative_rd_{tableau_info.result_name}_{rdate.yearmonth}_2.csv',index=False, encoding='utf-8-sig')
+except_raw_final.to_csv(tableau_info.result_dir + f'/tableau_creative_rd_{tableau_info.result_name}_{rdate.yearmonth}.csv',index=False, encoding='utf-8-sig')
 print('download success')
 print('time: ', time.time() - start)
