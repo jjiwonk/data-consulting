@@ -3,6 +3,9 @@ import os
 import pyarrow as pa
 import pyarrow.csv as pacsv
 import pandas as pd
+import time
+
+start = time.time()
 
 raw_dir = dr.dropbox_dir + '/광고사업부/데이터컨설팅/데이터 분석 프로젝트/핀다/DCT175'
 paid_dir = raw_dir + '/appsflyer_prism'
@@ -11,6 +14,7 @@ result_dir = dr.download_dir
 
 def get_paid_df(paid_dir):
     dtypes = {
+        'attributed_touch_time': pa.string(),
         'attributed_touch_type': pa.string(),
         'install_time': pa.string(),
         'event_time': pa.string(),
@@ -37,13 +41,23 @@ def get_paid_df(paid_dir):
     table = pa.concat_tables(table_list)
     raw_df = table.to_pandas()
     raw_df['is_organic'] = 'False'
-    raw_df[['install_time','event_time']] = raw_df[['install_time','event_time']].apply(pd.to_datetime)
+    raw_df[['attributed_touch_time', 'install_time', 'event_time']] = raw_df[
+        ['attributed_touch_time', 'install_time', 'event_time']].apply(pd.to_datetime)
+
+    raw_df['attributed_touch_date'] = raw_df.loc[:, 'attributed_touch_time'].apply(lambda x: x.date())
+    raw_df['attributed_touch_hour'] = raw_df.loc[:, 'attributed_touch_time'].apply(lambda x: x.hour)
+    raw_df['attributed_touch_week'] = raw_df.loc[:, 'attributed_touch_time'].apply(lambda x: x.weekday())
+    raw_df['event_date'] = raw_df.loc[:, 'event_time'].apply(lambda x: x.date())
+    raw_df['event_hour'] = raw_df.loc[:, 'event_time'].apply(lambda x: x.hour)
+    raw_df['event_week'] = raw_df.loc[:, 'event_time'].apply(lambda x: x.weekday())
+    raw_df['etat'] = raw_df['event_time'] - raw_df['attributed_touch_time']
 
     return raw_df
 
 
 def get_organic_df(organic_dir):
     dtypes = {
+        'Attributed Touch Time': pa.string(),
         'Attributed Touch Type': pa.string(),
         'Install Time': pa.string(),
         'Event Time': pa.string(),
@@ -69,7 +83,8 @@ def get_organic_df(organic_dir):
     table = pa.concat_tables(table_list)
     raw_df = table.to_pandas()
     raw_df = raw_df.rename(columns=
-                           {'Attributed Touch Type': 'attributed_touch_type',
+                           {'Attributed Touch Time': 'attributed_touch_time',
+                            'Attributed Touch Type': 'attributed_touch_type',
                             'Install Time': 'install_time',
                             'Event Time': 'event_time',
                             'Event Name': 'event_name',
@@ -79,7 +94,15 @@ def get_organic_df(organic_dir):
                             'Event Value': 'event_value',
                             'Platform': 'platform'})
     raw_df['is_organic'] = 'True'
-    raw_df[['install_time','event_time']] = raw_df[['install_time','event_time']].apply(pd.to_datetime)
+    raw_df[['attributed_touch_time', 'install_time', 'event_time']] = raw_df[['attributed_touch_time', 'install_time', 'event_time']].apply(pd.to_datetime)
+
+    raw_df['attributed_touch_date'] = raw_df.loc[:, 'attributed_touch_time'].apply(lambda x: x.date())
+    raw_df['attributed_touch_hour'] = raw_df.loc[:, 'attributed_touch_time'].apply(lambda x: x.hour)
+    raw_df['attributed_touch_week'] = raw_df.loc[:, 'attributed_touch_time'].apply(lambda x: x.weekday())
+    raw_df['event_date'] = raw_df.loc[:,'event_time'].apply(lambda x: x.date())
+    raw_df['event_hour'] = raw_df.loc[:,'event_time'].apply(lambda x: x.hour)
+    raw_df['event_week'] = raw_df.loc[:,'event_time'].apply(lambda x: x.weekday())
+    raw_df['etat'] = raw_df['event_time'] - raw_df['attributed_touch_time']
 
     return raw_df
 
@@ -203,3 +226,4 @@ raw_df = campaign_name_exception(raw_df)
 
 campaign_cost_df = get_campaign_cost_df(raw_dir)
 
+print(time.time()-start)
