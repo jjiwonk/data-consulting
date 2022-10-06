@@ -3,6 +3,7 @@ import os
 import pyarrow as pa
 import pyarrow.csv as pacsv
 import pandas as pd
+import numpy as np
 import time
 
 start = time.time()
@@ -223,7 +224,33 @@ organic_df = get_organic_df(organic_dir)
 
 raw_df = pd.concat([paid_df, organic_df], axis=0, ignore_index=True)
 raw_df = campaign_name_exception(raw_df)
-
-campaign_cost_df = get_campaign_cost_df(raw_dir)
+campaign_cost_df = get_campaign_cost_df(raw_dir).drop_duplicates(['매체', '캠페인'])[['매체','캠페인']]
 
 print(time.time()-start)
+
+
+# campaign_cost_df - raw_df 비교
+compare_df = pd.merge(campaign_cost_df, raw_df, how='outer', left_on=['매체','캠페인'], right_on=['media_source','campaign'])
+compare_df.loc[compare_df['캠페인'].isnull()]
+compare_df.loc[compare_df['campaign'].isnull()]
+
+df = raw_df.loc[(raw_df['event_name'] == 'loan_contract_completed')&(raw_df['attributed_touch_time'].notnull())]
+
+# 대출실행 시간대별 볼륨
+loan_volume_per_hour = raw_df.loc[(raw_df['event_name'] == 'loan_contract_completed')&(raw_df['attributed_touch_time'].notnull())].pivot_table(index='event_hour', values='event_name', aggfunc='count')
+np.sum(loan_volume_per_hour['event_name'])
+loan_volume_per_hour.plot()
+
+# 대출실행 이벤트 기준 attribute 시간대별 볼륨
+attr_volume_per_hour = raw_df.loc[(raw_df['event_name'] == 'loan_contract_completed')&(raw_df['attributed_touch_time'].notnull())].pivot_table(index='attributed_touch_hour', values='event_name', aggfunc='count')
+np.sum(attr_volume_per_hour['event_name'])
+attr_volume_per_hour.plot()
+
+# attribute 시간대별 ETAT 추이
+raw_df.loc[raw_df['attributed_touch_time'] != '']['etat'].mean()
+etat_trend_per_hour = raw_df.loc[raw_df['attributed_touch_time'] != ''].pivot_table(index=['attributed_touch_hour'], values='etat', aggfunc='mean')
+etat_trend_per_hour.plot()
+
+raw_df.loc[(raw_df['event_name'] == 'loan_contract_completed')&(raw_df['attributed_touch_time'].notnull())&(raw_df['event_time'] >= '2022-09-01')].pivot_table(index=['event_date'], values='event_name', aggfunc='count').plot()
+raw_df.loc[(raw_df['event_name'] == 'loan_contract_completed')&(raw_df['attributed_touch_time'].notnull())&(raw_df['attributed_touch_time'] >= '2022-09-01')].pivot_table(index=['attributed_touch_date'], values='event_name', aggfunc='count').plot()
+raw_df.loc[(raw_df['event_name'] == 'loan_contract_completed')&(raw_df['attributed_touch_time'].notnull())&(raw_df['attributed_touch_time'] >= '2022-09-01')].pivot_table(index=['attributed_touch_date'], values='etat', aggfunc='mean').plot()
