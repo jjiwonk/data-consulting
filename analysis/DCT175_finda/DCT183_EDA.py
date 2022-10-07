@@ -4,8 +4,8 @@ import pyarrow as pa
 import pyarrow.csv as pacsv
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
 import time
-
 start = time.time()
 
 raw_dir = dr.dropbox_dir + '/광고사업부/데이터컨설팅/데이터 분석 프로젝트/핀다/DCT175'
@@ -54,7 +54,6 @@ def get_paid_df(paid_dir):
     raw_df['etat'] = raw_df['event_time'] - raw_df['attributed_touch_time']
 
     return raw_df
-
 
 def get_organic_df(organic_dir):
     dtypes = {
@@ -106,7 +105,6 @@ def get_organic_df(organic_dir):
     raw_df['etat'] = raw_df['event_time'] - raw_df['attributed_touch_time']
 
     return raw_df
-
 
 def campaign_name_exception(raw_df):
     # 캠페인 수정
@@ -216,6 +214,7 @@ def get_campaign_cost_df(raw_dir):
     df_concat = df_concat.loc[~(df_concat['매체'].isin(['Facebook', 'Facebook_RE']))]
     df_concat['매체'] = df_concat['매체'].apply(lambda x: media_mapping_dic[x].lower())
     df_concat['캠페인'] = df_concat['캠페인'].apply(lambda x: x.lower())
+    df_concat = df_concat.reset_index(drop=True)
     return df_concat
 
 
@@ -224,33 +223,52 @@ organic_df = get_organic_df(organic_dir)
 
 raw_df = pd.concat([paid_df, organic_df], axis=0, ignore_index=True)
 raw_df = campaign_name_exception(raw_df)
-campaign_cost_df = get_campaign_cost_df(raw_dir).drop_duplicates(['매체', '캠페인'])[['매체','캠페인']]
-
+campaign_cost_df = get_campaign_cost_df(raw_dir)
+campaign_cost_df['날짜'] = campaign_cost_df['날짜'].apply(pd.to_datetime).apply(lambda x: x.date())
+campaign_df = campaign_cost_df.drop_duplicates(['매체', '캠페인'])[['매체','캠페인']]
 print(time.time()-start)
 
+# campaign_cost - raw_data merge
+raw_pivot = raw_df.pivot_table(index=['event_date','media_source','campaign'], columns='event_name', values='event_time', aggfunc='count').reset_index().fillna(0)
+merged_df = pd.merge(raw_pivot, campaign_cost_df, how='outer', left_on=['event_date', 'media_source', 'campaign'], right_on=['날짜', '매체', '캠페인'])
 
 # campaign_cost_df - raw_df 비교
-compare_df = pd.merge(campaign_cost_df, raw_df, how='outer', left_on=['매체','캠페인'], right_on=['media_source','campaign'])
-compare_df.loc[compare_df['캠페인'].isnull()]
-compare_df.loc[compare_df['campaign'].isnull()]
+raw_df.event_name.value_counts()
+compare_df = pd.merge(campaign_df, raw_df, how='outer', left_on=['매체', '캠페인'], right_on=['media_source', 'campaign'])
+raw_df.loc[raw_df['campaign'].isin(compare_df.loc[compare_df['캠페인'].isnull()].campaign.unique())]['event_name'].value_counts()
+compare_df.loc[compare_df['campaign'].isnull()].캠페인.unique()
 
-df = raw_df.loc[(raw_df['event_name'] == 'loan_contract_completed')&(raw_df['attributed_touch_time'].notnull())]
+from matplotlib import font_manager, rc
+font_path = 'C:/Windows/Fonts/gulim.ttc'
+font = font_manager.FontProperties(fname=font_path).get_name()
+rc('font', family=font)
 
-# 대출실행 시간대별 볼륨
+# 대출실행 및 attribute touch 시간대별 볼륨
 loan_volume_per_hour = raw_df.loc[(raw_df['event_name'] == 'loan_contract_completed')&(raw_df['attributed_touch_time'].notnull())].pivot_table(index='event_hour', values='event_name', aggfunc='count')
-np.sum(loan_volume_per_hour['event_name'])
-loan_volume_per_hour.plot()
-
-# 대출실행 이벤트 기준 attribute 시간대별 볼륨
+loan_volume_per_hour = loan_volume_per_hour.rename(columns={'event_name':'loan_num'})
 attr_volume_per_hour = raw_df.loc[(raw_df['event_name'] == 'loan_contract_completed')&(raw_df['attributed_touch_time'].notnull())].pivot_table(index='attributed_touch_hour', values='event_name', aggfunc='count')
-np.sum(attr_volume_per_hour['event_name'])
-attr_volume_per_hour.plot()
+attr_volume_per_hour = attr_volume_per_hour.rename(columns={'event_name':'touch_num'})
+draw_graph = pd.concat([loan_volume_per_hour, attr_volume_per_hour], axis=1)
+draw_graph.plot()
+plt.title('대출실행 및 attribute touch 시간대별 볼륨')
+plt.xlabel('hour')
+plt.ylabel('count')
+plt.show()
 
 # attribute 시간대별 ETAT 추이
 raw_df.loc[raw_df['attributed_touch_time'] != '']['etat'].mean()
 etat_trend_per_hour = raw_df.loc[raw_df['attributed_touch_time'] != ''].pivot_table(index=['attributed_touch_hour'], values='etat', aggfunc='mean')
 etat_trend_per_hour.plot()
+plt.title('attribute 시간대별 ETAT 추이')
+plt.xlabel('hour')
+plt.ylabel('days')
+plt.ylim()
+plt.show()
 
+# 9월 상세 분석
 raw_df.loc[(raw_df['event_name'] == 'loan_contract_completed')&(raw_df['attributed_touch_time'].notnull())&(raw_df['event_time'] >= '2022-09-01')].pivot_table(index=['event_date'], values='event_name', aggfunc='count').plot()
 raw_df.loc[(raw_df['event_name'] == 'loan_contract_completed')&(raw_df['attributed_touch_time'].notnull())&(raw_df['attributed_touch_time'] >= '2022-09-01')].pivot_table(index=['attributed_touch_date'], values='event_name', aggfunc='count').plot()
 raw_df.loc[(raw_df['event_name'] == 'loan_contract_completed')&(raw_df['attributed_touch_time'].notnull())&(raw_df['attributed_touch_time'] >= '2022-09-01')].pivot_table(index=['attributed_touch_date'], values='etat', aggfunc='mean').plot()
+
+# 코호트 분석
+raw_df.loc[raw_df['event_name'] == 'loan_contract_completed'].pivot_table(index='attributed_touch_hour', columns='event_hour', values='event_time', aggfunc='count')
