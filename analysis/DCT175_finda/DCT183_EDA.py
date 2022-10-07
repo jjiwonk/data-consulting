@@ -3,6 +3,10 @@ import os
 import pyarrow as pa
 import pyarrow.csv as pacsv
 import pandas as pd
+import numpy as np
+import time
+
+start = time.time()
 
 raw_dir = dr.dropbox_dir + '/광고사업부/데이터컨설팅/데이터 분석 프로젝트/핀다/DCT175'
 paid_dir = raw_dir + '/appsflyer_prism'
@@ -11,6 +15,7 @@ result_dir = dr.download_dir
 
 def get_paid_df(paid_dir):
     dtypes = {
+        'attributed_touch_time': pa.string(),
         'attributed_touch_type': pa.string(),
         'install_time': pa.string(),
         'event_time': pa.string(),
@@ -37,13 +42,23 @@ def get_paid_df(paid_dir):
     table = pa.concat_tables(table_list)
     raw_df = table.to_pandas()
     raw_df['is_organic'] = 'False'
-    raw_df[['install_time','event_time']] = raw_df[['install_time','event_time']].apply(pd.to_datetime)
+    raw_df[['attributed_touch_time', 'install_time', 'event_time']] = raw_df[
+        ['attributed_touch_time', 'install_time', 'event_time']].apply(pd.to_datetime)
+
+    raw_df['attributed_touch_date'] = raw_df.loc[:, 'attributed_touch_time'].apply(lambda x: x.date())
+    raw_df['attributed_touch_hour'] = raw_df.loc[:, 'attributed_touch_time'].apply(lambda x: x.hour)
+    raw_df['attributed_touch_week'] = raw_df.loc[:, 'attributed_touch_time'].apply(lambda x: x.weekday())
+    raw_df['event_date'] = raw_df.loc[:, 'event_time'].apply(lambda x: x.date())
+    raw_df['event_hour'] = raw_df.loc[:, 'event_time'].apply(lambda x: x.hour)
+    raw_df['event_week'] = raw_df.loc[:, 'event_time'].apply(lambda x: x.weekday())
+    raw_df['etat'] = raw_df['event_time'] - raw_df['attributed_touch_time']
 
     return raw_df
 
 
 def get_organic_df(organic_dir):
     dtypes = {
+        'Attributed Touch Time': pa.string(),
         'Attributed Touch Type': pa.string(),
         'Install Time': pa.string(),
         'Event Time': pa.string(),
@@ -69,7 +84,8 @@ def get_organic_df(organic_dir):
     table = pa.concat_tables(table_list)
     raw_df = table.to_pandas()
     raw_df = raw_df.rename(columns=
-                           {'Attributed Touch Type': 'attributed_touch_type',
+                           {'Attributed Touch Time': 'attributed_touch_time',
+                            'Attributed Touch Type': 'attributed_touch_type',
                             'Install Time': 'install_time',
                             'Event Time': 'event_time',
                             'Event Name': 'event_name',
@@ -79,7 +95,15 @@ def get_organic_df(organic_dir):
                             'Event Value': 'event_value',
                             'Platform': 'platform'})
     raw_df['is_organic'] = 'True'
-    raw_df[['install_time','event_time']] = raw_df[['install_time','event_time']].apply(pd.to_datetime)
+    raw_df[['attributed_touch_time', 'install_time', 'event_time']] = raw_df[['attributed_touch_time', 'install_time', 'event_time']].apply(pd.to_datetime)
+
+    raw_df['attributed_touch_date'] = raw_df.loc[:, 'attributed_touch_time'].apply(lambda x: x.date())
+    raw_df['attributed_touch_hour'] = raw_df.loc[:, 'attributed_touch_time'].apply(lambda x: x.hour)
+    raw_df['attributed_touch_week'] = raw_df.loc[:, 'attributed_touch_time'].apply(lambda x: x.weekday())
+    raw_df['event_date'] = raw_df.loc[:,'event_time'].apply(lambda x: x.date())
+    raw_df['event_hour'] = raw_df.loc[:,'event_time'].apply(lambda x: x.hour)
+    raw_df['event_week'] = raw_df.loc[:,'event_time'].apply(lambda x: x.weekday())
+    raw_df['etat'] = raw_df['event_time'] - raw_df['attributed_touch_time']
 
     return raw_df
 
@@ -121,7 +145,6 @@ def campaign_name_exception(raw_df):
             '1071110978': 'Madit_ASA_LOAN_NU_iOS_SEARCHMATCH_220617'
         }
     }
-
     raw_df.loc[raw_df['media_source'] == 'kakao_int', 'campaign'] = raw_df['campaign'].apply(
         lambda x: campaign_mapping_dic['kakao_int'][x] if x in campaign_mapping_dic['kakao_int'].keys() else x)
     raw_df.loc[raw_df['media_source'] == 'KA-FRIEND', 'campaign'] = raw_df['campaign'].apply(
@@ -135,6 +158,7 @@ def campaign_name_exception(raw_df):
     raw_df.loc[raw_df['media_source'] == 'Apple Search Ads', 'campaign'] = raw_df['campaign'].apply(
         lambda x: campaign_mapping_dic['Apple Search Ads'][x] if x in campaign_mapping_dic['Apple Search Ads'].keys() else x)
 
+    raw_df = raw_df.loc[~(raw_df['media_source'].isin(['Facebook','Facebook Ads','Facebook_RE_2207','Facebook_MD_2206','Facebook_onelink']))]
     raw_df['media_source'] = raw_df['media_source'].apply(lambda x: x.lower())
     raw_df['campaign'] = raw_df['campaign'].apply(lambda x: x.lower())
     return raw_df
@@ -148,7 +172,49 @@ def get_campaign_cost_df(raw_dir):
         temp['월'] = sheet
         df_concat = pd.concat([df_concat, temp], axis=0)
 
-    df_concat['매체'] = df_concat['매체'].apply(lambda x: x.lower())
+    # 비용 데이터 캠페인 명 > 앱스 캠페인 명 매핑 작업 시
+    media_mapping_dic = {
+        'Google AC': 'googleadwords_int',
+        'Google ACe': 'googleadwords_int',
+        'Kakao': 'kakao_int',
+        'ASA': 'Apple Search Ads',
+        'Moloco': 'moloco_int',
+        'Appier': 'appier_int',
+        'Liftoff': 'liftoff_int',
+        'Kakao BS': '',
+        'Naver BS': '',
+        'Cauly': 'cauly_int',
+        'Nstation': 'nstation_int',
+        'Appier_RE': 'appier_int',
+        'Cookie Oven': 'adisonofferwall_int',
+        'Kakao Page': 'cashfriends_int',
+        'V3': 'v3',
+        'Bobaedream': 'bobaedream',
+        'Encar': 'encar',
+        'Remember': 'remember',
+        'Nswitch': 'nswitch_int',
+        'Naver SD': 'naversd',
+        'Ka-Friend': 'ka-friend',
+        'Kakao_RE': 'kakao_int',
+        'Tiktok': 'bytedanceglobal_int',
+        'Tiktok_RE': 'bytedanceglobal_int',
+        'Cauly_RE': 'cauly_int',
+        'Tnk': 'tnk_int',
+        'Toss': 'toss',
+        'Naver GFA': 'naver_int',
+        'Blind': 'blind',
+        'Criteo_RE': 'criteonew_int',
+        'Inmobi': 'inmobidsp_int',
+        'Tradingworks': 'igaworkstradingworksvideo_int',
+        'Naver band': 'naver band',
+        'Jobplanet': 'jobplanet_onelink',
+        'Toss Reward': 'adisonofferwall_int',
+        'Moloco_RE': 'moloco_int',
+        'Rtb house_RE': 'rtbhouse_int',
+        'no_index': ''
+    }
+    df_concat = df_concat.loc[~(df_concat['매체'].isin(['Facebook', 'Facebook_RE']))]
+    df_concat['매체'] = df_concat['매체'].apply(lambda x: media_mapping_dic[x].lower())
     df_concat['캠페인'] = df_concat['캠페인'].apply(lambda x: x.lower())
     return df_concat
 
@@ -158,17 +224,33 @@ organic_df = get_organic_df(organic_dir)
 
 raw_df = pd.concat([paid_df, organic_df], axis=0, ignore_index=True)
 raw_df = campaign_name_exception(raw_df)
+campaign_cost_df = get_campaign_cost_df(raw_dir).drop_duplicates(['매체', '캠페인'])[['매체','캠페인']]
 
-campaign_cost_df = get_campaign_cost_df(raw_dir)
-campaign_df = campaign_cost_df.drop_duplicates(['매체','캠페인'])[['매체','캠페인']]
-
-
-# 앱스 매체명 - 캠페인별 예산 내 매체명 매핑X -> 인덱스 시트 별도로 있는지 확인 필요
-raw_df.loc[raw_df['is_organic'] == 'False'].media_source.unique()
-
-# 캠페인 cost 데이터 존재 하는 캠페인 만 남길지?
-raw_df.loc[raw_df['is_organic'] == 'False'].loc[(raw_df['campaign'].isin(campaign_cost_df.캠페인.unique()))].campaign.unique()
+print(time.time()-start)
 
 
-# raw_df['hour'] = raw_df['event_time'].apply(lambda x: x.date.hour)
-# raw_df['weekday'] = raw_df['event_time'].apply(lambda x: x.date.week)
+# campaign_cost_df - raw_df 비교
+compare_df = pd.merge(campaign_cost_df, raw_df, how='outer', left_on=['매체','캠페인'], right_on=['media_source','campaign'])
+compare_df.loc[compare_df['캠페인'].isnull()]
+compare_df.loc[compare_df['campaign'].isnull()]
+
+df = raw_df.loc[(raw_df['event_name'] == 'loan_contract_completed')&(raw_df['attributed_touch_time'].notnull())]
+
+# 대출실행 시간대별 볼륨
+loan_volume_per_hour = raw_df.loc[(raw_df['event_name'] == 'loan_contract_completed')&(raw_df['attributed_touch_time'].notnull())].pivot_table(index='event_hour', values='event_name', aggfunc='count')
+np.sum(loan_volume_per_hour['event_name'])
+loan_volume_per_hour.plot()
+
+# 대출실행 이벤트 기준 attribute 시간대별 볼륨
+attr_volume_per_hour = raw_df.loc[(raw_df['event_name'] == 'loan_contract_completed')&(raw_df['attributed_touch_time'].notnull())].pivot_table(index='attributed_touch_hour', values='event_name', aggfunc='count')
+np.sum(attr_volume_per_hour['event_name'])
+attr_volume_per_hour.plot()
+
+# attribute 시간대별 ETAT 추이
+raw_df.loc[raw_df['attributed_touch_time'] != '']['etat'].mean()
+etat_trend_per_hour = raw_df.loc[raw_df['attributed_touch_time'] != ''].pivot_table(index=['attributed_touch_hour'], values='etat', aggfunc='mean')
+etat_trend_per_hour.plot()
+
+raw_df.loc[(raw_df['event_name'] == 'loan_contract_completed')&(raw_df['attributed_touch_time'].notnull())&(raw_df['event_time'] >= '2022-09-01')].pivot_table(index=['event_date'], values='event_name', aggfunc='count').plot()
+raw_df.loc[(raw_df['event_name'] == 'loan_contract_completed')&(raw_df['attributed_touch_time'].notnull())&(raw_df['attributed_touch_time'] >= '2022-09-01')].pivot_table(index=['attributed_touch_date'], values='event_name', aggfunc='count').plot()
+raw_df.loc[(raw_df['event_name'] == 'loan_contract_completed')&(raw_df['attributed_touch_time'].notnull())&(raw_df['attributed_touch_time'] >= '2022-09-01')].pivot_table(index=['attributed_touch_date'], values='etat', aggfunc='mean').plot()
