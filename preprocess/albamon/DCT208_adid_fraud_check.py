@@ -57,16 +57,21 @@ check_df[['created_at', 'engagement_time']] = check_df[['created_at', 'engagemen
 check_df['date'] = check_df['created_at'].apply(lambda x: x.date())
 
 prep_df = check_df.pivot_table(index=['date','adid','event_name'], values='activity_kind', aggfunc='count').reset_index().rename(columns={'activity_kind':'counts'})
-total_events = prep_df.pivot_table(index='adid', columns='event_name', values='date', aggfunc='count').reset_index().fillna(0)
-total_events.to_excel(result_dir + '/알바몬_중복전환_ADID_raw_data.xlsx', encoding='utf-8', index=False)
+prep_df['over5_days'] = prep_df['counts'].apply(lambda x: 1 if x >= 5 and x < 10 else 0)
+prep_df['over10_days'] = prep_df['counts'].apply(lambda x: 1 if x >= 10 and x < 20 else 0)
+prep_df['over20_days'] = prep_df['counts'].apply(lambda x: 1 if x >= 20 else 0)
+
+prep_raw_df = prep_df.pivot_table(index='adid', columns='event_name', values=['counts','over5_days','over10_days','over20_days'], aggfunc='sum').reset_index().fillna(0)
+prep_raw_df.to_excel(dr.download_dir + '/알바몬_중복전환_ADID.xlsx', encoding='utf-8')
+
 
 # prep_over5 = prep_df.loc[(prep_df['counts'] >= 5) & (prep_df['counts'] < 10)]
 # prep_over10 = prep_df.loc[(prep_df['counts'] >= 10) & (prep_df['counts'] < 20)]
 # prep_over20 = prep_df.loc[prep_df['counts'] >= 20]
 # prep_rate_df = prep_over5.pivot_table(index='adid', columns='event_name', values='date', aggfunc='count').reset_index().fillna(0)
-# total_events = prep_df.pivot_table(index='event_name', values='date', aggfunc='count').reset_index().fillna(0)
-# total_adid = len(prep_df.adid.unique())
-# total_events = pd.concat([total_events, pd.Series({'adid',total_adid})], axis=0)
+# total_events = prep_df.pivot_table(index='event_name', values='date', aggfunc='count').reset_index().fillna(0).rename(columns={'date':'counts'})
+# total_adid = pd.DataFrame({'event_name':['adid'], 'counts':[len(prep_df.adid.unique())]})
+# total_events = pd.concat([total_events, total_adid], axis=0)
 #
 # total_df = pd.DataFrame()
 #
