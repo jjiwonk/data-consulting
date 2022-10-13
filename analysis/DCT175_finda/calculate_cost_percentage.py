@@ -132,3 +132,5 @@ test_table_merge['loan(new)'] = test_table_merge['la_home(new)'] * test_table_me
 np.sum(test_table_merge['loan_contract_completed'] )
 np.sum(test_table_merge['loan(new)'])
 
+test_table_merge.to_csv(info.result_dir + '/test_table.csv', encoding = 'utf-8-sig', index=False)
+
