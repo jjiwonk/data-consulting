@@ -28,4 +28,7 @@ raw_data = raw_data.loc[(raw_data['install_time'] - raw_data['attributed_touch_t
 raw_data = raw_data.loc[(raw_data['event_time'] - raw_data['install_time']) < datetime.timedelta(days=1)]
 
 tnk_orderid = raw_data[['event_time','order_id']]
+tnk_orderid = tnk_orderid.sort_values(by=['event_time'] ,ascending= True)
+tnk_orderid = tnk_orderid.drop_duplicates(subset = 'order_id', keep='first')
+
 tnk_orderid.to_csv(result_dir + f'/wconcept_orderid_{rdate.yearmonth}.csv', index=False, encoding='utf-8-sig')
