@@ -135,7 +135,7 @@ def download_df(prep_df, required_date, result_dir):
     event_total = prep_unique.loc[prep_unique['event_name'].isin(['Viewed LA Home','Clicked Signup Completion Button','loan_contract_completed','MD_complete_view'])]
     event_total = pd.concat([event_total, loan_total], axis=0).reset_index(drop=True)
 
-    install_summary = install_total[['attributed_touch_type', 'event_date', 'media_source', 'keywords', 'ad', 'campaign', 'adset', 'is_retargeting', 'event_time']]
+    install_summary = install_total[['attributed_touch_type', 'event_date', 'media_source', 'keywords', 'ad', 'campaign', 'adset', 'is_retargeting', 'event_time', 'attributed_touch_time']]
     install_summary['is_retargeting'] = install_summary['is_retargeting'].apply(lambda x: 'RE' if x == 'True' else 'UA')
     install_summary = install_summary.rename(columns={'is_retargeting':'ua/re'})
     event_summary = event_total[['attributed_touch_type', 'event_date', 'media_source', 'keywords', 'ad', 'campaign', 'adset', 'event_name', 'is_retargeting', 'event_time', 'attributed_touch_time', 'ITET']]
