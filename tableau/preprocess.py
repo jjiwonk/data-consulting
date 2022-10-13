@@ -56,6 +56,7 @@ def client_rd_read(sheet_data, column_dict, encoding='utf-8-sig'):
     facebook_list = list(sheet_data.loc[sheet_data['페이스북 필터'].str.len() > 0, '페이스북 필터'])
     kakao_list = list(sheet_data.loc[sheet_data['카카오 필터'].str.len() > 0, '카카오 필터'])
     google_list = list(sheet_data.loc[sheet_data['구글 필터'].str.len() > 0, '구글 필터'])
+    twitter_list = list(sheet_data.loc[sheet_data['트위터 필터'].str.len() > 0, '트위터 필터'])
 
     if len(facebook_list) != 0:
         raw_data.loc[raw_data['매체'].isin(facebook_list), '매체'] = '페이스북'
@@ -63,6 +64,8 @@ def client_rd_read(sheet_data, column_dict, encoding='utf-8-sig'):
         raw_data.loc[raw_data['매체'].isin(kakao_list), '매체'] = '카카오'
     if len(google_list) != 0:
         raw_data.loc[raw_data['매체'].isin(google_list), '매체'] = '구글'
+    if len(twitter_list) != 0:
+        raw_data.loc[raw_data['매체'].isin(twitter_list), '매체'] = '트위터'
 
     raw_data.loc[raw_data['매체'] == '구글', '소재'] = raw_data['광고그룹']
 
@@ -72,7 +75,7 @@ def client_rd_read(sheet_data, column_dict, encoding='utf-8-sig'):
 def campaign_info_sheet(campaign_doc):
     campaign_sheet = spreadsheet.spread_sheet(campaign_doc, '캠페인 정보')
     campaign_sheet = campaign_sheet.loc[campaign_sheet['광고주'] == tableau_info.account_name]
-    campaign_sheet = campaign_sheet.loc[campaign_sheet['매체'].isin(['페이스북', '카카오', '구글'])]
+    campaign_sheet = campaign_sheet.loc[campaign_sheet['매체'].isin(['페이스북', '카카오', '구글', '트위터'])]
     campaign_sheet = campaign_sheet[
         ['매체', '광고 상품', '캠페인', '광고그룹', '최적화 엔진', '캠페인 구분', '오디언스', 'OS', 'KPI', '캠페인 라벨']]
     campaign_sheet = campaign_sheet.drop_duplicates(['매체', '캠페인', '광고그룹'], keep='last')
@@ -168,7 +171,9 @@ raw_merged = raw_data.merge(asset_data, on=['매체', '캠페인', '광고그룹
 except_raw_final = data_exception(raw_merged, asset_data, document.doc)
 
 # 드롭박스 저장
-# except_raw_final.to_csv(tableau_info.result_dir + f'/{tableau_info.account_name}/tableau_creative_rd_{tableau_info.result_name}_{rdate.yearmonth}.csv', index=False, encoding='utf-8-sig')
-except_raw_final.to_csv(tableau_info.result_dir + f'/{tableau_info.account_name}/tableau_creative_rd_{tableau_info.result_name}_{rdate.yearmonth}_test.csv',index=False, encoding='utf-8-sig')
+except_raw_final.to_csv(tableau_info.result_dir + f'/{tableau_info.account_name}/tableau_creative_rd_{tableau_info.result_name}_{rdate.yearmonth}.csv', index=False, encoding='utf-8-sig')
+
+# 테스트 파일 확인용
+# except_raw_final.to_csv(dr.download_dir + f'/{tableau_info.account_name}/tableau_creative_rd_{tableau_info.result_name}_{rdate.yearmonth}_test.csv',index=False, encoding='utf-8-sig')
 print('download success')
 print('time: ', time.time() - start)

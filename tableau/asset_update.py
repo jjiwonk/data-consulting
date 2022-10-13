@@ -117,13 +117,46 @@ def google_read():
     google['매체'] = '구글'
     return google
 
+def twitter_read():
+    ## 트위터
+    twitter = pd.read_csv(asset_dir + f'/twitter_asset_{rdate.yearmonth}.csv', encoding= 'utf-8-sig')
+    twitter['components'] = twitter['components'].apply(lambda x: json.loads(json.dumps(str(x))))
+    def get_asset(row, get):
+        if row != 'nan':
+            data = json.loads(row)[0]
+            if 'media_key' in data.keys():
+                media_key = data['media_key']
+            elif 'media_keys' in data.keys():
+                media_key = data['media_keys'][0]
+            asset_type = data['media_metadata'][media_key]['type']
+            asset_url = data['media_metadata'][media_key]['url']
+            if get == 'type':
+                return asset_type
+            elif get == 'url':
+                return asset_url
+        else:
+            return ''
+    twitter['소재 유형'] = twitter['components'].apply(lambda x: get_asset(x, 'type'))
+    twitter['소재 URL'] = twitter['components'].apply(lambda x: get_asset(x, 'url'))
+    twitter = twitter.rename(columns = {'account_id' : 'owner_id',
+                                        'campaign_name' : '캠페인',
+                                        'line_item_name' : '광고그룹',
+                                        'card_name' : '소재',
+                                        'asset_type' : '소재 유형'})
+    twitter = twitter[['owner_id', '캠페인', '광고그룹', '소재', '소재 유형', '소재 URL']]
+    twitter = twitter.drop_duplicates(['owner_id', '캠페인', '광고그룹', '소재'])
+    twitter['매체'] = '트위터'
+    return twitter
+
+
 if modify_check() == 1:
     pass
 else :
     facebook = facebook_read()
     kakao = kakao_read()
     google = google_read()
+    twitter = twitter_read()
 
-    asset_data = pd.concat([facebook, kakao, google], sort=False, ignore_index=True)
+    asset_data = pd.concat([facebook, kakao, google, twitter], sort=False, ignore_index=True)
     asset_data.to_csv(asset_dir + f'/total_asset_data_{rdate.yearmonth}.csv', index=False, encoding='utf-8-sig')
     print('업데이트가 완료되었습니다.')
