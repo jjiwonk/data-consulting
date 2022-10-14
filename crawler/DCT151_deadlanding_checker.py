@@ -1,12 +1,16 @@
-import setting.directory as dr
-
 #!pip install selenium
 #!pip install datetime
 #!pip install warnings
+# !pip install webdriver_manager
+
+import setting.directory as dr
 from spreadsheet import spreadsheet
+
 import pandas as pd
 import numpy as np
 from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
 from pytz import timezone
 import datetime
 import warnings
@@ -16,7 +20,7 @@ start = time.time()
 
 
 doc = spreadsheet.spread_document_read('https://docs.google.com/spreadsheets/d/14i42NrpnA_9k8nCgyc4Y5KssLP8tOOXUyzYw0un7qXY/edit#gid=211027705')
-ADVERTISER = '잡코리아'
+ADVERTISER = '무신사'
 result_dir = dr.download_dir
 
 
@@ -35,7 +39,7 @@ def link_validation_check(url_check_list, checker):
     options.add_argument("disable-gpu")
     options.add_argument("user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.100 Safari/537.36")
 
-    driver = webdriver.Chrome(executable_path=dr.dropbox_dir + '/광고사업부/데이터컨설팅/token/chromedriver', options=options)
+    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
     recheck_list = pd.DataFrame(columns=['id', 'url'])
     for index, row in url_check_list.iterrows():
         url = row['url']
@@ -48,11 +52,16 @@ def link_validation_check(url_check_list, checker):
                     row['checker'] = val
                     result_df = result_df.append(row)
         except Exception as e:
-            print(f'{e}\n url 문제 발생:', url)
-            if 'timeout' in e:
+            if 'timeout' in str(e):
+                print(f'{e}\n url 문제 발생:', url)
                 recheck_list = recheck_list.append(row)
                 driver.quit()
-                driver = webdriver.Chrome(executable_path=dr.dropbox_dir + '/광고사업부/데이터컨설팅/token/chromedriver', options=options)
+                driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+                continue
+            if 'Alert' in str(e):
+                row['checker'] = 'alert'
+                result_df = result_df.append(row)
+                continue
 
     for index, row in recheck_list.iterrows():
         url = row['url']
@@ -79,6 +88,8 @@ def landing_expired_check(url_check_list):
 
 def redirect_check(url_check_list):
     redirect_result_df = pd.DataFrame(columns=['id', 'url'])
+    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
+
     return redirect_result_df
 
 
