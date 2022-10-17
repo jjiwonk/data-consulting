@@ -25,9 +25,7 @@ def get_paid_df(paid_dir):
         'media_source': pa.string(),
         'campaign': pa.string(),
         'adset' : pa.string(),
-        'ad' : pa.string(),
         'appsflyer_id': pa.string(),
-        'is_retargeting': pa.string(),
         'platform': pa.string()
     }
     index_columns = list(dtypes.keys())
@@ -46,15 +44,6 @@ def get_paid_df(paid_dir):
     raw_df['is_organic'] = 'False'
     raw_df[['attributed_touch_time', 'install_time', 'event_time']] = raw_df[
         ['attributed_touch_time', 'install_time', 'event_time']].apply(pd.to_datetime)
-
-    raw_df['attributed_touch_date'] = raw_df.loc[:, 'attributed_touch_time'].apply(lambda x: x.date())
-    raw_df['attributed_touch_hour'] = raw_df.loc[:, 'attributed_touch_time'].apply(lambda x: x.hour)
-    raw_df['attributed_touch_week'] = raw_df.loc[:, 'attributed_touch_time'].apply(lambda x: x.weekday())
-    raw_df['event_date'] = raw_df.loc[:, 'event_time'].apply(lambda x: x.date())
-    raw_df['event_hour'] = raw_df.loc[:, 'event_time'].apply(lambda x: x.hour)
-    raw_df['event_week'] = raw_df.loc[:, 'event_time'].apply(lambda x: x.weekday())
-    raw_df['etat'] = raw_df['event_time'] - raw_df['attributed_touch_time']
-
     return raw_df
 
 paid_df = get_paid_df(paid_dir)
