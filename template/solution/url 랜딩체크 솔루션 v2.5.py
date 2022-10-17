@@ -1,14 +1,15 @@
-#!pip install selenium
-#!pip install datetime
-#!pip install warnings
+# !pip install selenium
+# !pip install datetime
+# !pip install warnings
 # !pip install webdriver_manager
-
-import setting.directory as dr
-from spreadsheet import spreadsheet
-
+import os
+from oauth2client.service_account import ServiceAccountCredentials
+import gspread
 import pandas as pd
 import numpy as np
 from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
 from pytz import timezone
 import datetime
 import warnings
@@ -16,7 +17,42 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 import time
 start = time.time()
 
+class directory:
+    dir_list = os.getcwd().split('\\')
+    dropbox_dir = '/'.join(dir_list[:dir_list.index('Dropbox (주식회사매드업)') + 1])
+    # 드롭박스 폴더 위치경로
 
+    download_dir = 'C:/Users/MADUP/Downloads'
+    # 최종 결과파일을 다운받을 폴더 위치경로
+
+class spreadsheet:
+    def spread_document_read(self, url):
+        token_dir = dr.dropbox_dir + '/광고사업부/데이터컨설팅/token'
+        scope = ['https://spreadsheets.google.com/feeds',
+                 'https://www.googleapis.com/auth/drive']
+        json_file = token_dir + '/madup-355605-cd37b0ac201f.json'
+        credentials = ServiceAccountCredentials.from_json_keyfile_name(json_file, scope)
+        gc = gspread.authorize(credentials)
+        read = gc.open_by_url(url)
+        print('스프레드시트 읽기 완료')
+        return read
+
+    def spread_sheet(self, doc, sheet_name, col_num=0, row_num=0):
+        while True:
+            try:
+                data_sheet = doc.worksheet(sheet_name)
+                data_sheet_read = data_sheet.get_all_values()
+                result = pd.DataFrame(data_sheet_read, columns=data_sheet_read[row_num]).iloc[row_num + 1:, col_num:]
+            except:
+                print('API 오류로 15초 후 다시 시도 합니다.')
+                time.sleep(15)
+                continue
+            break
+        return result
+
+
+spreadsheet = spreadsheet()
+dr = directory()
 doc = spreadsheet.spread_document_read('https://docs.google.com/spreadsheets/d/14i42NrpnA_9k8nCgyc4Y5KssLP8tOOXUyzYw0un7qXY/edit#gid=211027705')
 ADVERTISER = '무신사'
 result_dir = dr.download_dir
@@ -86,7 +122,6 @@ def landing_expired_check(url_check_list):
 
 def redirect_check(url_check_list):
     redirect_result_df = pd.DataFrame(columns=['id', 'url'])
-
     return redirect_result_df
 
 
