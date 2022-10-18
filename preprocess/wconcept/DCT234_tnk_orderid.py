@@ -16,8 +16,11 @@ for file in file_list:
     raw_data = pd.concat([raw_data, file_df])
 
 raw_data = raw_data.loc[raw_data['media_source']=='tnk_int']
+raw_data.to_csv(result_dir + f'/wconcept_tnkraw_{rdate.yearmonth}.csv', index=False, encoding='utf-8-sig')
 raw_data = raw_data.loc[raw_data['event_name']=='item_payment']
-raw_data['order_id'] = raw_data['event_value'].apply(lambda x:json.loads(x)['af_order_no'])
+#raw_data['order_id'] = raw_data['event_value'].apply(lambda x:json.loads(x)['af_order_no'])
+raw_data['order_id'] = raw_data['event_value'].apply(lambda x:x.split('af_order_no')[-1].replace('"', '').replace('}', '').replace(']', '').replace(':', '').split(',')[0] if x.find(
+    'af_order_no') != -1 else x )
 
 #ctit,itet 계산
 raw_data['attributed_touch_time'] = pd.to_datetime(raw_data['attributed_touch_time'])
