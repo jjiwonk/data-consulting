@@ -19,14 +19,34 @@ def adcode_indexing(df, depth) :
     data = pd.merge(campaign_index_null, adcode_index, on='광고코드', how='left')
     return data
 
+def adcode_indexing_regexp(df, depth, pat) :
+    campaign_index_null = df.loc[df['계정'].isnull()]
+    del campaign_index_null['계정']
+    campaign_index_null['광고코드'] = campaign_index_null[depth].apply(lambda x : pat.findall(str(x))[0] if pat.search(str(x)) else x)
+    data = pd.merge(campaign_index_null, adcode_index, on='광고코드', how='left')
+    return data
+
+pat1 = re.compile('\D{7}\d{3}')
+pat2 = re.compile('\D{3}\d{1}\D{3}\d{3}')
+
 adcode_index_campaign = adcode_indexing(campaign_index,'campaign')
+adcode_index_campaign = adcode_indexing_regexp(adcode_index_campaign,'campaign', pat1)
+adcode_index_campaign = adcode_indexing_regexp(adcode_index_campaign,'campaign', pat2)
+
 adcode_index_adset = adcode_indexing(adcode_index_campaign, 'adset')
+adcode_index_adset = adcode_indexing_regexp(adcode_index_adset, 'adset', pat1)
+adcode_index_adset = adcode_indexing_regexp(adcode_index_adset, 'adset', pat2)
+
 adcode_index_ad = adcode_indexing(adcode_index_adset, 'ad')
+adcode_index_ad = adcode_indexing_regexp(adcode_index_ad, 'ad', pat1)
+adcode_index_ad = adcode_indexing_regexp(adcode_index_ad, 'ad', pat2)
+
 
 adcode_index_fnull = adcode_index_ad.loc[adcode_index_ad['계정'].isnull()]
 adcode_index_fnull = adcode_index_fnull.drop_duplicates('campaign')
-adcode_index_fnull = adcode_index_fnull.sort_values(by=['install', 're-attribution','re-engagement'] ,ascending= True)
-index_null_list = adcode_index_fnull['campaign']
-index_null_list.to_csv(info.result_dir + '/index_null.csv' , encoding = 'utf-8-sig', index =None)
+adcode_index_fnull['conversion'] = adcode_index_fnull[['install', 're-attribution','re-engagement']].values.sum(axis = 1)
+adcode_index_fnull = adcode_index_fnull.sort_values(by='conversion' ,ascending= False)
 
+index_null_list = adcode_index_fnull[['media_source','campaign', 'conversion', 'af_purchase']]
+index_null_list.to_csv(info.result_dir + '/index_null.csv' , encoding = 'utf-8-sig', index =None)
 
