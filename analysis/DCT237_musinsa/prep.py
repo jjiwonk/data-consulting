@@ -4,6 +4,15 @@ import pyarrow as pa
 import pyarrow.csv as pacsv
 import pandas as pd
 import numpy as np
+import re
+
+def extract_ad_code(df):
+    code_pat = re.compile('[A-Z]{7}\d{3}|[A-Z]{3}\d{1}[A-Z]{3}\d{3}|[A-Z]{4}\d{1}[A-Z]{2}\d{3}|[A-Z]{6}\d{4}')
+    df['광고코드'] = df['ad'].apply(lambda x : code_pat.findall(str(x))[0] if code_pat.search(str(x)) else '')
+
+    df.loc[df['광고코드']=='', '광고코드'] = df['adset'].apply(lambda x : code_pat.findall(str(x))[0] if code_pat.search(str(x)) else '')
+    df.loc[df['광고코드']=='', '광고코드'] = df['campaign'].apply(lambda x : code_pat.findall(str(x))[0] if code_pat.search(str(x)) else '')
+    return df
 def get_paid_df():
     dtypes = {
         'attributed_touch_time': pa.string(),
@@ -36,6 +45,7 @@ def get_paid_df():
     raw_df['is_organic'] = 'False'
     raw_df[['attributed_touch_time', 'install_time', 'event_time']] = raw_df[
         ['attributed_touch_time', 'install_time', 'event_time']].apply(pd.to_datetime)
+    raw_df = extract_ad_code(raw_df)
     return raw_df
 
 def get_campaign_list():
