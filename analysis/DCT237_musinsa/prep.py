@@ -118,6 +118,18 @@ def raw_data_concat():
     return raw_df_dedup
 
 
+def get_campaign_cost():
+    files = os.listdir(info.report_dir)
+    cost_df = pd.read_excel(info.report_dir + '/' + files[0], sheet_name='raw_무신사')
+    cost_df = cost_df[['일', '매체', '캠페인 이름', '광고비_Fee포함']]
+    cost_df['일'] = cost_df['일'].apply(pd.to_datetime)
+
+    pivot_index = ['일', '매체', '캠페인 이름']
+    cost_df[pivot_index] = cost_df[pivot_index].fillna('')
+    cost_pivot = cost_df.pivot_table(index=pivot_index, values='광고비_Fee포함', aggfunc='sum').reset_index()
+    cost_pivot.to_csv(info.raw_dir + '/musinsa_campaign_cost.csv', index=False, encoding='utf-8-sig')
+
+    return cost_pivot
 
 
 
