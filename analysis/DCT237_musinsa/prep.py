@@ -55,3 +55,70 @@ def first_purchase_from_paid():
     purchase_data = purchase_data.sort_values('event_time')
     purchase_data = purchase_data.drop_duplicates(['appsflyer_id'])
     purchase_data.to_csv(info.raw_dir + '/purchase/paid_202207-202209.csv', index=False, encoding = 'utf-8-sig')
+
+def get_organic_df():
+    dtypes = {
+        'Attributed Touch Time': pa.string(),
+        'Attributed Touch Type': pa.string(),
+        'Install Time': pa.string(),
+        'Event Time': pa.string(),
+        'Event Name': pa.string(),
+        'Event Revenue' : pa.float32(),
+        'Media Source': pa.string(),
+        'Campaign': pa.string(),
+        'Ad Set': pa.string(),
+        'Ad' : pa.string(),
+        'AppsFlyer ID': pa.string(),
+        'Platform': pa.string()
+    }
+    index_columns = list(dtypes.keys())
+    convert_ops = pacsv.ConvertOptions(column_types=dtypes, include_columns=index_columns)
+    ro = pacsv.ReadOptions(block_size=10 << 20)
+    table_list = []
+
+    files = os.listdir(info.organic_dir)
+    files = [f for f in files if '.csv' in f]
+
+    for f in files:
+        temp = pacsv.read_csv(info.organic_dir + '/' + f, convert_options=convert_ops, read_options=ro)
+        table_list.append(temp)
+    table = pa.concat_tables(table_list)
+    raw_df = table.to_pandas()
+    raw_df = raw_df.rename(columns=
+                           {'Attributed Touch Time': 'attributed_touch_time',
+                            'Attributed Touch Type': 'attributed_touch_type',
+                            'Install Time': 'install_time',
+                            'Event Time': 'event_time',
+                            'Event Name': 'event_name',
+                            'Event Revenue' : 'event_revenue',
+                            'Media Source': 'media_source',
+                            'Campaign': 'campaign',
+                            'AdSet': 'adset', 'Ad' : 'ad','AppsFlyer ID': 'appsflyer_id',
+                            'Event Value': 'event_value',
+                            'Platform': 'platform'})
+    raw_df['is_organic'] = True
+    return raw_df
+
+def raw_data_concat():
+    paid_df = get_paid_df()
+    organic_df = get_organic_df()
+
+    raw_df = pd.concat([paid_df, organic_df], sort = False, ignore_index=True)
+
+    raw_df['is_retargeting'] = raw_df['is_retargeting'].str.lower()
+
+    raw_df[['attributed_touch_time', 'install_time', 'event_time']] = raw_df[
+        ['attributed_touch_time', 'install_time', 'event_time']].apply(pd.to_datetime)
+
+    raw_df = raw_df.sort_values(['event_time','attributed_touch_time'])
+    raw_df.index = range(0, len(raw_df))
+
+    raw_df_dedup = raw_df.drop_duplicates(['event_time', 'event_name', 'appsflyer_id'], keep='last')
+
+    return raw_df_dedup
+
+
+
+
+
+
