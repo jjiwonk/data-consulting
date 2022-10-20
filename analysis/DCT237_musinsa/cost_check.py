@@ -34,16 +34,16 @@ def campaign_cost_check():
     cost_df = prep.get_campaign_cost()
     cost_df = cost_df.loc[(cost_df['일'] >= '2022-07-01')&(cost_df['일'] < '2022-10-01')]
     cost_df['date'] = cost_df['일'].dt.date
-    cost_df = cost_df.rename(columns={'매체':'media_source', '캠페인 이름':'campaign'})
+    cost_df = cost_df.rename(columns={'매체':'media_source', '캠페인 이름':'campaign', '광고비_Fee포함':'cost'})
 
     df = pd.merge(campaign_df, cost_df, how='outer', on=['date', 'campaign'])
 
-    test = df.loc[df['cnt'].isnull()].drop_duplicates('campaign')
-    test = test.sort_values('광고비_Fee포함', ascending=False)
+    mapping_df = df.loc[(~df['cnt'].isnull())&(~df['cost'].isnull())].drop_duplicates('campaign')
+    non_mapping_df = df.loc[df['cnt'].isnull()].drop_duplicates('campaign')
+    non_mapping_df = non_mapping_df.sort_values('cost', ascending=False)
     len(cost_df.campaign.unique())
 
     temp = campaign_df.copy()
     temp['campaign'] = temp['campaign'].str.lower()
     temp = campaign_df.loc[campaign_df['campaign'].str.contains(pat='madit_220831_bc_추석_cpa')]
-
 
