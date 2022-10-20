@@ -48,3 +48,10 @@ def get_campaign_list():
     paid_pivot = paid_df.pivot_table(index = pivot_index, columns = 'event_name', values = 'Cnt', aggfunc='sum').reset_index()
     paid_pivot.to_csv(info.raw_dir + '/musinsa_campaign_list.csv', index= False, encoding = 'utf-8-sig')
     return paid_pivot
+
+def first_purchase_from_paid():
+    paid_df = get_paid_df()
+    purchase_data = paid_df.loc[paid_df['event_name'].isin(['af_purchase', 'first_purchase']), ['appsflyer_id', 'event_time']]
+    purchase_data = purchase_data.sort_values('event_time')
+    purchase_data = purchase_data.drop_duplicates(['appsflyer_id'])
+    purchase_data.to_csv(info.raw_dir + '/purchase/paid_202207-202209.csv', index=False, encoding = 'utf-8-sig')
