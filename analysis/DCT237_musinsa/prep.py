@@ -49,13 +49,6 @@ def get_campaign_list():
     paid_pivot.to_csv(info.raw_dir + '/musinsa_campaign_list.csv', index= False, encoding = 'utf-8-sig')
     return paid_pivot
 
-def first_purchase_from_paid():
-    paid_df = get_paid_df()
-    purchase_data = paid_df.loc[paid_df['event_name'].isin(['af_purchase', 'first_purchase']), ['appsflyer_id', 'event_time']]
-    purchase_data = purchase_data.sort_values('event_time')
-    purchase_data = purchase_data.drop_duplicates(['appsflyer_id'])
-    purchase_data.to_csv(info.raw_dir + '/purchase/paid_202207-202209.csv', index=False, encoding = 'utf-8-sig')
-
 def get_organic_df():
     dtypes = {
         'Attributed Touch Time': pa.string(),
@@ -66,7 +59,7 @@ def get_organic_df():
         'Event Revenue' : pa.float32(),
         'Media Source': pa.string(),
         'Campaign': pa.string(),
-        'Ad Set': pa.string(),
+        'Adset': pa.string(),
         'Ad' : pa.string(),
         'AppsFlyer ID': pa.string(),
         'Platform': pa.string()
@@ -93,7 +86,9 @@ def get_organic_df():
                             'Event Revenue' : 'event_revenue',
                             'Media Source': 'media_source',
                             'Campaign': 'campaign',
-                            'AdSet': 'adset', 'Ad' : 'ad','AppsFlyer ID': 'appsflyer_id',
+                            'Adset': 'adset',
+                            'Ad' : 'ad',
+                            'AppsFlyer ID': 'appsflyer_id',
                             'Event Value': 'event_value',
                             'Platform': 'platform'})
     raw_df['is_organic'] = True
@@ -105,8 +100,6 @@ def raw_data_concat():
 
     raw_df = pd.concat([paid_df, organic_df], sort = False, ignore_index=True)
 
-    raw_df['is_retargeting'] = raw_df['is_retargeting'].str.lower()
-
     raw_df[['attributed_touch_time', 'install_time', 'event_time']] = raw_df[
         ['attributed_touch_time', 'install_time', 'event_time']].apply(pd.to_datetime)
 
@@ -114,11 +107,39 @@ def raw_data_concat():
     raw_df.index = range(0, len(raw_df))
 
     raw_df_dedup = raw_df.drop_duplicates(['event_time', 'event_name', 'appsflyer_id'], keep='last')
-
     return raw_df_dedup
 
+def first_purchase_total():
+    def first_purchase_from_paid():
+        paid_df = get_paid_df()
+        purchase_data = paid_df.loc[
+            paid_df['event_name'].isin(['af_purchase', 'first_purchase']), ['appsflyer_id', 'event_time']]
+        purchase_data = purchase_data.sort_values('event_time')
+        purchase_data = purchase_data.drop_duplicates(['appsflyer_id'])
+        purchase_data.to_csv(info.raw_dir + '/purchase/paid_202207-202209.csv', index=False, encoding='utf-8-sig')
+    def first_purchase_from_organic():
+        organic_df = get_organic_df()
+        purchase_data = organic_df.loc[
+            organic_df['event_name'].isin(['af_purchase', 'first_purchase']), ['appsflyer_id', 'event_time']]
+        purchase_data = purchase_data.sort_values('event_time')
+        purchase_data = purchase_data.drop_duplicates(['appsflyer_id'])
+        purchase_data.to_csv(info.raw_dir + '/purchase/organic_202207-202209.csv', index=False, encoding='utf-8-sig')
 
+    original_df = pd.read_csv(info.raw_dir + '/purchase/' + '/fp_2020-01_2022_06.csv')
+    paid_df = pd.read_csv(info.raw_dir + '/purchase/' + '/paid_202207-202209.csv')
+    organic_df = pd.read_csv(info.raw_dir + '/purchase/' + '/organic_202207-202209.csv')
 
+    total_df = pd.concat([original_df, paid_df, organic_df])
+    total_df = total_df.sort_values('event_time')
+    total_df = total_df.drop_duplicates('appsflyer_id')
+    total_df.to_csv(info.raw_dir + '/purchase/' + '/fp_2020-01_2022_09.csv', index=False, encoding = 'utf-8-sig')
 
+def conversion_data():
+    raw_data = raw_data_concat()
+    raw_data = raw_data.loc[raw_data['event_name'].isin(['install', 're-engagement', 're-attribution'])]
+    return raw_data
 
-
+def signup_data():
+    raw_data = raw_data_concat()
+    raw_data = raw_data.loc[raw_data['event_name'].isin(['af_complete_registration'])]
+    return raw_data
