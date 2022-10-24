@@ -205,13 +205,14 @@ def deduction_calculate(raw_data):
 
     event_df = event_df.fillna(0)
     event_df.index = range(0, len(event_df))
-    fraud_columns = ['con0_D0', 'con1_country', 'con2_language', 'con3_mccmnc', 'con4_device',
+    fraud_columns = ['con1_country', 'con2_language', 'con3_mccmnc', 'con4_device',
        'con5_os', 'con6_appv', 'con7_sdkv', 'con8_over3(reattr)']
     event_df.loc[event_df[fraud_columns].values.sum(axis = 1)>=1, 'is_fraud'] = 1
     event_df['is_fraud'] = event_df['is_fraud'].fillna(0)
-    checked_df = event_df.pivot_table(index=['network_name', 'adid'], columns='event_name', values=['is_fraud'], aggfunc='sum').reset_index().fillna(0)
+    checked_df = event_df.pivot_table(index=['network_name', 'adid'], columns='event_name', values=['con0_D0', 'is_fraud'], aggfunc='sum').reset_index().fillna(0)
+    checked_df[('con0_D0', '')] = checked_df['con0_D0'].sum(axis=1).apply(lambda x: True if x > 0 else False)
     checked_df[('is_fraud_adid', '')] = checked_df['is_fraud'].sum(axis=1).apply(lambda x: True if x > 0 else False)
-    checked_df = checked_df[[('network_name', ''), ('adid', ''), ('is_fraud_adid', '')]]
+    checked_df = checked_df[[('network_name', ''), ('adid', ''), ('con0_D0', ''), ('is_fraud_adid', '')]]
 
     return checked_df
     # DCT111 코드 내 함수 활용
