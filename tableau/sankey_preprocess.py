@@ -1,5 +1,4 @@
 import setting.directory as dr
-import setting.report_date as rdate
 from setting.info import tableau_info
 from spreadsheet import spreadsheet
 
@@ -8,11 +7,17 @@ import pyarrow.csv as pacsv
 import pandas as pd
 import os
 import numpy as np
+import datetime
 
 # 실행 전 확인 필요사항
 # 1) setting.report_date 내 from_date, to_date 확인
 # 2) setting.info 내 tableau_info 확인
 
+
+# for sankey_preprocess
+class rdate():
+    from_date = datetime.date(2022, 7, 1)
+    to_date = datetime.date(2022, 9, 30)
 
 prep_doc = spreadsheet.spread_document_read('https://docs.google.com/spreadsheets/d/1_-jgnU51smApXKQ4R8n0ek984s-4NQ1TfQefv_SbQKE/edit#gid=0')
 
