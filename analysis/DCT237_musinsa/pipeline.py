@@ -1,13 +1,15 @@
-from analysis.DCT237_musinsa import prep
-from analysis.DCT237_musinsa import acquisition
+from analysis.DCT237_musinsa import preparing
+from analysis.DCT237_musinsa import preprocess as prep
 from analysis.DCT237_musinsa import ltv
 from analysis.DCT237_musinsa import info
 
+data_preparing = False
 
-prep.first_purchase_total()
-prep.cost_data_prep()
+if data_preparing == True :
+    preparing.first_purchase_total()
+    preparing.cost_data_prep()
 
-cac_data = acquisition.acquisition_cost()
+cac_data = ltv.acquisition_cost()
 cost_data_pivot = cac_data.pivot_table(index = ['계정(Acq)'], values = 'cost', aggfunc='sum').reset_index()
 
 ltv_data = ltv.get_ltv_data()

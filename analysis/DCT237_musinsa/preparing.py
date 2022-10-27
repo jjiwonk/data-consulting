@@ -1,10 +1,13 @@
 from analysis.DCT237_musinsa import info
+from analysis.DCT237_musinsa import preprocess as prep
+
 import os
 import pyarrow as pa
 import pyarrow.csv as pacsv
 import pandas as pd
 import numpy as np
 import re
+import datetime
 
 def extract_ad_code(df):
     df['광고코드'] = df['ad'].apply(lambda x : info.code_pat.findall(str(x))[0] if info.code_pat.search(str(x)) else '')
@@ -133,21 +136,6 @@ def organic_data_prep():
     event_data_parse(raw_df, 'organic')
     return raw_df
 
-def raw_data_concat():
-    paid_df = paid_data_prep()
-    organic_df = organic_data_prep()
-
-    raw_df = pd.concat([paid_df, organic_df], sort = False, ignore_index=True)
-
-    raw_df[['attributed_touch_time', 'install_time', 'event_time']] = raw_df[
-        ['attributed_touch_time', 'install_time', 'event_time']].apply(pd.to_datetime)
-
-    raw_df = raw_df.sort_values(['event_time','attributed_touch_time'])
-    raw_df.index = range(0, len(raw_df))
-
-    raw_df_dedup = raw_df.drop_duplicates(['event_time', 'event_name', 'appsflyer_id'], keep='last')
-    return raw_df_dedup
-
 def first_purchase_total():
     def first_purchase_from_paid():
         paid_df = paid_data_prep()
@@ -188,8 +176,59 @@ def cost_data_prep():
     cost_df['date'] = pd.to_datetime(cost_df['일']).dt.date
     cost_df = cost_df.loc[(cost_df['date']>=info.from_date)&(cost_df['date']<=info.to_date)]
     cost_df.to_csv(info.raw_dir + '/cost/cost_data.csv', index=False, encoding = 'utf-8-sig')
-def get_cost_pivot(pivot_index):
-    cost_df = pd.read_csv(info.raw_dir + '/cost/cost_data.csv')
-    cost_df[pivot_index] = cost_df[pivot_index].fillna('')
-    cost_pivot = cost_df.pivot_table(index=pivot_index, values=['cost','AF_사용자'], aggfunc='sum').reset_index()
-    return cost_pivot
+
+def conversion_cost_mapping():
+    conversion_df = prep.acq_data
+    conversion_df['date'] = pd.to_datetime(conversion_df['attributed_touch_time']).dt.date
+    conversion_df['Cnt'] = 1
+    conversion_pivot = conversion_df.pivot_table(index = ['광고코드'], values = 'Cnt', aggfunc = 'sum').reset_index()
+
+    cost_pivot = prep.get_cost_pivot(['광고코드', 'media_source', 'campaign', 'adset', 'ad', '계정'])
+    cost_pivot = cost_pivot.loc[~cost_pivot['media_source'].isin(['Facebook', 'facebook'])]
+    cost_pivot = cost_pivot.loc[cost_pivot['계정']!='VA']
+
+    df = pd.merge(conversion_pivot, cost_pivot, how='right', on=['광고코드'])
+
+
+    mapping_df = df.loc[(~df['Cnt'].isnull())&(~df['cost'].isnull())]
+    non_mapping_df = df.loc[df['Cnt'].isnull()]
+    non_mapping_df = non_mapping_df.sort_values('cost', ascending=False)
+    non_mapping_df = non_mapping_df.loc[non_mapping_df['AF_사용자']>0]
+
+    conversion_df['adset'] = conversion_df['adset'].fillna('')
+    temp = conversion_df.loc[conversion_df['adset'].str.contains('UA_catalogue_AOS')]
+
+
+def calc_organic_retention():
+    organic_install = pd.read_csv(info.raw_dir + '/conversion/organic_conversion_data.csv')
+    organic_install = organic_install.sort_values('install_time')
+    organic_install = organic_install.drop_duplicates('appsflyer_id')
+    organic_install = organic_install[['install_time', 'appsflyer_id']]
+
+    total_purchase = prep.total_purchase
+    total_purchase = total_purchase[['event_time', 'appsflyer_id', 'event_revenue', 'is_organic']]
+
+    organic_purchase_merge = total_purchase.merge(organic_install, on = 'appsflyer_id', how = 'inner')
+    organic_purchase_merge = organic_purchase_merge.loc[organic_purchase_merge['event_time'] >= organic_purchase_merge['install_time']]
+    organic_purchase_merge[['install_time', 'event_time']] = organic_purchase_merge[['install_time', 'event_time']].apply(lambda x : pd.to_datetime(x))
+    organic_purchase_merge = organic_purchase_merge.sort_values(['appsflyer_id', 'event_time'])
+    organic_purchase_merge.index = range(0, len(organic_purchase_merge))
+
+    organic_purchase_merge_copy = pd.concat([organic_purchase_merge.iloc[-1:],organic_purchase_merge.iloc[0:-1]])[['appsflyer_id','event_time']]
+    organic_purchase_merge_copy = organic_purchase_merge_copy.rename(columns = {'appsflyer_id' : 'appsflyer_id_before',
+                                                                'event_time' : 'event_time_before'})
+    organic_purchase_merge_copy.index = range(0, len(organic_purchase_merge))
+
+    total_purchase_concat = pd.concat([organic_purchase_merge, organic_purchase_merge_copy], axis=1)
+    total_purchase_concat.loc[(total_purchase_concat['appsflyer_id']==total_purchase_concat['appsflyer_id_before'])&
+                            (total_purchase_concat['event_time']-total_purchase_concat['event_time_before']>=datetime.timedelta(1)), 'is_retention'] = 1
+    total_purchase_concat['Cnt'] = 1
+
+    user_retention_table = total_purchase_concat.loc[total_purchase_concat['is_retention']==1, ['appsflyer_id', 'is_retention']]
+    user_retention_table = user_retention_table.drop_duplicates(['appsflyer_id'])
+
+    total_purchase_pivot = total_purchase_concat.pivot_table(index = 'appsflyer_id', values = ['event_revenue', 'Cnt'], aggfunc = 'sum').reset_index()
+    total_purchase_pivot['ARPU'] = total_purchase_pivot['event_revenue']
+    np.mean(total_purchase_pivot['ARPU'])
+    np.sum(total_purchase_pivot['Cnt'])
+    len(total_purchase_concat['appsflyer_id'].unique())
