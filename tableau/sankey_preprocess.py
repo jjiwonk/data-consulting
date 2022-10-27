@@ -1,4 +1,5 @@
 import setting.directory as dr
+import setting.report_date as rdate
 from setting.info import tableau_info
 from spreadsheet import spreadsheet
 
@@ -6,18 +7,7 @@ import pyarrow as pa
 import pyarrow.csv as pacsv
 import pandas as pd
 import os
-import numpy as np
-import datetime
 
-# 실행 전 확인 필요사항
-# 1) setting.report_date 내 from_date, to_date 확인
-# 2) setting.info 내 tableau_info 확인
-
-
-# for sankey_preprocess
-class rdate():
-    from_date = datetime.date(2022, 7, 1)
-    to_date = datetime.date(2022, 9, 30)
 
 prep_doc = spreadsheet.spread_document_read('https://docs.google.com/spreadsheets/d/1_-jgnU51smApXKQ4R8n0ek984s-4NQ1TfQefv_SbQKE/edit#gid=0')
 
@@ -28,7 +18,7 @@ def get_custom_sheet(doc, sheet_name):
     return sheet_data
 
 
-def get_raw_df(apps_dir, is_organic):
+def get_raw_df(apps_dir, is_organic, required_date):
     if is_organic == False:
         dtypes = {
             'attributed_touch_time': pa.string(),
@@ -65,10 +55,16 @@ def get_raw_df(apps_dir, is_organic):
     ro = pacsv.ReadOptions(block_size=10 << 20)
     table_list = []
 
-    files = os.listdir(apps_dir)
-    files = [f for f in files if '.csv' in f]
+    date_check = required_date.strftime('%Y%m')
+    start_date = required_date.replace(day=1).strftime('%Y%m%d')
+    end_date = required_date.strftime('%Y%m%d')
 
-    for f in files:
+    files = os.listdir(apps_dir)
+    files = [f for f in files if '.csv' in f and str(f)[-12:-6] == date_check]
+    raw_files = [f for f in files if
+                 (int(str(f)[-12:-4]) >= int(start_date)) & (int(str(f)[-12:-4]) <= int(end_date))]
+
+    for f in raw_files:
         temp = pacsv.read_csv(apps_dir + '/' + f, convert_options=convert_ops, read_options=ro)
         table_list.append(temp)
     table = pa.concat_tables(table_list)
@@ -112,21 +108,21 @@ def finda_paid_prep(raw_df):
 ############################
 
 
-def raw_data_concat(apps_paid_dir, apps_organic_dir, media_filter, from_date='', to_date=''):
+def raw_data_concat(apps_paid_dir, apps_organic_dir, media_filter, required_date):
     if (apps_paid_dir != dr.dropbox_dir)&(apps_organic_dir != dr.dropbox_dir):
-        paid_df = get_raw_df(apps_paid_dir, False)
-        organic_df = get_raw_df(apps_organic_dir, True)
+        paid_df = get_raw_df(apps_paid_dir, False, required_date)
+        organic_df = get_raw_df(apps_organic_dir, True, required_date)
         ### finda 추가 필터링 ###
         paid_df = finda_paid_prep(paid_df)
         #######################
         raw_df = pd.concat([paid_df, organic_df], sort=False, ignore_index=True)
     elif (apps_paid_dir != dr.dropbox_dir)&(apps_organic_dir == dr.dropbox_dir):
-        raw_df = get_raw_df(apps_paid_dir, False)
+        raw_df = get_raw_df(apps_paid_dir, False, required_date)
         ### finda 추가 필터링 ###
         raw_df = finda_paid_prep(raw_df)
         #######################
     elif (apps_paid_dir == dr.dropbox_dir)&(apps_organic_dir != dr.dropbox_dir):
-        raw_df = get_raw_df(apps_organic_dir, True)
+        raw_df = get_raw_df(apps_organic_dir, True, required_date)
     else:
         raise Exception('드롭박스 내 appsflyer 데이터 위치를 입력 해주세요.')
 
@@ -146,15 +142,9 @@ def raw_data_concat(apps_paid_dir, apps_organic_dir, media_filter, from_date='',
     raw_df = raw_df.sort_values(['event_time','attributed_touch_time'])
     raw_df.index = range(0, len(raw_df))
 
-    raw_df_dedup = raw_df.drop_duplicates(['event_time', 'event_name', 'appsflyer_id'], keep='last')
-    raw_df_dedup = raw_df_dedup.loc[~(raw_df_dedup['media_source'].isin(media_filter))]
+    # raw_df_dedup = raw_df.drop_duplicates(['event_time', 'event_name', 'appsflyer_id'], keep='last')
+    raw_df_dedup = raw_df.loc[~(raw_df['media_source'].isin(media_filter))]
 
-    if from_date == '':
-        from_date = np.min(raw_df_dedup['event_date'])
-    if to_date == '':
-        to_date = np.max(raw_df_dedup['event_date'])
-    raw_df_dedup = raw_df_dedup.loc[
-        (raw_df_dedup['event_date'] >= from_date) & (raw_df_dedup['event_date'] <= to_date)]
     return raw_df_dedup
 
 
@@ -184,7 +174,7 @@ def campaign_name_exception(prep_doc, raw_df):
     return raw_df
 
 
-def sankey_data_prep(prep_doc):
+def sankey_data_prep(prep_doc, required_date, file_name):
     sheet_data = get_custom_sheet(prep_doc, '가공조건')
     info_data = sheet_data.loc[sheet_data['광고주'] == tableau_info.account_name]
 
@@ -194,7 +184,7 @@ def sankey_data_prep(prep_doc):
         media_filter = []
     else:
         media_filter = info_data['제외 매체'].iloc[0].strip().replace(', ',',').split(',')
-    raw_df = raw_data_concat(apps_paid_dir, apps_organic_dir, media_filter=media_filter, from_date = rdate.from_date, to_date = rdate.to_date)
+    raw_df = raw_data_concat(apps_paid_dir, apps_organic_dir, media_filter, required_date)
 
     if info_data['캠페인명 가공여부'].iloc[0] == 'TRUE':
         raw_df_exception = campaign_name_exception(prep_doc, raw_df)
@@ -236,7 +226,6 @@ def sankey_data_prep(prep_doc):
     event_data_filtered = event_data[['UA / RE', 'media_source', 'click_month', 'click_date', 'click_weekday',
                                       'event_month','event_date','event_weekday',
                                       'event_name','platform','appsflyer_id','Cnt']]
-    event_data_filtered = event_data_filtered.loc[event_data_filtered['click_date']>=rdate.from_date]
 
     event_data_pivot = event_data_filtered.pivot_table(index=['UA / RE', 'media_source', 'click_month', 'click_date', 'click_weekday',
                                                               'event_month','event_date','event_weekday','platform','event_name'],
@@ -257,7 +246,7 @@ def sankey_data_prep(prep_doc):
 
     event_data_pivot['click_month'] = event_data_pivot['click_month'].apply(lambda x: str(x) + "월")
     event_data_pivot['event_month'] = event_data_pivot['event_month'].apply(lambda x: str(x) + "월")
-    event_data_pivot.to_excel(dr.download_dir + f'/{tableau_info.result_name}_event_flow_data.xlsx', index=False, encoding='utf-8-sig')
+    event_data_pivot.to_excel(dr.download_dir + file_name, index=False, encoding='utf-8-sig')
 
-
-sankey_data_prep(prep_doc)
+file_name = f'/{tableau_info.result_name}_event_flow_data_{rdate.yearmonth}.xlsx'
+sankey_data_prep(prep_doc, rdate.day_1, file_name)
