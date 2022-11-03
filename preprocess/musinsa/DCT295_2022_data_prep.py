@@ -30,6 +30,7 @@ for file in file_list :
 table = pa.concat_tables(table_list)
 df = table.to_pandas()
 
+df = df.loc[df['event_name'].isin(['install', 're-engagement', 're-attribution'])]
 df = df.loc[df['attributed_touch_type']=='click']
 df[['attributed_touch_time', 'install_time','event_time']] = df[['attributed_touch_time', 'install_time','event_time']].apply(lambda x : pd.to_datetime(x))
 df.loc[df['attributed_touch_time'].isnull(), 'attributed_touch_time'] = df['install_time']
@@ -38,18 +39,12 @@ df['CTIT'] = df['install_time'] - df['attributed_touch_time']
 df = df.loc[df['media_source'].isin(['googleadwords_int', 'adisonofferwall_int', 'Apple Search Ads', 'cashfriends_int', 'criteonew_int'])]
 df = df.loc[df['CTIT'] < datetime.timedelta(1)]
 df['Cnt'] = 1
-df['date'] = df['event_time'].apply(lambda x: x.strftime('%Y-%m-%d'))
+df['date'] = df['event_time'].dt.date
 
 pivot_columns = ['date', 'media_source', 'campaign', 'adset']
 
 for col in pivot_columns  :
     df[col] = df[col].fillna('')
-df_pivot = df.pivot_table(index = pivot_columns, values = 'Cnt', columns = 'event_name', aggfunc='sum').reset_index()
+df_pivot = df.pivot_table(index = pivot_columns, values = 'Cnt', columns = 'event_name', aggfunc='sum', margins = True).reset_index()
 df_pivot = df_pivot.fillna(0)
-df_pivot['sum'] = df_pivot['install']+df_pivot['re-attribution']+df_pivot['re-engagement']
-use_col = ['date', 'media_source', 'campaign', 'adset', 'install', 're-attribution','re-engagement','sum']
-df_pivot = df_pivot[use_col]
-
-df_pivot = df_pivot.loc[df_pivot['sum'] != 0 ]
-
 df_pivot.to_csv(dr.download_dir + '/2022_rd_pivot_f.csv', index=False, encoding = 'utf-8-sig')
