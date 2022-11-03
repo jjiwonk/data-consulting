@@ -211,11 +211,11 @@ def sankey_data_prep(prep_doc, required_date, file_name):
     itet_limit = info_data['ITET 기여기간'].iloc[0]
 
     if ctet_limit != '':
-        event_data = event_data.loc[event_data['CTET'] < int(ctet_limit)]
+        event_data = event_data.loc[event_data['CTET'] < float(ctet_limit)]
     if ctit_limit != '':
-        event_data = event_data.loc[event_data['CTIT'] < int(ctit_limit)]
+        event_data = event_data.loc[event_data['CTIT'] < float(ctit_limit)]
     if itet_limit != '':
-        event_data = event_data.loc[event_data['ITET'] < int(itet_limit)]
+        event_data = event_data.loc[event_data['ITET'] < float(itet_limit)]
 
     event_data = event_data.loc[~event_data['media_source'].isin(['', 'restricted'])]
     event_data['Cnt'] = 1
@@ -246,7 +246,25 @@ def sankey_data_prep(prep_doc, required_date, file_name):
 
     event_data_pivot['click_month'] = event_data_pivot['click_month'].apply(lambda x: str(x) + "월")
     event_data_pivot['event_month'] = event_data_pivot['event_month'].apply(lambda x: str(x) + "월")
-    event_data_pivot.to_excel(dr.download_dir + file_name, index=False, encoding='utf-8-sig')
+    event_data_pivot.to_excel(dr.download_dir + '/' + file_name, index=False, encoding='utf-8-sig')
+    print('download successful')
 
-file_name = f'/{tableau_info.result_name}_event_flow_data_{rdate.yearmonth}.xlsx'
+def union_sandkey_data(required_date, file_name):
+    date_check = required_date.strftime('%Y')
+    total_df = pd.DataFrame()
+
+    files = os.listdir(dr.download_dir)
+    files = [f for f in files if '.xlsx' in f and str(f)[-11:-7] == date_check]
+    raw_files = [f for f in files]
+    for file in raw_files:
+        temp = pd.read_excel(dr.download_dir + '/' + file)
+        total_df = pd.concat([total_df, temp], axis=0)
+
+    total_df.to_excel(dr.download_dir + '/' + file_name, index=False, encoding='utf-8-sig')
+    print('union successful')
+    # return total_df
+
+
+file_name = f'{tableau_info.result_name}_event_flow_data_{rdate.yearmonth}.xlsx'
 sankey_data_prep(prep_doc, rdate.day_1, file_name)
+union_sandkey_data(rdate.day_1, f'{tableau_info.result_name}_event_flow_data_{rdate.day_1.year}_total.xlsx')
