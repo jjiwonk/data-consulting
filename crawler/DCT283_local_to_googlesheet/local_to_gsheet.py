@@ -38,8 +38,8 @@ def update_gsheet(update_gsheet_url, update_gsheet_name, client_secret_file, upd
 
     update_csv_sheet = openpyxl.load_workbook(update_csv_file).active.title
     xlApp = win32.Dispatch('Excel.Application')
-    xlApp.Visible = False # 실행과정 안보이게
     wb = xlApp.Workbooks.Open(update_csv_file)
+    xlApp.Visible = False  # 실행과정 안보이게
     ws = wb.Worksheets(update_csv_sheet)
     rngData = ws.Range('A1').CurrentRegion()
     rngData = json.dumps(rngData, default=json_default)
@@ -59,6 +59,7 @@ def update_gsheet(update_gsheet_url, update_gsheet_name, client_secret_file, upd
         )
     ).execute()
     wb.Close()
+    xlApp.quit()
     print('update successfully')
 
 
