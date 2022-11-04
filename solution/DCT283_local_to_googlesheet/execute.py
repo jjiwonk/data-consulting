@@ -1,6 +1,6 @@
 import setting.directory as dr
-from crawler.DCT283_local_to_googlesheet import raw_data_union as uni
-from crawler.DCT283_local_to_googlesheet import local_to_gsheet as gsheet
+from solution.DCT283_local_to_googlesheet import raw_data_union as uni
+from solution.DCT283_local_to_googlesheet import local_to_gsheet as gsheet
 
 
 # 실행 전 dcteam@madup-355605.iam.gserviceaccount.com 계정에 편집자 권한 부여 필요
