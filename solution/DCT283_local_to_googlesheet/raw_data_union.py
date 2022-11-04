@@ -24,5 +24,5 @@ def union_raw_data(raw_dir, result_dir, file_name):
             total_df = pd.concat([total_df, temp], axis=0)
     create_folder(result_dir)
     total_df.to_excel(result_dir + '/' + file_name, index=False, encoding='utf-8-sig')
-    print('union successful')
+    print('create result file successfully')
 
