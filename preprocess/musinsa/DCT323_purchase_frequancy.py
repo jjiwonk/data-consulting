@@ -56,7 +56,7 @@ raw_data_non_error['before_user'] = raw_data_non_error['appsflyer_id'].shift(1)
 raw_data_non_error['before_time'] = raw_data_non_error['event_time'].shift(1)
 raw_data_non_error['time_gap'] = raw_data_non_error['event_time'] - raw_data_non_error['before_time']
 
-raw_data_non_error.to_csv(dr.download_dir + '/total_purchase.csv')
+raw_data_non_error.to_csv(dr.download_dir + '/total_purchase.csv', index= False)
 
 raw_data_non_error = pd.read_csv(raw_dir + '/total_purchase.csv')
 raw_data_non_error['is_re_purchase'] = raw_data_non_error['before_user'] == raw_data_non_error['appsflyer_id']
@@ -73,6 +73,7 @@ re_purchase_pivot['time_gap'] = re_purchase_pivot['time_gap'].apply(lambda x : x
 
 user_data = raw_data_non_error.copy()
 user_data['Cnt'] = 1
+user_data['event_revenue'] = user_data['event_revenue'].astype('int')
 user_data_pivot = user_data.pivot_table(index = 'appsflyer_id', values = ['Cnt', 'event_revenue'], aggfunc = 'sum')
 user_data_pivot = user_data_pivot.reset_index()
 
@@ -89,6 +90,10 @@ rev_std = np.std(user_data_pivot_merge['event_revenue'])
 
 user_data_pivot_merge['Rev_norm'] = user_data_pivot_merge['event_revenue'].apply(lambda x: (x - rev_mean)/rev_std)
 
+cnt_mean = np.mean(user_data_pivot_merge['Cnt'])
+cnt_std = np.std(user_data_pivot_merge['Cnt'])
+
+user_data_pivot_merge['Cnt_norm'] = user_data_pivot_merge['Cnt'].apply(lambda x: (x - cnt_mean)/cnt_std)
 
 last_purchase_time = raw_data_non_error.drop_duplicates('appsflyer_id', keep = 'last')
 last_purchase_time = last_purchase_time[['appsflyer_id', 'event_time']]
