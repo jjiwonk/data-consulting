@@ -16,7 +16,7 @@ def create_service(client_secret_file, api_name, api_version, *scopes):
 
     try:
         service = build(API_SERVICE_NAME, API_VERSION, credentials=cred)
-        print(API_SERVICE_NAME, 'service created successfully')
+        # print(API_SERVICE_NAME, 'service created successfully')
         return service
     except Exception as e:
         print(e)
@@ -60,7 +60,7 @@ def update_gsheet(update_gsheet_url, update_gsheet_name, client_secret_file, upd
     ).execute()
     wb.Close()
     xlApp.quit()
-    print('update successfully')
+    print('gsheet update successfully')
 
 
 # 구글 시트 내용 지우기
@@ -75,4 +75,4 @@ def delete_gsheet(update_gsheet_url, update_gsheet_name, client_secret_file):
         spreadsheetId=gsheet_id,
         range=update_gsheet_name
     ).execute()
-    print('delete successfully')
+    print('gsheet delete successfully')
