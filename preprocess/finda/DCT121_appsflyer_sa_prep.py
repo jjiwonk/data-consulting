@@ -9,6 +9,7 @@ import pyarrow as pa
 import pyarrow.csv as pacsv
 import pandas as pd
 import numpy as np
+import math
 
 
 raw_dir = dr.dropbox_dir + '/광고사업부/4. 광고주/핀다_7팀/2. 리포트/자동화리포트/appsflyer_prism'
@@ -96,18 +97,19 @@ def prep_data(raw_df):
                                              &(prep_df['CTIT'] > 7)].index)
 
     # in-app events 데이터 가공 :: event_name in ['Viewed LA Home','Clicked Signup Completion Button','loan_contract_completed','MD_complete_view']
-    prep_df = prep_df.drop(index=prep_df.loc[(prep_df['event_name'].isin(['Viewed LA Home','Clicked Signup Completion Button','loan_contract_completed','MD_complete_view']))
+    prep_df = prep_df.drop(index=prep_df.loc[(prep_df['event_name'].isin(['Viewed LA Home No Result','Viewed LA Home','Clicked Signup Completion Button','loan_contract_completed','MD_complete_view']))
                                            &(prep_df['media_source']=='naversamo')&(prep_df['event_date'] == '2022-08-02')].index)
-    prep_df = prep_df.drop(index=prep_df.loc[(prep_df['event_name'].isin(['Viewed LA Home','Clicked Signup Completion Button','loan_contract_completed','MD_complete_view']))
+    prep_df = prep_df.drop(index=prep_df.loc[(prep_df['event_name'].isin(['Viewed LA Home No Result','Viewed LA Home','Clicked Signup Completion Button','loan_contract_completed','MD_complete_view']))
                                              & (prep_df['media_source'] == 'googleadwords_int') & (~prep_df['channel'].isin(['Search']))].index)
-    prep_df = prep_df.drop(index=prep_df.loc[(prep_df['event_name'].isin(['Viewed LA Home','Clicked Signup Completion Button','loan_contract_completed','MD_complete_view']))
+    prep_df = prep_df.drop(index=prep_df.loc[(prep_df['event_name'].isin(['Viewed LA Home No Result','Viewed LA Home','Clicked Signup Completion Button','loan_contract_completed','MD_complete_view']))
                                              & (prep_df['attributed_touch_type'] != 'click')].index)
     prep_df = prep_df.drop(
-        index=prep_df.loc[(prep_df['event_name'].isin(['Viewed LA Home','Clicked Signup Completion Button','loan_contract_completed','MD_complete_view']))
+        index=prep_df.loc[(prep_df['event_name'].isin(['Viewed LA Home No Result','Viewed LA Home','Clicked Signup Completion Button','loan_contract_completed','MD_complete_view']))
                           & (prep_df['CTIT'] > 7)].index)
     prep_df['ITET'] = (prep_df['event_time'] - prep_df['install_time']).apply(lambda x: x.total_seconds()/(60*60*24))
-    prep_df = prep_df.drop(index=prep_df.loc[(prep_df['event_name'].isin(['Viewed LA Home','Clicked Signup Completion Button','loan_contract_completed','MD_complete_view']))
+    prep_df = prep_df.drop(index=prep_df.loc[(prep_df['event_name'].isin(['Viewed LA Home No Result','Viewed LA Home','Clicked Signup Completion Button','loan_contract_completed','MD_complete_view']))
                                              &(prep_df['ITET'] > 30)].index)
+    prep_df['CTET'] = (prep_df['event_time'] - prep_df['attributed_touch_time']).apply(lambda x: x.total_seconds()/(60*60*24))
 
     prep_df.loc[prep_df['keywords'].isin(['', '{keyword}']),'keywords'] = '-'
     prep_df.loc[prep_df['campaign'] == '', 'campaign'] = '-'
@@ -131,17 +133,26 @@ def download_df(prep_df, required_date, result_dir):
     loan_total = prep_df.loc[prep_df['event_name']=='loan_contract_completed'].reset_index(drop=True)
     loan_total.loc[:,'event_name'] = 'loan_contract_completed TOTAL'
     install_total = prep_df.loc[prep_df['event_name'].isin(['install','re-engagement','re-attribution'])].reset_index(drop=True)
-    prep_unique = prep_df.sort_values(by='event_time').drop_duplicates(['is_retargeting', 'event_name', 'appsflyer_id'], keep='first')
-    event_total = prep_unique.loc[prep_unique['event_name'].isin(['Viewed LA Home','Clicked Signup Completion Button','loan_contract_completed','MD_complete_view'])]
+    viewed_df = prep_df.loc[prep_df['event_name'].isin(['Viewed LA Home No Result','Viewed LA Home'])]
+    viewed_df['event_name'] = 'Viewd LA Home + No Result'
+    added_prep_df = pd.concat([prep_df, viewed_df], axis=0).reset_index(drop=True)
+    prep_unique = added_prep_df.sort_values(by='event_time').drop_duplicates(['is_retargeting', 'event_name', 'appsflyer_id'], keep='first')
+    event_total = prep_unique.loc[prep_unique['event_name'].isin(['Viewd LA Home + No Result','Viewed LA Home No Result','Viewed LA Home','Clicked Signup Completion Button','loan_contract_completed','MD_complete_view'])]
     event_total = pd.concat([event_total, loan_total], axis=0).reset_index(drop=True)
 
     install_summary = install_total[['attributed_touch_type', 'event_date', 'media_source', 'keywords', 'ad', 'campaign', 'adset', 'is_retargeting', 'event_time', 'attributed_touch_time']]
     install_summary['is_retargeting'] = install_summary['is_retargeting'].apply(lambda x: 'RE' if x == 'True' else 'UA')
     install_summary = install_summary.rename(columns={'is_retargeting':'ua/re'})
-    event_summary = event_total[['attributed_touch_type', 'event_date', 'media_source', 'keywords', 'ad', 'campaign', 'adset', 'event_name', 'is_retargeting', 'event_time', 'attributed_touch_time', 'ITET']]
+    event_summary = event_total[['attributed_touch_type', 'event_date', 'media_source', 'keywords', 'ad', 'campaign', 'adset', 'event_name', 'is_retargeting', 'event_time', 'attributed_touch_time', 'CTET', 'install_time', 'ITET']]
     event_summary['is_retargeting'] = event_summary['is_retargeting'].apply(lambda x: 'RE' if x == 'True' else 'UA')
-    event_summary['차이(date)'] = event_summary['ITET'].astype(np.int)
-    event_summary = event_summary.rename(columns={'is_retargeting': 'ua/re','ITET':'차이(time)'})
+    event_summary['date:event-touch'] = event_summary['CTET'].apply(lambda x: float(f'{x: .6f}'))
+    event_summary['date:event-touch(int)'] = event_summary['date:event-touch'].astype(np.int)
+    event_summary = event_summary.rename(columns={'is_retargeting': 'ua/re', 'CTET':'time:event-touch'})
+
+    event_summary['date:event-install'] = event_summary['ITET'].apply(lambda x: float(f'{x: .6f}'))
+    event_summary['date:event-install(int)'] = event_summary['date:event-install'].astype(np.int)
+    event_summary = event_summary[['attributed_touch_type', 'event_date', 'media_source', 'keywords', 'ad', 'campaign', 'adset', 'event_name', 'ua/re', 'event_time', 'attributed_touch_time',
+                                   'date:event-touch', 'date:event-touch(int)', 'install_time', 'date:event-install', 'date:event-install(int)']]
 
     # 데이터 출력
     install_summary.to_excel(writer, sheet_name='install(summary)', index=False)
