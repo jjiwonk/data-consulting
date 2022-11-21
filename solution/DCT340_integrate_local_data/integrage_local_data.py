@@ -4,6 +4,7 @@ from spreadsheet import spreadsheet
 import pyarrow as pa
 import pyarrow.csv as pacsv
 import pandas as pd
+import datetime
 
 ADVERTISER = '이니스프리'
 
@@ -30,7 +31,7 @@ def get_data(raw_dir, file_name, cols):
 
 def integrate_data():
     doc = spreadsheet.spread_document_read(
-        'https://docs.google.com/spreadsheets/d/1TXE1ZXyQJRTgiH-5R7tubn1dONSQbAZCFI6eUvaga_o/edit#gid=0')
+        'https://docs.google.com/spreadsheets/d/1TXE1ZXyQJRTgiH-5R7tubn1dONSQbAZCFI6eUvaga_o')
     column_info = spreadsheet.spread_sheet(doc, ADVERTISER).reset_index(drop=True)
 
     total_df = pd.DataFrame()
@@ -62,3 +63,5 @@ def integrate_data():
 
 
 integrated_df = integrate_data()
+date = datetime.datetime.today().strftime('%y%m%d')
+integrated_df.to_excel(dr.download_dir + f'/integrated_report_from_local_{date}.xlsx', index=False)
