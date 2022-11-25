@@ -8,6 +8,7 @@ import pandas as pd
 import numpy as np
 import re
 import datetime
+import json
 
 def extract_ad_code(df):
     df['광고코드'] = df['ad'].apply(lambda x : info.code_pat.findall(str(x))[0] if info.code_pat.search(str(x)) else '')
@@ -79,6 +80,57 @@ def paid_data_prep():
     event_data_parse(raw_df, 'paid')
     return raw_df
 
+def paid_data_prep_only_purchase():
+    dtypes = {
+        'attributed_touch_time': pa.string(),
+        'attributed_touch_type': pa.string(),
+        'install_time': pa.string(),
+        'event_time': pa.string(),
+        'event_name': pa.string(),
+        'event_value' : pa.string(),
+        'media_source': pa.string(),
+        'campaign': pa.string(),
+        'adset' : pa.string(),
+        'ad' : pa.string(),
+        'appsflyer_id': pa.string(),
+        'platform': pa.string()
+    }
+    index_columns = list(dtypes.keys())
+    convert_ops = pacsv.ConvertOptions(column_types=dtypes, include_columns=index_columns)
+    ro = pacsv.ReadOptions(block_size=10 << 20)
+
+    raw_df = pacsv.read_csv(info.raw_dir + '/purchase/purchase_event_data.csv', convert_options=convert_ops, read_options=ro).to_pandas()
+    raw_df[['attributed_touch_time', 'install_time', 'event_time']] = raw_df[
+        ['attributed_touch_time', 'install_time', 'event_time']].apply(pd.to_datetime)
+    raw_df.loc[raw_df['attributed_touch_time'].isnull(), 'attributed_touch_time'] = raw_df['install_time']
+    raw_df = raw_df.loc[(raw_df['attributed_touch_time'].dt.date>=info.from_date) &
+                        (raw_df['attributed_touch_time'].dt.date<=info.to_date)]
+    raw_df['is_organic'] = 'False'
+
+    # 광고코드 붙이기
+    raw_df = extract_ad_code(raw_df)
+
+    index_df = pd.read_csv(info.raw_dir + '/campaign_index_f.csv')
+    index_df.loc[index_df['광고코드'].isnull(), '광고코드'] = index_df['campaign'].apply(lambda x : info.code_pat.findall(str(x))[0] if info.code_pat.search(str(x)) else '')
+    adcode_dict = dict(zip(index_df['campaign'], index_df['광고코드']))
+
+    raw_df.loc[raw_df['광고코드']=='', '광고코드'] = raw_df['campaign'].apply(lambda x: adcode_dict.get(x))
+
+    part_index = index_df[['campaign', '계정']]
+    part_index = part_index.drop_duplicates(['campaign'])
+    raw_df = raw_df.merge(part_index, on = ['campaign'], how = 'left')
+
+    raw_df.loc[raw_df['adset']=='210708_무신사_퍼포먼스_파이어베이스_990원상품_CPP_AO', '광고코드'] = 'GOUBANE001'
+
+    # 매출액 추출
+    raw_df['event_value'] = raw_df['event_value'].apply(lambda x : json.loads(x))
+    raw_df['event_revenue'] = raw_df['event_value'].apply(lambda x : x['af_revenue'] if 'af_revenue' in x.keys() else 0)
+    raw_df['order_id'] = raw_df['event_value'].apply(lambda x : x['af_order_id'] if 'af_order_id' in x.keys() else '-')
+
+    # 저장
+    raw_df.to_csv(info.raw_dir + f'/purchase/paid_purchase_data.csv', index=False, encoding = 'utf-8-sig')
+    return raw_df
+
 def get_campaign_list():
     paid_df = paid_data_prep()
     paid_df['Cnt'] = 1
@@ -98,6 +150,7 @@ def organic_data_prep():
         'Event Time': pa.string(),
         'Event Name': pa.string(),
         'Event Revenue' : pa.float32(),
+        'Event Value' : pa.string(),
         'Media Source': pa.string(),
         'Campaign': pa.string(),
         'Adset': pa.string(),
@@ -133,6 +186,11 @@ def organic_data_prep():
                             'Event Value': 'event_value',
                             'Platform': 'platform'})
     raw_df['is_organic'] = True
+
+    # 주문번호 추출
+    raw_df.loc[raw_df['event_value'].str.len()==0, 'event_value'] = '{}'
+    raw_df['event_value'] = raw_df['event_value'].apply(lambda x : json.loads(x))
+    raw_df['order_id'] = raw_df['event_value'].apply(lambda x : x['af_order_id'] if 'af_order_id' in str(x) else '-')
     event_data_parse(raw_df, 'organic')
     return raw_df
 
@@ -175,6 +233,7 @@ def cost_data_prep():
                                         '광고비_Fee포함' : 'cost'})
     cost_df['date'] = pd.to_datetime(cost_df['일']).dt.date
     cost_df = cost_df.loc[(cost_df['date']>=info.from_date)&(cost_df['date']<=info.to_date)]
+    cost_df['media_source'] = cost_df['media_source'].apply(lambda x : info.media_name_dict.get(x) if x in info.media_name_dict.keys() else x)
     cost_df.to_csv(info.raw_dir + '/cost/cost_data.csv', index=False, encoding = 'utf-8-sig')
 
 def conversion_cost_mapping():
