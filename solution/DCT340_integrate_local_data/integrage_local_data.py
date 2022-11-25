@@ -9,22 +9,16 @@ import datetime
 ADVERTISER = '이니스프리'
 
 
-def get_data(raw_dir, file_name, cols):
+def get_data(raw_dir, file_name, encodings, cols):
     index_columns = cols
     dtypes = dict()
     for col in index_columns:
         dtypes[col] = pa.string()
 
     convert_ops = pacsv.ConvertOptions(column_types=dtypes, include_columns=index_columns)
-    ro = pacsv.ReadOptions(block_size=10 << 20)
-    table_list = []
-
-    files = [file_name]
-    for f in files:
-        temp = pacsv.read_csv(raw_dir + '/' + f, convert_options=convert_ops, read_options=ro)
-        table_list.append(temp)
-    table = pa.concat_tables(table_list)
-    raw_df = table.to_pandas()
+    ro = pacsv.ReadOptions(block_size=10 << 20, encoding=encodings)
+    temp = pacsv.read_csv(raw_dir + '/' + file_name, convert_options=convert_ops, read_options=ro)
+    raw_df = temp.to_pandas()
 
     return raw_df
 
@@ -40,19 +34,18 @@ def integrate_data():
         media = info['매체']
         raw_dir = dr.dropbox_dir + info['경로']
         file_name = info['파일명']
-        cols = column_info.iloc[index, 4:]
-        col_keys = list(cols.loc[lambda x: x != ''].index)
-        col_values = list(cols.loc[lambda x: x != ''].values)
-        df = get_data(raw_dir, file_name, col_values)
+        encodings = info['인코딩']
+        cols = column_info.iloc[index, 4:].loc[lambda x: x != '']
+        col_keys = list(cols.index)
+        col_values = list(cols.values)
+        df = get_data(raw_dir, file_name, encodings, col_values)
 
-        cols_for_rename = dict()
-        for col in col_keys:
-            cols_for_rename[cols[col]] = col
+        cols_for_rename = dict(zip(col_values, col_keys))
         df = df.rename(columns=cols_for_rename)
 
-        total_cols = list(cols.index)
+        total_cols = list(column_info.iloc[index, 4:].index)
         for col in total_cols:
-            if col in col_keys or col == '...':
+            if col in col_keys:
                 continue
             else:
                 df[col] = 0
@@ -64,4 +57,4 @@ def integrate_data():
 
 integrated_df = integrate_data()
 date = datetime.datetime.today().strftime('%y%m%d')
-integrated_df.to_excel(dr.download_dir + f'/integrated_report_from_local_{date}.xlsx', index=False)
+integrated_df.to_csv(dr.download_dir + f'/integrated_report_from_local_{date}.csv', index=False, encoding='utf-8-sig')
