@@ -26,8 +26,6 @@ def name_convertor(df, except_list, column_name, dummy_name):
 
     return df
 
-raw_data.loc[raw_data['AD name']=='loantransfer-7', '소재 URL'] = 'https://iherb-creative-public.s3.ap-northeast-2.amazonaws.com/2022/%ED%85%8C%EC%8A%A4%ED%8A%B8/%EC%BA%A1%EC%B2%98.PNG'
-
 except_list = ['ㅁ']
 raw_data = name_convertor(raw_data, except_list,'캠페인', 'Campaign')
 raw_data = name_convertor(raw_data, except_list,'광고그룹', 'Adset')
@@ -53,13 +51,26 @@ def generate_dummy_array(target_array, total_len):
 target_array = [1, -1]
 total_len = len(raw_data)
 
-dummy_array = generate_dummy_array(target_array, total_len)
-
 raw_data.index = range(0, total_len)
+dummy_array = generate_dummy_array(target_array, total_len)
 
 value_columns = ['노출', '클릭', '조회', '설치', '가입', '한도조회', '대출실행','마이데이터']
 for col in value_columns :
     raw_data.loc[raw_data[col]>0, col] = raw_data[col] + dummy_array
+
+ad_len = len(raw_data['AD name'].unique())
+
+url_list = ['https://iherb-creative-public.s3.ap-northeast-2.amazonaws.com/2022/%ED%85%8C%EC%8A%A4%ED%8A%B8/%EB%A7%A4%EB%8D%A51.png',
+            'https://iherb-creative-public.s3.ap-northeast-2.amazonaws.com/2022/%ED%85%8C%EC%8A%A4%ED%8A%B8/%EB%A7%A4%EB%8D%A52.png',
+            'https://iherb-creative-public.s3.ap-northeast-2.amazonaws.com/2022/%ED%85%8C%EC%8A%A4%ED%8A%B8/%EB%A7%A4%EB%8D%A53.png',
+            'https://iherb-creative-public.s3.ap-northeast-2.amazonaws.com/2022/%ED%85%8C%EC%8A%A4%ED%8A%B8/%EB%A7%A4%EB%8D%A54.png',
+            'https://iherb-creative-public.s3.ap-northeast-2.amazonaws.com/2022/%ED%85%8C%EC%8A%A4%ED%8A%B8/%EC%BA%A1%EC%B2%98.PNG',
+            'https://iherb-creative-public.s3.ap-northeast-2.amazonaws.com/2022/%ED%85%8C%EC%8A%A4%ED%8A%B8/%EC%BA%A1%EC%B2%982.PNG',
+            'https://iherb-creative-public.s3.ap-northeast-2.amazonaws.com/2022/%ED%85%8C%EC%8A%A4%ED%8A%B8/%EC%BA%A1%EC%B2%983.PNG']
+url_dummy_array = generate_dummy_array(url_list, ad_len)
+ad_url_dict = dict(zip(list(raw_data['AD name'].unique()), url_dummy_array))
+
+raw_data['소재 URL'] = raw_data['AD name'].apply(lambda x : ad_url_dict.get(x))
 
 result_file_list = ['tableau_creative_rd_202207.csv', 'tableau_creative_rd_202208.csv', 'tableau_creative_rd_202209.csv']
 for i, file_name in enumerate(file_list) :

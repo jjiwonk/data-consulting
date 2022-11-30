@@ -2,22 +2,25 @@ import datetime
 import pandas as pd
 from analysis.DCT237_musinsa import info
 from analysis.DCT237_musinsa import preprocess as prep
+import numpy as np
 
 def acquisition_cost():
     conversion_df = prep.acq_data
     conversion_df['date'] = pd.to_datetime(conversion_df['click_time']).dt.date
     conversion_df['Cnt'] = 1
 
-    revenue_pivot = conversion_df.pivot_table(index = ['date','광고코드(Acq)', '계정(Acq)'], values = ['event_revenue'], aggfunc = 'sum')
-    count_pivot = conversion_df.pivot_table(index = ['date','광고코드(Acq)', '계정(Acq)'], columns = 'acquisition_type', values = 'Cnt', aggfunc = 'sum')
+    pivot_columns = ['date','광고코드(Acq)', '계정(Acq)', 'media_source(Acq)']
+    conversion_df[pivot_columns] = conversion_df[pivot_columns].fillna('')
+    revenue_pivot = conversion_df.pivot_table(index = pivot_columns, values = ['event_revenue', 'total_revenue'], aggfunc = 'sum')
+    count_pivot = conversion_df.pivot_table(index = pivot_columns, columns = 'acquisition_type', values = 'Cnt', aggfunc = 'sum')
 
     conversion_pivot = pd.concat([revenue_pivot, count_pivot], axis = 1).reset_index()
 
-    cost_pivot = prep.get_cost_pivot(['date', '광고코드', '계정'])
+    cost_pivot = prep.get_cost_pivot(['date', '광고코드', '계정', 'media_source'])
     cost_pivot['date'] = pd.to_datetime(cost_pivot['date']).dt.date
     cost_pivot = cost_pivot.loc[cost_pivot['계정']!='VA']
 
-    df = conversion_pivot.merge(cost_pivot, left_on=['date','광고코드(Acq)', '계정(Acq)'], right_on = ['date','광고코드', '계정'], how = 'outer')
+    df = conversion_pivot.merge(cost_pivot, left_on=['date','광고코드(Acq)', '계정(Acq)', 'media_source(Acq)'], right_on = ['date','광고코드', '계정', 'media_source'], how = 'outer')
     df.to_csv(info.result_dir + '/acquisition_cost_data.csv', index=False, encoding = 'utf-8-sig')
     return df
 def calc_arpu():
@@ -61,11 +64,11 @@ def get_ltv_data():
     acq_retention_merge = acq_data.merge(user_retention_table, on ='appsflyer_id', how = 'left')
     acq_retention_merge['is_retention'] = acq_retention_merge['is_retention'].fillna(0)
 
-    acq_arpu_merge = acq_retention_merge[['계정(Acq)','appsflyer_id','is_retention']].merge(user_arpu_table, on ='appsflyer_id', how = 'left')
+    acq_arpu_merge = acq_retention_merge[['계정(Acq)','media_source(Acq)','appsflyer_id','is_retention']].merge(user_arpu_table, on ='appsflyer_id', how = 'left')
     acq_arpu_merge['ARPU'] = acq_arpu_merge['event_revenue']
     acq_arpu_merge['User'] = 1
 
-    ltv_pivot = acq_arpu_merge.pivot_table(index = ['계정(Acq)'], values = ['User','is_retention','Cnt','ARPU'],
+    ltv_pivot = acq_arpu_merge.pivot_table(index = ['계정(Acq)', 'media_source(Acq)'], values = ['User','is_retention','Cnt','ARPU'],
                                            aggfunc = {'User' : 'sum',
                                                       'is_retention' : 'sum',
                                                       'Cnt' : 'sum',
