@@ -12,8 +12,8 @@ update_gsheet_name = '시트1'
 
 # 데이터 통합 가공파일 생성
 file_name = account_name + '_union_result.xlsx'
-raw_dir = dr.dropbox_dir + f'/광고사업부/데이터컨설팅/데이터 통합 솔루션/RD/{account_name}'
-result_dir = dr.dropbox_dir + f'/광고사업부/데이터컨설팅/데이터 통합 솔루션/RESULT/{account_name}'
+raw_dir = dr.dropbox_dir + f'/광고사업부/데이터컨설팅/데이터 솔루션/로컬 to 시트 솔루션/RD/{account_name}'
+result_dir = dr.dropbox_dir + f'/광고사업부/데이터컨설팅/데이터 솔루션/로컬 to 시트 솔루션/RD/RESULT/{account_name}'
 
 if union_tf:
     uni.union_raw_data(raw_dir, result_dir, file_name)
