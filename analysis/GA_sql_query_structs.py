@@ -7,6 +7,7 @@ import pandas as pd
 import datetime
 import os
 
+# DCT387 이니스프리 GA 쿼리 구조 분석
 raw_dir = dr.dropbox_dir + '/광고사업부/4. 광고주/이니스프리/자동화리포트/GA'
 
 def get_raw_df(raw_dir, columns, required_date):
