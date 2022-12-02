@@ -8,7 +8,7 @@ import setting.report_date as rdate
 import warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
 
-raw_dir = dr.dropbox_dir + '/광고사업부/4. 광고주/알바몬/4-1. 광고주 제공자료/애드저스트 RAW/9월/MAU 원본'
+raw_dir = dr.dropbox_dir + '/광고사업부/4. 광고주/알바몬/4-1. 광고주 제공자료/애드저스트 RAW/10월/1001-1031'
 # raw_dir = 'D:/매드업/데이터분석/알바몬'
 result_dir = dr.download_dir
 
@@ -28,6 +28,7 @@ def get_raw_data(raw_dir):
         'device_manufacturer' : pa.string(),
         'gps_adid' : pa.string(),
         'idfa': pa.string(),
+        'app_name': pa.string(),
         'app_version_short': pa.string(),
         'sdk_version': pa.string(),
         'os_version': pa.string()
@@ -78,6 +79,10 @@ def fraud_calculate(raw_data):
                                ('counts', '이력서작성_최초등록'), ('counts', '이력서작성_추가등록'), ('counts', '이메일지원'),
                                ('counts', '전화지원'), ('counts', '홈페이지지원'),
                                ('is_fraud_over5', ''), ('is_fraud_over10', ''), ('is_fraud_over20', '')]]
+
+    os_separator = raw_data.loc[:,['adid','app_name']].drop_duplicates()
+    os_separator['os'] = os_separator['app_name'].apply(lambda x: 'AOS' if x == 'com.albamon.app' else 'IOS')
+    prep_raw_df = prep_raw_df.merge(os_separator, how='left', on='adid')
 
     return prep_raw_df
 
@@ -223,6 +228,6 @@ raw_data = get_raw_data(raw_dir)
 fraud_checked_df = fraud_calculate(raw_data)
 deduction_checked_df = deduction_calculate(raw_data)
 merged_df = pd.merge(fraud_checked_df, deduction_checked_df, how='outer', on=[('network_name', ''), ('adid', '')])
-merged_df[('is_fraud_adid', '')].value_counts()
 
-merged_df.to_excel(dr.download_dir + '/알바몬_미디어별_중복전환_ADID.xlsx', encoding='utf-8')
+merged_df.loc[0:80000,:].to_excel(dr.download_dir + '/알바몬_미디어별_중복전환_ADID(1).xlsx', encoding='utf-8')
+merged_df.loc[80000:,:].to_excel(dr.download_dir + '/알바몬_미디어별_중복전환_ADID(2).xlsx', encoding='utf-8')
