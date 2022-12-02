@@ -17,7 +17,7 @@ def get_raw_df(raw_dir, columns, required_date):
         dtypes[col] = pa.string()
 
     convert_ops = pacsv.ConvertOptions(column_types=dtypes, include_columns=index_columns)
-    ro = pacsv.ReadOptions(block_size=10 << 20)
+    ro = pacsv.ReadOptions(block_size=10 << 20, encoding='utf-8-sig')
     table_list = []
 
     date_check = required_date.strftime('%Y%m')
@@ -41,44 +41,61 @@ def get_raw_df(raw_dir, columns, required_date):
         table_list.append(temp)
     table = pa.concat_tables(table_list)
     raw_df = table.to_pandas()
-    raw_df = raw_df.rename(columns={'﻿campaign':'campaign'})
+
     raw_df = raw_df.loc[raw_df['dataSource'] == 'web']
     raw_df['check_sourcemedium'] = raw_df['sourceMedium'].apply(lambda x: ('organic' not in x) & ('referral' not in x))
     raw_df = raw_df.loc[raw_df['check_sourcemedium'] == True]
     raw_df = raw_df.drop(columns='check_sourcemedium')
-    raw_df.loc[:, ['goal1Completions', 'goal2Completions', 'goal3Completions', 'sessions', 'bounces', 'sessionDuration', 'transactions', 'transactionRevenue', 'pageviews']] \
-        = raw_df.loc[:, ['goal1Completions','goal2Completions','goal3Completions','sessions','bounces', 'sessionDuration','transactions','transactionRevenue','pageviews']].apply(pd.to_numeric)
+    raw_df.loc[:, index_columns[-9:]] = raw_df.loc[:, index_columns[-9:]].apply(pd.to_numeric)
+
     return raw_df
 
-non_trg_index_columns = ['﻿campaign','sourceMedium','keyword','adContent','operatingSystem',
-                 'deviceCategory','dataSource','goal1Completions','goal2Completions','goal3Completions',
-                 'sessions','bounces','sessionDuration','transactions','transactionRevenue','pageviews','view_id']
-trg_index_columns = ['﻿campaign','sourceMedium','keyword','adContent','dimension50','operatingSystem',
-                 'deviceCategory','dataSource','goal1Completions','goal2Completions','goal3Completions',
-                 'sessions','bounces','sessionDuration','transactions','transactionRevenue','pageviews','view_id']
+non_trg_index_columns = ['sourceMedium', 'campaign', 'adContent', 'keyword', 'deviceCategory', 'operatingSystem', 'dataSource',
+                         'sessions', 'bounces', 'sessionDuration', 'goal3Completions', 'goal1Completions', 'goal2Completions',
+                         'pageviews', 'transactions', 'transactionRevenue']
+trg_index_columns = ['dimension50'] + non_trg_index_columns
 
 required_date = rdate.day_1
 non_trg_df = get_raw_df(raw_dir, non_trg_index_columns, required_date)
 trg_df = get_raw_df(raw_dir, trg_index_columns, required_date)
 
-df_for_dimension50 = trg_df.drop_duplicates(['date', 'sourceMedium', 'campaign', 'dimension50', 'adContent', 'keyword', 'deviceCategory', 'operatingSystem', 'dataSource'])
-non_trg_merge_df = pd.merge(non_trg_df, df_for_dimension50, how='left', on=['date', 'sourceMedium', 'campaign', 'adContent', 'keyword', 'deviceCategory', 'operatingSystem', 'dataSource'])
-non_trg_merge_df = non_trg_merge_df.loc[:, ['date', 'sourceMedium', 'campaign', 'dimension50', 'adContent', 'keyword', 'deviceCategory', 'operatingSystem', 'dataSource',
-                                           'sessions_x', 'bounces_x', 'sessionDuration_x', 'goal3Completions_x', 'goal1Completions_x', 'goal2Completions_x',
-                                           'pageviews_x', 'transactions_x', 'transactionRevenue_x']]
-df_for_trg = non_trg_df.drop_duplicates(['date', 'sourceMedium', 'campaign', 'adContent', 'keyword', 'deviceCategory', 'operatingSystem', 'dataSource'])
-trg_merge_df = pd.merge(trg_df, df_for_trg, how='left', on=['date', 'sourceMedium', 'campaign', 'adContent', 'keyword', 'deviceCategory', 'operatingSystem', 'dataSource'])
-trg_merge_df = trg_merge_df.loc[trg_merge_df['goal1Completions_y'].isnull(), ['date', 'sourceMedium', 'campaign', 'dimension50', 'adContent', 'keyword', 'deviceCategory', 'operatingSystem', 'dataSource',
-                                           'sessions_x', 'bounces_x', 'sessionDuration_x', 'goal3Completions_x', 'goal1Completions_x', 'goal2Completions_x',
-                                           'pageviews_x', 'transactions_x', 'transactionRevenue_x']]
+trg_index = ['date'] + trg_index_columns[:-9]
+non_trg_index = ['date'] + non_trg_index_columns[:-9]
 
-total_df = pd.concat([non_trg_merge_df, trg_merge_df])
-total_df = total_df.rename(columns={'date':'날짜', 'sourceMedium':'소스/매체', 'campaign':'캠페인', 'dimension50':'utm_trg', 'adContent':'광고콘텐츠', 'keyword':'키워드', 'dataSource':'데이터 소스', 'deviceCategory':'기기 카테고리', 'operatingSystem':'운영체제',
-                                    'sessions_x':'세션', 'bounces_x':'이탈수', 'sessionDuration_x':'세션시간',
-                                    'goal3Completions_x':'로그인목표완료수', 'goal1Completions_x':'회원가입목표완료수', 'goal2Completions_x':'장바구니목표완료수',
-                                           'pageviews_x':'페이지뷰', 'transactions_x':'거래수', 'transactionRevenue_x':'수익'})
+# 매핑되는 데이터는 trg 값 / goal값은 non_trg..!
+df_for_dimension50 = trg_df.drop_duplicates(trg_index)
+non_trg_merge_df = pd.merge(non_trg_df, df_for_dimension50, how='left', on=non_trg_index)
+non_mapping_non_trg = non_trg_merge_df.loc[non_trg_merge_df['goal1Completions_y'].isnull(),
+                                           trg_index + ['sessions_x', 'bounces_x', 'sessionDuration_x',
+                                                        'goal3Completions_x', 'goal1Completions_x', 'goal2Completions_x',
+                                                        'pageviews_x', 'transactions_x', 'transactionRevenue_x']]
+mapping_non_trg = non_trg_merge_df.loc[non_trg_merge_df['goal1Completions_y'].notnull(),
+                                       trg_index + ['sessions_y', 'bounces_y', 'sessionDuration_y',
+                                                    'pageviews_y', 'transactions_y', 'transactionRevenue_y']]
+for_non_mapping = non_trg_df.drop_duplicates(non_trg_index)
+trg_merge_df = pd.merge(trg_df, for_non_mapping, how='left', on=non_trg_index)
+trg_merge_df = trg_merge_df.loc[trg_merge_df['goal1Completions_y'].isnull(),
+                                trg_index + ['sessions_x', 'bounces_x', 'sessionDuration_x',
+                                             'goal3Completions_x', 'goal1Completions_x', 'goal2Completions_x',
+                                             'pageviews_x', 'transactions_x', 'transactionRevenue_x']]
+
+non_mapping_rename_dict = {'date':'날짜', 'sourceMedium':'소스/매체', 'campaign':'캠페인', 'dimension50':'utm_trg', 'adContent':'광고콘텐츠',
+                           'keyword':'키워드', 'dataSource':'데이터 소스', 'deviceCategory':'기기 카테고리', 'operatingSystem':'운영체제',
+                           'sessions_x':'세션', 'bounces_x':'이탈수', 'sessionDuration_x':'세션시간',
+                           'goal3Completions_x':'로그인목표완료수', 'goal1Completions_x':'회원가입목표완료수', 'goal2Completions_x':'장바구니목표완료수',
+                           'pageviews_x':'페이지뷰', 'transactions_x':'거래수', 'transactionRevenue_x':'수익'}
+mapping_rename_dict = {'date':'날짜', 'sourceMedium':'소스/매체', 'campaign':'캠페인', 'dimension50':'utm_trg', 'adContent':'광고콘텐츠',
+                       'keyword':'키워드', 'dataSource':'데이터 소스', 'deviceCategory':'기기 카테고리', 'operatingSystem':'운영체제',
+                       'sessions_y':'세션', 'bounces_y':'이탈수', 'sessionDuration_y':'세션시간',
+                       'goal3Completions_x':'로그인목표완료수', 'goal1Completions_x':'회원가입목표완료수', 'goal2Completions_x':'장바구니목표완료수',
+                       'pageviews_y':'페이지뷰', 'transactions_y':'거래수', 'transactionRevenue_y':'수익'}
+
+non_mapping_non_trg = non_mapping_non_trg.rename(columns=non_mapping_rename_dict)
+mapping_non_trg = mapping_non_trg.rename(columns=mapping_rename_dict)
+trg_merge_df = trg_merge_df.rename(columns=non_mapping_rename_dict)
+
+total_df = pd.concat([non_mapping_non_trg, mapping_non_trg, trg_merge_df])
 final_result = total_df.groupby(['날짜', '소스/매체', '캠페인', 'utm_trg', '광고콘텐츠', '키워드', '데이터 소스', '기기 카테고리', '운영체제']).sum().reset_index()
-final_result = final_result.loc[(final_result['세션']+final_result['로그인목표완료수']+final_result['회원가입목표완료수']
-                                 +final_result['장바구니목표완료수']+final_result['거래수']+final_result['수익']
-                                 +final_result['페이지뷰']+final_result['이탈수']+final_result['세션시간']) > 0, :]
+final_result = final_result.loc[final_result[['세션', '로그인목표완료수', '회원가입목표완료수', '장바구니목표완료수',
+                                              '거래수', '수익', '페이지뷰', '이탈수', '세션시간']].values.sum(axis=1) > 0, :]
 final_result = final_result.sort_values('소스/매체')
