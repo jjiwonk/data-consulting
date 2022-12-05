@@ -90,6 +90,10 @@ mapping_rename_dict = {'date':'날짜', 'sourceMedium':'소스/매체', 'campaig
                        'goal3Completions_x':'로그인목표완료수', 'goal1Completions_x':'회원가입목표완료수', 'goal2Completions_x':'장바구니목표완료수',
                        'pageviews_y':'페이지뷰', 'transactions_y':'거래수', 'transactionRevenue_y':'수익'}
 
+### 추가 필요 ###
+# 매핑되는 값 non_trg_index 기준 groupby 해서 non_trg-trg 더 해주기
+###############
+
 non_mapping_non_trg = non_mapping_non_trg.rename(columns=non_mapping_rename_dict)
 mapping_non_trg = mapping_non_trg.rename(columns=mapping_rename_dict)
 trg_merge_df = trg_merge_df.rename(columns=non_mapping_rename_dict)
