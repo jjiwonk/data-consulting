@@ -1,5 +1,6 @@
 import pandas as pd
-import preprocess.innisfree.data_loading as load
+import report.innisfree.media_preprocess as load
+
 
 
 def apps_mapping(media_df, index_list, media_source, join_way) -> pd.DataFrame:
