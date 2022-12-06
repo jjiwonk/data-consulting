@@ -44,7 +44,7 @@ def get_raw_data(raw_dir):
     for f in files:
         temp = pacsv.read_csv(raw_dir + '/' + f, convert_options=convert_ops, read_options=ro)
         table_list.append(temp)
-    print('Raw data read 완료')
+    print('Raw data read successfully.')
 
     raw_data = pa.concat_tables(table_list)
     raw_data = raw_data.to_pandas()
@@ -224,10 +224,11 @@ def deduction_calculate(raw_data):
 
 
 raw_data = get_raw_data(raw_dir)
+raw_data = raw_data.loc[(raw_data['created_at'] >= '2022-10-01')&(raw_data['created_at'] < '2022-11-01')]
 
 fraud_checked_df = fraud_calculate(raw_data)
 deduction_checked_df = deduction_calculate(raw_data)
 merged_df = pd.merge(fraud_checked_df, deduction_checked_df, how='outer', on=[('network_name', ''), ('adid', '')])
 
-merged_df.loc[0:80000,:].to_excel(dr.download_dir + '/알바몬_미디어별_중복전환_ADID(1).xlsx', encoding='utf-8')
-merged_df.loc[80000:,:].to_excel(dr.download_dir + '/알바몬_미디어별_중복전환_ADID(2).xlsx', encoding='utf-8')
+merged_df.loc[0:800000,:].to_excel(dr.download_dir + '/알바몬_미디어별_중복전환_ADID(1).xlsx', encoding='utf-8')
+merged_df.loc[800000:,:].to_excel(dr.download_dir + '/알바몬_미디어별_중복전환_ADID(2).xlsx', encoding='utf-8')
