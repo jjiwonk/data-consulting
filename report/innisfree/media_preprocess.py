@@ -65,11 +65,6 @@ def calc_cost(df, media_name):
 
     return df
 
-import numpy as np
-test_list = np.array([1000000, 0.85])
-
-4145000 / test_list
-
 def get_basic_data(media_name) :
     df = get_media_raw_data(media_name)
     df = calc_cost(df, media_name)
@@ -96,6 +91,7 @@ def pmax_prep() -> pd.DataFrame:
 
 def kkm_prep() -> pd.DataFrame:
     df = get_basic_data('kakaomoment')
+    df = df.loc[df['캠페인'].str.contains('madit')]
     return df
 def nasa_prep() -> pd.DataFrame:
     df = get_basic_data('naver_sa')
