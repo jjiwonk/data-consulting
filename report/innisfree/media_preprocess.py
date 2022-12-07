@@ -1,4 +1,4 @@
-import setting.directory as dr
+from report.innisfree.ref import dr
 from report.innisfree import ref
 
 import pandas as pd
@@ -58,7 +58,7 @@ def calc_cost(df, media_name):
 
     # 만약에 대시보드에 구글은 100만 나눠서, 애플은 1200 곱해서 보여주고 싶다고 하면 아래 코드 사용
 
-    if media_name == 'google' :
+    if media_name in ['google', 'pmax'] :
         df['cost(대시보드)'] = df['cost(대시보드)'] / 1000000
     elif media_name == 'ASA' :
         df['cost(대시보드)'] = df['cost(대시보드)'] * 1200
@@ -87,6 +87,7 @@ def gg_prep() -> pd.DataFrame:
     return df
 def pmax_prep() -> pd.DataFrame:
     df = get_basic_data('pmax')
+    df = df.loc[df['캠페인']=='PMax: Madit_Google_SmartShopping']
     return df
 
 def kkm_prep() -> pd.DataFrame:

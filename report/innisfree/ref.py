@@ -1,5 +1,7 @@
 from spreadsheet import spreadsheet
 import datetime
+import os
+import pyarrow as pa
 
 doc = spreadsheet.spread_document_read(
     'https://docs.google.com/spreadsheets/d/1BRyTV3FEnRFJWvyP7sMsJopwDkqF8UGF8ZxrYvzDOf0/edit#gid=2141730654')
@@ -8,7 +10,8 @@ info_df = spreadsheet.spread_sheet(doc, '매체 전처리', 0, 3).reset_index(dr
 setting_df = spreadsheet.spread_sheet(doc, '매체 전처리', 0, 0).reset_index(drop=True)
 
 class report_date :
-    target_date = datetime.datetime.strptime(setting_df['리포트 기준 날짜'][0], '%Y-%m-%d')
+    target_date = datetime.datetime.strptime(setting_df['리포트 기준 날짜'][0], '%Y-%m-%d').date()
+    start_date = datetime.date(target_date.year, target_date.month, 1)
     yearmonth = target_date.strftime('%Y%m')
 
 
@@ -29,6 +32,34 @@ class columns :
     result_columns = dimension_cols + metric_cols
     read_columns = temp_cols + result_columns
 
+    apps_dtype = {
+        'attributed_touch_time' : pa.string(),
+        'install_time' : pa.string(),
+        'event_time' : pa.string(),
+        'event_name' : pa.string(),
+        'event_revenue' : pa.string(),
+        'media_source' : pa.string(),
+        'channel' : pa.string(),
+        'keywords' : pa.string(),
+        'is_primary_attribution' : pa.string(),
+        'campaign' : pa.string(),
+        'adset' : pa.string(),
+        'ad' : pa.string(),
+        'sub_param_1' : pa.string(),
+        'sub_param_2' : pa.string(),
+        'sub_param_3' : pa.string(),
+        'sub_param_4' : pa.string(),
+        'partner' : pa.string(),
+        'platform' : pa.string(),
+        'original_url' : pa.string()
+    }
+
+    apps_pivot_columns = ['date','partner', 'media_source', 'campaign', 'adset', 'ad',
+                          'sub_param_1', 'sub_param_2', 'sub_param_3', 'sub_param_4', 'platform', 'original_url', 'keywords']
+
+    ### GA
+    ga_dimension_cols = ['date','dimension50','sourceMedium', 'campaign', 'adContent', 'keyword', 'deviceCategory', 'operatingSystem', 'dataSource']
+    ga_metric_cols = ['sessions', 'bounces', 'sessionDuration', 'goal3Completions', 'goal1Completions', 'goal2Completions', 'pageviews', 'transactions', 'transactionRevenue']
 
 item_list = ['read', 'prep', 'temp', 'dimension', 'metric']
 
@@ -45,3 +76,43 @@ for media in info_df['매체'][1:].to_list() :
         item_dict = dict(zip(item_df.index, item_df[media]))
 
         info_dict[media][item] = item_dict
+
+class apps_info:
+    target_event_dict = {
+        'install' : 'Installs',
+        're-engagement' : 're-open',
+        'af_add_to_cart' : 'Add to Cart_app',
+        'af_complete_registration' : 'Register',
+        're-attribution' : 're-install',
+        'af_purchase' : 'Purchases_app'
+    }
+
+    ctit = 7
+    itet = 7
+
+class ga_info:
+    ga_rename_dict =  {
+        'dimension50' : 'utm_trg',
+        'date' : '날짜',
+        'sourceMedium' : '소스/매체',
+        'campaign' : '캠페인',
+        'adContent' : '광고콘텐츠',
+        'keyword' : '키워드',
+        'deviceCategory' : '기기 카테고리',
+        'operatingSystem' : '운영체제',
+        'dataSource' : '데이터 소스',
+        'sessions' : '세션',
+        'bounces' : '이탈수',
+        'sessionDuration' : '세션시간',
+        'goal3Completions' : '로그인목표완료수',
+        'goal1Completions' : '회원가입목표완료수',
+        'goal2Completions' : '장바구니목표완료수',
+        'pageviews' : '페이지뷰',
+        'transactions' : '거래수',
+        'transactionRevenue': '수익'}
+
+    ga_device_dict = {
+        'mobile' : 'Mobile',
+        'desktop' : 'PC',
+        'tablet' : 'Mobile'
+    }
