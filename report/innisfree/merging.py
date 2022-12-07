@@ -42,6 +42,8 @@ def integrate_media_data():
     total_df_pivot = total_df.pivot_table(index = ref.columns.dimension_cols, values = ref.columns.metric_cols, aggfunc = 'sum').reset_index()
     total_df_pivot = total_df_pivot[ref.columns.dimension_cols + ref.columns.metric_cols]
 
+    total_df_pivot = total_df_pivot.loc[total_df_pivot[ref.columns.metric_cols].values.sum(axis = 1) > 0]
+
     return total_df_pivot
 
 def apps_mapping(media_df, index_list, media_source, join_way) -> pd.DataFrame:
