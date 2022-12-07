@@ -21,7 +21,7 @@ def get_raw_df(raw_dir, columns, required_date):
     table_list = []
 
     date_check = required_date.strftime('%Y%m')
-    start_date = required_date.replace(day=20).strftime('%Y%m%d')
+    start_date = required_date.replace(day=1).strftime('%Y%m%d')
     end_date = required_date.strftime('%Y%m%d')
 
     files = os.listdir(raw_dir)
@@ -50,56 +50,53 @@ def get_raw_df(raw_dir, columns, required_date):
 
     return raw_df
 
-non_trg_index_columns = ['sourceMedium', 'campaign', 'adContent', 'keyword', 'deviceCategory', 'operatingSystem', 'dataSource',
-                         'sessions', 'bounces', 'sessionDuration', 'goal3Completions', 'goal1Completions', 'goal2Completions',
-                         'pageviews', 'transactions', 'transactionRevenue']
-trg_index_columns = ['dimension50'] + non_trg_index_columns
 
 required_date = rdate.day_1
+
+index = ['sourceMedium', 'campaign', 'adContent', 'keyword', 'deviceCategory', 'operatingSystem', 'dataSource']
+metric = ['sessions', 'bounces', 'sessionDuration', 'goal3Completions', 'goal1Completions', 'goal2Completions', 'pageviews', 'transactions', 'transactionRevenue']
+non_trg_index_columns = index + metric
+trg_index_columns = ['dimension50'] + index + metric
+
 non_trg_df = get_raw_df(raw_dir, non_trg_index_columns, required_date)
 trg_df = get_raw_df(raw_dir, trg_index_columns, required_date)
 
-trg_index = ['date'] + trg_index_columns[:-9]
-non_trg_index = ['date'] + non_trg_index_columns[:-9]
+non_trg_cols = list(non_trg_df.columns)
+trg_cols = list(trg_df.columns)
+non_trg_index = non_trg_cols[:-9]
+trg_index = trg_cols[:-9]
 
-# 매핑되는 데이터는 trg 값 / goal값은 non_trg..!
-df_for_dimension50 = trg_df.drop_duplicates(trg_index)
-non_trg_merge_df = pd.merge(non_trg_df, df_for_dimension50, how='left', on=non_trg_index)
-non_mapping_non_trg = non_trg_merge_df.loc[non_trg_merge_df['goal1Completions_y'].isnull(),
-                                           trg_index + ['sessions_x', 'bounces_x', 'sessionDuration_x',
-                                                        'goal3Completions_x', 'goal1Completions_x', 'goal2Completions_x',
-                                                        'pageviews_x', 'transactions_x', 'transactionRevenue_x']]
-mapping_non_trg = non_trg_merge_df.loc[non_trg_merge_df['goal1Completions_y'].notnull(),
-                                       trg_index + ['sessions_y', 'bounces_y', 'sessionDuration_y',
-                                                    'pageviews_y', 'transactions_y', 'transactionRevenue_y']]
-for_non_mapping = non_trg_df.drop_duplicates(non_trg_index)
-trg_merge_df = pd.merge(trg_df, for_non_mapping, how='left', on=non_trg_index)
-trg_merge_df = trg_merge_df.loc[trg_merge_df['goal1Completions_y'].isnull(),
-                                trg_index + ['sessions_x', 'bounces_x', 'sessionDuration_x',
-                                             'goal3Completions_x', 'goal1Completions_x', 'goal2Completions_x',
-                                             'pageviews_x', 'transactions_x', 'transactionRevenue_x']]
+merge_df = pd.merge(non_trg_df, trg_df, how='left', on=non_trg_index)
+# dimension50 매핑 불가 데이터
+non_mapping = merge_df.loc[merge_df['dimension50'].isnull(), trg_index + [x+'_x' for x in metric]]
+non_mapping = non_mapping.rename(columns=dict(zip([col+'_x' for col in metric], metric)))
+non_mapping = non_mapping.fillna('')
+# dimension50 매핑 데이터
+mapping = merge_df.loc[merge_df['dimension50'].notnull(), non_trg_index].drop_duplicates(non_trg_index)
+mapping_non_trg = pd.merge(mapping, non_trg_df, how='left', on=non_trg_index)
+grouping_trg = trg_df.groupby(non_trg_index).sum()
+grouping_trg['dimension50'] = ''
+merge_for_dif = pd.merge(mapping_non_trg, grouping_trg, how='left', on=non_trg_index)
+for col in metric:
+    merge_for_dif[col] = merge_for_dif[col+'_x'] - merge_for_dif[col+'_y']
+merge_for_dif = merge_for_dif[trg_cols]
 
-non_mapping_rename_dict = {'date':'날짜', 'sourceMedium':'소스/매체', 'campaign':'캠페인', 'dimension50':'utm_trg', 'adContent':'광고콘텐츠',
-                           'keyword':'키워드', 'dataSource':'데이터 소스', 'deviceCategory':'기기 카테고리', 'operatingSystem':'운영체제',
-                           'sessions_x':'세션', 'bounces_x':'이탈수', 'sessionDuration_x':'세션시간',
-                           'goal3Completions_x':'로그인목표완료수', 'goal1Completions_x':'회원가입목표완료수', 'goal2Completions_x':'장바구니목표완료수',
-                           'pageviews_x':'페이지뷰', 'transactions_x':'거래수', 'transactionRevenue_x':'수익'}
-mapping_rename_dict = {'date':'날짜', 'sourceMedium':'소스/매체', 'campaign':'캠페인', 'dimension50':'utm_trg', 'adContent':'광고콘텐츠',
-                       'keyword':'키워드', 'dataSource':'데이터 소스', 'deviceCategory':'기기 카테고리', 'operatingSystem':'운영체제',
-                       'sessions_y':'세션', 'bounces_y':'이탈수', 'sessionDuration_y':'세션시간',
-                       'goal3Completions_x':'로그인목표완료수', 'goal1Completions_x':'회원가입목표완료수', 'goal2Completions_x':'장바구니목표완료수',
-                       'pageviews_y':'페이지뷰', 'transactions_y':'거래수', 'transactionRevenue_y':'수익'}
+total_df = pd.concat([non_mapping, merge_for_dif, trg_df]).groupby(trg_index).sum().reset_index()
 
-### 추가 필요 ###
-# 매핑되는 값 non_trg_index 기준 groupby 해서 non_trg-trg 더 해주기
-###############
+new_cols = ['날짜', 'utm_trg', '소스/매체', '캠페인', '광고콘텐츠', '키워드', '기기 카테고리', '운영체제', '데이터 소스',
+            '세션', '이탈수', '세션시간', '로그인목표완료수', '회원가입목표완료수', '장바구니목표완료수', '페이지뷰', '거래수', '수익']
+rename_dict = dict(zip(trg_cols, new_cols))
+total_df = total_df.rename(columns=rename_dict)
+def check_device(data):
+    if data in ['mobile','tablet']:
+        return 'Mobile'
+    elif data == 'desktop':
+        return 'PC'
+    else:
+        return data
+total_df.loc[:, '기기 카테고리'] = total_df.loc[:, '기기 카테고리'].apply(check_device)
 
-non_mapping_non_trg = non_mapping_non_trg.rename(columns=non_mapping_rename_dict)
-mapping_non_trg = mapping_non_trg.rename(columns=mapping_rename_dict)
-trg_merge_df = trg_merge_df.rename(columns=non_mapping_rename_dict)
-
-total_df = pd.concat([non_mapping_non_trg, mapping_non_trg, trg_merge_df])
-final_result = total_df.groupby(['날짜', '소스/매체', '캠페인', 'utm_trg', '광고콘텐츠', '키워드', '데이터 소스', '기기 카테고리', '운영체제']).sum().reset_index()
-final_result = final_result.loc[final_result[['세션', '로그인목표완료수', '회원가입목표완료수', '장바구니목표완료수',
-                                              '거래수', '수익', '페이지뷰', '이탈수', '세션시간']].values.sum(axis=1) > 0, :]
-final_result = final_result.sort_values('소스/매체')
+total_df = total_df.loc[total_df[['세션', '로그인목표완료수', '회원가입목표완료수', '장바구니목표완료수',
+                                  '거래수', '수익', '페이지뷰', '이탈수', '세션시간']].values.sum(axis=1) > 0, :]
+total_df = total_df.sort_values('소스/매체')
+total_df.to_csv(dr.download_dir + '/ga_result.csv', encoding='utf-8-sig', index=False)
