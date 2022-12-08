@@ -15,7 +15,7 @@ apps_pivot_df.to_csv(dr.download_dir + f'/apps_pivot_{ref.report_date.yearmonth}
 print('download successfully')
 
 apps_agg_data = tracker_preprocess.get_apps_agg_data()
-apps_pivot_df.to_csv(dr.download_dir + f'/apps_aggregated_{ref.report_date.yearmonth}.csv', index=False, encoding='utf-8-sig')
+apps_agg_data.to_csv(dr.download_dir + f'/apps_aggregated_{ref.report_date.yearmonth}.csv', index=False, encoding='utf-8-sig')
 print('download successfully')
 
 ga_pivot_df = tracker_preprocess.ga_prep()

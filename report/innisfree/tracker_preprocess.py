@@ -101,7 +101,7 @@ def get_apps_agg_data():
 
     total_df = pd.concat(df_list)
     total_df = total_df.loc[pd.to_datetime(total_df['date']).dt.month == to_date.month]
-    total_df = total_df.loc[df["media_source_pid"].isin([ref.apps_info.agg_data_media_filter])]
+    total_df = total_df.loc[total_df["media_source_pid"].isin(ref.apps_info.agg_data_media_filter)]
     total_df = total_df[ref.apps_info.agg_data_column_order]
     return total_df
 
