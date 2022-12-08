@@ -1,4 +1,4 @@
-from report.innisfree.ref import dr
+from report.innisfree import directory as dr
 from report.innisfree import ref
 
 import pandas as pd

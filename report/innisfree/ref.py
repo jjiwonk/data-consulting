@@ -92,24 +92,24 @@ class apps_info:
 
 class ga_info:
     ga_rename_dict =  {
+        'date': '날짜',
+        'sourceMedium': '소스/매체',
+        'campaign': '캠페인',
         'dimension50' : 'utm_trg',
-        'date' : '날짜',
-        'sourceMedium' : '소스/매체',
-        'campaign' : '캠페인',
         'adContent' : '광고콘텐츠',
         'keyword' : '키워드',
         'deviceCategory' : '기기 카테고리',
         'operatingSystem' : '운영체제',
         'dataSource' : '데이터 소스',
         'sessions' : '세션',
+        'goal1Completions': '회원가입목표완료수',
+        'goal2Completions': '장바구니목표완료수',
+        'transactions': '거래수',
+        'transactionRevenue': '수익',
         'bounces' : '이탈수',
-        'sessionDuration' : '세션시간',
-        'goal3Completions' : '로그인목표완료수',
-        'goal1Completions' : '회원가입목표완료수',
-        'goal2Completions' : '장바구니목표완료수',
-        'pageviews' : '페이지뷰',
-        'transactions' : '거래수',
-        'transactionRevenue': '수익'}
+        'goal3Completions': '로그인목표완료수',
+        'pageviews': '페이지뷰',
+        'sessionDuration' : '세션시간'}
 
     ga_device_dict = {
         'mobile' : 'Mobile',

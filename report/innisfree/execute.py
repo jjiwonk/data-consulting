@@ -1,7 +1,7 @@
 from report.innisfree import merging
 from report.innisfree import ref
 from report.innisfree import tracker_preprocess
-import setting.directory as dr
+from report.innisfree import directory as dr
 
 import warnings
 warnings.filterwarnings("ignore")

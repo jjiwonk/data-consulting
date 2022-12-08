@@ -1,4 +1,4 @@
-from report.innisfree.ref import dr
+from report.innisfree import directory as dr
 from report.innisfree import ref
 
 import pandas as pd
@@ -123,7 +123,7 @@ def get_ga_data(report_type):
 
 def ga_prep():
     except_dimension50_cols = ref.columns.ga_dimension_cols
-    except_dimension50_cols.remove('dimension50')
+    except_dimension50_cols = list(set(except_dimension50_cols) - set(['dimension50']))
 
     trg_df = get_ga_data('trg')
     mapping_key = list(trg_df[except_dimension50_cols].values)
@@ -149,5 +149,5 @@ def ga_prep():
 
     total_df_pivot = total_df.pivot_table(index = ref.columns.ga_dimension_cols, values = ref.columns.ga_metric_cols, aggfunc = 'sum').reset_index()
     total_df_pivot = total_df_pivot.loc[total_df_pivot[ref.columns.ga_metric_cols].values.sum(axis=1) > 0, :]
-    total_df_pivot = total_df_pivot.rename(columns=ref.ga_info.ga_rename_dict)
+    total_df_pivot = total_df_pivot.rename(columns=ref.ga_info.ga_rename_dict)[ref.ga_info.ga_rename_dict.values()]
     return total_df_pivot
