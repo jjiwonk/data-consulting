@@ -33,12 +33,14 @@ class columns :
     read_columns = temp_cols + result_columns
 
     apps_dtype = {
+        'attributed_touch_type' : pa.string(),
         'attributed_touch_time' : pa.string(),
         'install_time' : pa.string(),
         'event_time' : pa.string(),
         'event_name' : pa.string(),
         'event_revenue' : pa.string(),
         'media_source' : pa.string(),
+        'appsflyer_id' : pa.string(),
         'channel' : pa.string(),
         'keywords' : pa.string(),
         'is_primary_attribution' : pa.string(),
@@ -57,7 +59,7 @@ class columns :
     apps_pivot_columns = ['date','partner', 'media_source', 'campaign', 'adset', 'ad',
                           'sub_param_1', 'sub_param_2', 'sub_param_3', 'sub_param_4', 'platform', 'original_url', 'keywords']
     apps_result_columns = ['date', 'partner', 'media_source', 'campaign', 'adset', 'ad', 'sub_param_1', 'sub_param_2',
-                           'sub_param_3', 'sub_param_4', 'platform', 'original_url', 'keyword', 'Installs', 're-install',
+                           'sub_param_3', 'sub_param_4', 'platform', 'original_url', 'keywords', 'Installs', 're-install',
                            're-open', 'Register', 'Add to Cart_app', 'Purchases_app', 'Revenue_app', 'Open']
 
     ### GA
