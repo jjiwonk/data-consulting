@@ -126,6 +126,12 @@ class apps_info:
     ctit = 7
     itet = 7
 
+    agg_data_media_filter = ['Facebook Ads']
+    agg_data_column_order = ['view_type', 'date', 'agencypmd_af_prt', 'media_source_pid', 'campaign_name', 'adset_name', 'adgroup_name',
+         'os', 'conversion_type', 'installs', 'conversions', 'af_complete_registration_event_counter',
+         'af_add_to_cart_event_counter',
+         'af_purchase_event_counter', 'af_purchase_sales_in_krw']
+
 class ga_info:
     ga_rename_dict =  {
         'date': '날짜',
