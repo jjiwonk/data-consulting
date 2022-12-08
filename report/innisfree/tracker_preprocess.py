@@ -71,7 +71,7 @@ def apps_log_data_prep():
     total_pivot = total_pivot.fillna(0)
     total_pivot['Open'] = total_pivot['install'] + total_pivot['re-engagement'] + total_pivot['re-attribution']
     total_pivot = total_pivot.rename(columns = ref.apps_info.target_event_dict).reset_index()
-
+    total_pivot = total_pivot[ref.columns.apps_result_columns]
     return total_pivot
 
 
