@@ -43,8 +43,11 @@ def apps_log_data_prep():
     raw_data = raw_data.loc[raw_data['event_name'].isin(target_event_list)]
     raw_data = raw_data.loc[raw_data['is_primary_attribution']!='False']
     raw_data = raw_data.loc[raw_data['partner'].isin(['madit',''])]
+    raw_data = raw_data.loc[raw_data['attributed_touch_type']!='impression']
 
     raw_data[['attributed_touch_time', 'install_time', 'event_time']] = raw_data[['attributed_touch_time', 'install_time', 'event_time']].apply(lambda x: pd.to_datetime(x))
+    raw_data = raw_data.sort_values('event_time')
+    raw_data = raw_data.drop_duplicates(['appsflyer_id', 'event_name', 'event_time'])
 
     raw_data['date'] = raw_data['event_time'].dt.date
     raw_data['platform'] = raw_data['platform'].apply(lambda x : 'aos' if x == 'android' else 'ios')
@@ -165,6 +168,12 @@ def ga_prep():
 
     total_df = pd.concat([non_mapping_data,mapping_data, trg_df])
     total_df['deviceCategory'] = total_df['deviceCategory'].apply(lambda x: ref.ga_info.ga_device_dict.get(x))
+
+    for col in ref.columns.ga_dimension_cols :
+        if col in total_df.columns :
+            total_df[col] = total_df[col].fillna('')
+        else :
+            total_df[col] = ''
 
     total_df_pivot = total_df.pivot_table(index = ref.columns.ga_dimension_cols, values = ref.columns.ga_metric_cols, aggfunc = 'sum').reset_index()
     total_df_pivot = total_df_pivot.loc[total_df_pivot[ref.columns.ga_metric_cols].values.sum(axis=1) > 0, :]

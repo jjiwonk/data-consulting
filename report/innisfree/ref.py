@@ -36,12 +36,14 @@ class columns :
     read_columns = temp_cols + result_columns
 
     apps_dtype = {
+        'attributed_touch_type' : pa.string(),
         'attributed_touch_time' : pa.string(),
         'install_time' : pa.string(),
         'event_time' : pa.string(),
         'event_name' : pa.string(),
         'event_revenue' : pa.string(),
         'media_source' : pa.string(),
+        'appsflyer_id' : pa.string(),
         'channel' : pa.string(),
         'keywords' : pa.string(),
         'is_primary_attribution' : pa.string(),
