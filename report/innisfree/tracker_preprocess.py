@@ -74,6 +74,25 @@ def apps_log_data_prep():
     total_pivot = total_pivot[ref.columns.apps_result_columns]
     return total_pivot
 
+def get_apps_aggregated_log_data():
+    apps_dir = dr.report_dir + '/appsflyer_aggregated_prism'
+
+    to_date = ref.report_date.target_date
+
+    dtypes = ref.columns.apps_aggregated_dtypes
+    index_columns = list(dtypes.keys())
+    convert_ops = pacsv.ConvertOptions(column_types=dtypes, include_columns=index_columns)
+    ro = pacsv.ReadOptions(block_size=10 << 20, encoding = 'utf-8-sig')
+
+    date_name = to_date.strftime('%Y%m')
+    file_name = f'appsflyer_aggregated_report_{date_name}.csv'
+
+    raw_data = pacsv.read_csv(apps_dir + '/' + file_name, convert_options=convert_ops, read_options=ro)
+    raw_data = raw_data.to_pandas()
+    print(file_name + ' Read 완료')
+
+    return raw_data
+
 
 def get_ga_data(report_type):
     ga_dir = dr.report_dir + '/GA'

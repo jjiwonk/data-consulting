@@ -8,6 +8,9 @@ doc = spreadsheet.spread_document_read(
 
 info_df = spreadsheet.spread_sheet(doc, '매체 전처리', 0, 3).reset_index(drop=True)
 setting_df = spreadsheet.spread_sheet(doc, '매체 전처리', 0, 0).reset_index(drop=True)
+index_df = spreadsheet.spread_sheet(doc, '광고 인덱스').reset_index(drop=True)
+index_df = index_df.loc[index_df['매체'] != '', ['매체', '캠페인', '광고그룹', '소재', 'campaign_id', 'group_id']]
+
 
 class report_date :
     target_date = datetime.datetime.strptime(setting_df['리포트 기준 날짜'][0], '%Y-%m-%d').date()
@@ -57,8 +60,36 @@ class columns :
     apps_pivot_columns = ['date','partner', 'media_source', 'campaign', 'adset', 'ad',
                           'sub_param_1', 'sub_param_2', 'sub_param_3', 'sub_param_4', 'platform', 'original_url', 'keywords']
     apps_result_columns = ['date', 'partner', 'media_source', 'campaign', 'adset', 'ad', 'sub_param_1', 'sub_param_2',
-                           'sub_param_3', 'sub_param_4', 'platform', 'original_url', 'keyword', 'Installs', 're-install',
+                           'sub_param_3', 'sub_param_4', 'platform', 'original_url', 'keywords', 'Installs', 're-install',
                            're-open', 'Register', 'Add to Cart_app', 'Purchases_app', 'Revenue_app', 'Open']
+
+    apps_aggregated_dtypes = {
+        'view_type': pa.string(),
+        'date': pa.string(),
+        'agencypmd_af_prt': pa.string(),
+        'media_source_pid': pa.string(),
+        'campaign_name': pa.string(),
+        'adset_name': pa.string(),
+        'adgroup_name': pa.string(),
+        'os': pa.string(),
+        'conversion_type': pa.string(),
+        'installs': pa.string(),
+        'conversions': pa.string(),
+        'af_login_event_counter': pa.string(),
+        'af_login_unique_users': pa.string(),
+        'af_login_sales_in_krw': pa.string(),
+        'af_complete_registration_event_counter': pa.string(),
+        'af_complete_registration_unique_users': pa.string(),
+        'af_complete_registration_sales_in_krw': pa.string(),
+        'af_add_to_cart_event_counter': pa.string(),
+        'af_add_to_cart_unique_users': pa.string(),
+        'af_add_to_cart_sales_in_krw': pa.string(),
+        'af_purchase_event_counter': pa.string(),
+        'af_purchase_unique_users': pa.string(),
+        'af_purchase_sales_in_krw': pa.string()
+    }
+
+    index_columns = list(index_df[4:].columns)
 
     ### GA
     ga_dimension_cols = ['date','dimension50','sourceMedium', 'campaign', 'adContent', 'keyword', 'deviceCategory', 'operatingSystem', 'dataSource']
