@@ -46,7 +46,7 @@ def apps_log_data_prep():
     raw_data = raw_data.loc[raw_data['attributed_touch_type']!='impression']
 
     raw_data[['attributed_touch_time', 'install_time', 'event_time']] = raw_data[['attributed_touch_time', 'install_time', 'event_time']].apply(lambda x: pd.to_datetime(x))
-    raw_data = raw_data.sort_values('event_time')
+    raw_data = raw_data.sort_values(['install_time','event_time'])
     raw_data = raw_data.drop_duplicates(['appsflyer_id', 'event_name', 'event_time'])
 
     raw_data['date'] = raw_data['event_time'].dt.date
@@ -99,10 +99,15 @@ def get_apps_agg_data():
         df_list.append(df)
         date = date + datetime.timedelta(1)
 
-    total_df = pd.concat(df_list)
+    total_df = pd.concat(df_list, sort = False, ignore_index= True)
     total_df = total_df.loc[pd.to_datetime(total_df['date']).dt.month == to_date.month]
     total_df = total_df.loc[total_df["media_source_pid"].isin(ref.apps_info.agg_data_media_filter)]
-    total_df = total_df[ref.apps_info.agg_data_column_order]
+    total_df.loc[total_df['conversion_type'] == 're-engagement', 're-engagement'] = total_df['conversions']
+    total_df.loc[total_df['conversion_type'] == 're-attribution', 're-attribution'] = total_df['conversions']
+
+    total_df = total_df.rename(columns = ref.apps_info.apps_aggregated_rename_dict)
+    total_df[['Installs', 're-open', 're-install']] = total_df[['Installs', 're-open', 're-install']].fillna(0).astype('int')
+    total_df['Open'] = total_df['Installs'] + total_df['re-open'] + total_df['re-install']
     return total_df
 
 

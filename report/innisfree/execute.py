@@ -21,3 +21,7 @@ print('download successfully')
 ga_pivot_df = tracker_preprocess.ga_prep()
 ga_pivot_df.to_csv(dr.download_dir + f'/ga_pivot_{ref.report_date.yearmonth}.csv', index=False, encoding='utf-8-sig')
 print('download successfully')
+
+facebook_test = merging.data_merge_test()
+facebook_test.to_csv(dr.download_dir + f'/facebook_merge_test_{ref.report_date.yearmonth}.csv', index=False, encoding='utf-8-sig')
+print('download successfully')

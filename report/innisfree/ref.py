@@ -9,7 +9,7 @@ doc = spreadsheet.spread_document_read(
 info_df = spreadsheet.spread_sheet(doc, '매체 전처리', 0, 3).reset_index(drop=True)
 setting_df = spreadsheet.spread_sheet(doc, '매체 전처리', 0, 0).reset_index(drop=True)
 index_df = spreadsheet.spread_sheet(doc, '광고 인덱스').reset_index(drop=True)
-index_df = index_df.loc[index_df['매체'] != '', ['매체', '캠페인', '광고그룹', '소재', 'campaign_id', 'group_id']]
+index_df = index_df.loc[index_df['매체'] != '']
 
 
 class report_date :
@@ -61,41 +61,19 @@ class columns :
 
     apps_pivot_columns = ['date','partner', 'media_source', 'campaign', 'adset', 'ad',
                           'sub_param_1', 'sub_param_2', 'sub_param_3', 'sub_param_4', 'platform', 'original_url', 'keywords']
+    apps_index_columns = ['date', 'campaign', 'adset', 'ad']
+    apps_metric_columns = ['Installs', 're-install', 're-open', 'Register', 'Add to Cart_app', 'Purchases_app', 'Revenue_app', 'Open']
     apps_result_columns = ['date', 'partner', 'media_source', 'campaign', 'adset', 'ad', 'sub_param_1', 'sub_param_2',
                            'sub_param_3', 'sub_param_4', 'platform', 'original_url', 'keywords', 'Installs', 're-install',
                            're-open', 'Register', 'Add to Cart_app', 'Purchases_app', 'Revenue_app', 'Open']
 
-    apps_aggregated_dtypes = {
-        'view_type': pa.string(),
-        'date': pa.string(),
-        'agencypmd_af_prt': pa.string(),
-        'media_source_pid': pa.string(),
-        'campaign_name': pa.string(),
-        'adset_name': pa.string(),
-        'adgroup_name': pa.string(),
-        'os': pa.string(),
-        'conversion_type': pa.string(),
-        'installs': pa.string(),
-        'conversions': pa.string(),
-        'af_login_event_counter': pa.string(),
-        'af_login_unique_users': pa.string(),
-        'af_login_sales_in_krw': pa.string(),
-        'af_complete_registration_event_counter': pa.string(),
-        'af_complete_registration_unique_users': pa.string(),
-        'af_complete_registration_sales_in_krw': pa.string(),
-        'af_add_to_cart_event_counter': pa.string(),
-        'af_add_to_cart_unique_users': pa.string(),
-        'af_add_to_cart_sales_in_krw': pa.string(),
-        'af_purchase_event_counter': pa.string(),
-        'af_purchase_unique_users': pa.string(),
-        'af_purchase_sales_in_krw': pa.string()
-    }
-
-    index_columns = list(index_df[4:].columns)
+    index_columns = ['랜딩2', '캠페인 목표', 'OS', 'Part', 'Promotion', 'Promotion Name', '매체 구분자', '소재설명1', '소재설명2', '소재설명3',
+                     '품목', '구분', '랜딩', '전략', 'source', 'medium']
 
     ### GA
     ga_dimension_cols = ['date','dimension50','sourceMedium', 'campaign', 'adContent', 'keyword', 'deviceCategory', 'operatingSystem', 'dataSource']
     ga_metric_cols = ['sessions', 'bounces', 'sessionDuration', 'goal3Completions', 'goal1Completions', 'goal2Completions', 'pageviews', 'transactions', 'transactionRevenue']
+    ga_metric_cols_kor = ['세션','회원가입목표완료수','장바구니목표완료수','거래수','수익','이탈수','로그인목표완료수','페이지뷰','세션시간']
 
 item_list = ['read', 'prep', 'temp', 'dimension', 'metric']
 
@@ -121,6 +99,20 @@ class apps_info:
         'af_complete_registration' : 'Register',
         're-attribution' : 're-install',
         'af_purchase' : 'Purchases_app'
+    }
+
+    apps_aggregated_rename_dict = {
+        'media_source_pid': 'media_source',
+        'campaign_name': 'campaign',
+        'adset_name': 'adset',
+        'adgroup_name': 'ad',
+        'installs': 'Installs',
+        're-attribution': 're-install',
+        're-engagement' : 're-open',
+        'af_complete_registration_event_counter': 'Register',
+        'af_add_to_cart_event_counter': 'Add to Cart_app',
+        'af_purchase_event_counter': 'Purchases_app',
+        'af_purchase_sales_in_krw': 'Revenue_app'
     }
 
     ctit = 7
