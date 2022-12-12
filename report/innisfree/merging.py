@@ -50,7 +50,6 @@ def integrate_media_data():
     return total_df_pivot
 
 
-
 def index_mapping(df,data_type, data_source, right_on, index_source) -> pd.DataFrame:
     key_columns = ['캠페인', 'campaign_id', '광고그룹', 'group_id', 'ad']
     index_df = ref.index_df.loc[ref.index_df['매체'] == index_source][key_columns + ref.columns.index_columns]
@@ -98,6 +97,7 @@ def index_mapping(df,data_type, data_source, right_on, index_source) -> pd.DataF
     mapping_df['정합성 점검용 데이터 소스'] = data_type + ' / ' + str(data_source)
     return mapping_df
 
+
 def data_merge_test():
     index_source = 'FBIG'
 
@@ -135,69 +135,96 @@ def data_merge_test():
     return concat_data_pivot
 
 
-#
-#
-# def integrate_data():
-#     table = ref.info_df[['사용 여부', '매체']].iloc[1:]
-#     media_list = table.loc[table['사용 여부']=='TRUE', '매체'].to_list()
-#
-#     apps_pivot_df = tracker_preprocess.apps_log_data_prep()
-#     apps_aggregated_df = tracker_preprocess.get_apps_agg_data()
-#     ga_pivot_df = tracker_preprocess.ga_prep()
-#
-#     df_list = []
-#     media = 'facebook'
-#     for media in media_list:
-#         print(f"{media} merging")
-#
-#         if media == 'facebook':
-#             df = load.fb_prep()
-#             df = index_mapping(df, ['FBIG'])
-#             df['일자'][0]
-#
-#             facebook_apps_raw = apps_pivot_df.loc[apps_pivot_df['media_source']=='fbxig', ['media_source','date','campaign', 'adset', 'ad'] + ref.columns.apps_metric_columns]
-#             facebook_apps_agg_raw = apps_aggregated_df.loc[apps_aggregated_df['media_source'] == 'Facebook Ads', ['media_source','date','campaign', 'adset', 'ad'] + ref.columns.apps_metric_columns]
-#             facebook_apps_concat_raw = pd.concat([facebook_apps_raw, facebook_apps_agg_raw], ignore_index=True)
-#             facebook_apps_concat_raw['date'] = facebook_apps_concat_raw['date'].astype('str')
-#
-#
-#             df_merge_1 = apps_mapping(df, facebook_apps_concat_raw, ['fbxig', 'Facebook Ads'], ['일자', 'campaign_id', 'group_id', 'ad'], ['date', 'campaign', 'adset', 'ad'], 'outer')
-#
-#
-#
-#             df = apps_mapping(df, ['fbxig'], ['campaign_id', 'group_id', 'ad'], 'outer')
-#
-#         elif media == 'google':
-#             df = load.gg_prep()
-#         elif media == 'pmax':
-#             df = load.pmax_prep()
-#         elif media == 'kakaomoment':
-#             df = load.kkm_prep()
-#         elif media == 'naver_sa':
-#             df = load.nasa_prep()
-#         elif media == 'naver_bs':
-#             df = load.nabs_prep()
-#         elif media == 'ASA':
-#             df = load.asa_prep()
-#         elif media == 'criteo':
-#             df = load.criteo_prep()
-#         elif media == 'twitter':
-#             df = load.tw_prep()
-#         elif media == 'nosp':
-#             df = load.nosp_prep()
-#         elif media == 'remerge':
-#             df = load.remerge_prep()
-#         elif media == 'rtbhouse':
-#             df = load.rtb_prep()
-#         else:
-#             df = pd.DataFrame()
-#         df_list.append(df)
-#
-#     total_df = pd.concat(df_list, sort=False, ignore_index=True)
-#     total_df_pivot = total_df.pivot_table(index=ref.columns.dimension_cols + ref.columns.index_columns,
-#                                           values=ref.columns.metric_cols, aggfunc='sum').reset_index()
-#     total_df_pivot = total_df_pivot[ref.columns.dimension_cols + ref.columns.metric_cols]
-#
-#     total_df_pivot = total_df_pivot.loc[total_df_pivot[ref.columns.metric_cols].values.sum(axis = 1) > 0]
-#
-#     return total_df_pivot
+def data_merge(merging_info, media_df, apps_df, ga_df):
+    index_source = merging_info['index']
+
+    data_type = 'ga'
+    data_source = merging_info['ga'].split(',')
+    right_on = ['campaign_id', 'group_id', 'ad']
+    mapped_ga = index_mapping(ga_df, data_type, data_source, right_on, index_source)
+
+    data_type = 'media'
+    data_source = merging_info['매체통합raw'].split(',')
+    right_on = ['캠페인', '광고그룹', 'ad']
+    mapped_media = index_mapping(media_df, data_type, data_source, right_on, index_source)
+
+    data_type = 'apps'
+    data_source = merging_info['apps'].split(',')
+    right_on = ['campaign_id', 'group_id', 'ad']
+    mapped_apps = index_mapping(apps_df, data_type, data_source, right_on, index_source)
+
+    if index_source == 'FBIG':
+        df = tracker_preprocess.get_apps_agg_data()
+        data_type = 'apps'
+        data_source = merging_info['apps_agg'].split(',')
+        right_on = ['캠페인', '광고그룹', 'ad']
+        apps_agg = index_mapping(df, data_type, data_source, right_on, index_source)
+        mapped_apps = pd.concat([mapped_apps, apps_agg], sort=False, ignore_index=True)
+
+    concat_data = pd.concat([mapped_ga, mapped_media, mapped_apps], sort=False, ignore_index=True)
+
+    concat_pivot_index = ['정합성 점검용 데이터 소스'] \
+                         + ref.columns.dimension_cols + ['campaign_id', 'group_id'] + ref.columns.index_columns
+    concat_data[concat_pivot_index] = concat_data[concat_pivot_index].fillna('')
+    concat_data = concat_data.fillna(0)
+    concat_data_pivot = concat_data.pivot_table(index=concat_pivot_index, aggfunc='sum').reset_index()
+    return concat_data_pivot
+
+def integrate_data():
+    table = ref.info_df[['사용 여부', '매체']].iloc[1:]
+    media_list = table.loc[table['사용 여부']=='TRUE', '매체'].to_list()
+
+    apps_pivot_df = tracker_preprocess.apps_log_data_prep()
+    ga_pivot_df = tracker_preprocess.ga_prep()
+
+    df_list = []
+    for media in media_list:
+        print(f"{media} merging")
+        merging_info = ref.merging_df.loc[ref.merging_df['매체통합raw'] == media].to_dict('records')[0]
+        if media == 'facebook':
+            df = load.fb_prep()
+            df = data_merge(merging_info, df, apps_pivot_df, ga_pivot_df)
+        elif media == 'google':
+            df = load.gg_prep()
+            df = data_merge(merging_info, df, apps_pivot_df, ga_pivot_df)
+        elif media == 'pmax':
+            df = load.pmax_prep()
+            df = data_merge(merging_info, df, apps_pivot_df, ga_pivot_df)
+        elif media == 'kakaomoment':
+            df = load.kkm_prep()
+            df = data_merge(merging_info, df, apps_pivot_df, ga_pivot_df)
+        elif media == 'naver_sa':
+            df = load.nasa_prep()
+            df = data_merge(merging_info, df, apps_pivot_df, ga_pivot_df)
+        elif media == 'naver_bs':
+            df = load.nabs_prep()
+            df = data_merge(merging_info, df, apps_pivot_df, ga_pivot_df)
+        elif media == 'ASA':
+            df = load.asa_prep()
+            df = data_merge(merging_info, df, apps_pivot_df, ga_pivot_df)
+        elif media == 'criteo':
+            df = load.criteo_prep()
+            df = data_merge(merging_info, df, apps_pivot_df, ga_pivot_df)
+        elif media == 'twitter':
+            df = load.tw_prep()
+            df = data_merge(merging_info, df, apps_pivot_df, ga_pivot_df)
+        elif media == 'nosp':
+            df = load.nosp_prep()
+            df = data_merge(merging_info, df, apps_pivot_df, ga_pivot_df)
+        elif media == 'remerge':
+            df = load.remerge_prep()
+            df = data_merge(merging_info, df, apps_pivot_df, ga_pivot_df)
+        elif media == 'rtbhouse':
+            df = load.rtb_prep()
+            df = data_merge(merging_info, df, apps_pivot_df, ga_pivot_df)
+        else:
+            df = pd.DataFrame()
+            df = data_merge(merging_info, df, apps_pivot_df, ga_pivot_df)
+        df_list.append(df)
+
+    total_df = pd.concat(df_list, sort=False, ignore_index=True)
+    total_df = total_df.loc[total_df[ref.columns.metric_cols
+                                     + ref.columns.apps_metric_columns
+                                     + ref.columns.ga_metric_cols_kor].values.sum(axis = 1) > 0]
+
+    return total_df

@@ -10,6 +10,7 @@ info_df = spreadsheet.spread_sheet(doc, '매체 전처리', 0, 3).reset_index(dr
 setting_df = spreadsheet.spread_sheet(doc, '매체 전처리', 0, 0).reset_index(drop=True)
 index_df = spreadsheet.spread_sheet(doc, '광고 인덱스').reset_index(drop=True)
 index_df = index_df.loc[index_df['매체'] != '']
+merging_df = spreadsheet.spread_sheet(doc, '자동화 머징 정보', 0, 1).reset_index(drop=True)
 
 
 class report_date :
