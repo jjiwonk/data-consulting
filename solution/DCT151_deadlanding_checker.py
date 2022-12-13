@@ -120,4 +120,9 @@ def landing_check_solution_exec(doc, ADVERTISER):
 
 
 if __name__ == "__main__":
-    landing_check_solution_exec(doc, ADVERTISER)
+    try:
+        landing_check_solution_exec(doc, ADVERTISER)
+    except Exception as e:
+        f = open(dr.download_dir + '/error_log.txt', 'w')
+        f.write(f'error with {e}.')
+        f.close()
