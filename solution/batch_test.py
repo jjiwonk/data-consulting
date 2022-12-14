@@ -1,7 +1,4 @@
-import sys
-sys.path.append('home/ec2-user/data-consulting')
-
-from spreadsheet import spreadsheet
+import spreadsheet.ec2_spreadsheet as spreadsheet
 import os.path
 import pandas as pd
 import numpy as np
@@ -14,6 +11,9 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 import time
 start = time.time()
 
+doc = spreadsheet.spread_document_read('https://docs.google.com/spreadsheets/d/14i42NrpnA_9k8nCgyc4Y5KssLP8tOOXUyzYw0un7qXY/edit#gid=211027705')
+ADVERTISER = '무신사'
+result_dir = dr.ec2_dir
 
 def get_url_check_list(doc, ADVERTISER):
     url_check_list = spreadsheet.spread_sheet(doc, ADVERTISER).reset_index(drop=True)
