@@ -46,7 +46,7 @@ def link_validation_check(url_check_list, checker):
     #     print(f'install the chrome driver(ver: {chrome_ver})')
     #     auto.install(True)
     # driver = webdriver.Chrome(driver_path, options=options)
-    driver = webdriver.Chrome(executable_path=dr.ec2_dir + '/token/chromedriver', options=options)
+    driver = webdriver.Chrome(executable_path=dr.ec2_dir + '/token/chromedriver.exe', options=options)
     # driver = webdriver.Chrome(ChromeDriverManager().install(), options=options)
     recheck_list = pd.DataFrame(columns=['id', 'url'])
     for index, row in url_check_list.iterrows():
@@ -64,7 +64,7 @@ def link_validation_check(url_check_list, checker):
                 print(f'{e}\n url 문제 발생:', url)
                 recheck_list = recheck_list.append(row)
                 driver.quit()
-                driver = webdriver.Chrome(driver_path, options=options)
+                driver = webdriver.Chrome(executable_path=dr.ec2_dir + '/token/chromedriver.exe', options=options)
                 continue
             if 'Alert' in str(e):
                 row['checker'] = 'alert'
