@@ -1,1 +1,1 @@
-ec2_dir = 'home/ec2-user'
+ec2_dir = '/home/ec2-user'
