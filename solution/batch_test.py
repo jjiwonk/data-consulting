@@ -1,3 +1,7 @@
+import sys
+sys.path.append('home/ec2-user/data-consulting')
+
+import setting.ec2_directory as dr
 import spreadsheet.ec2_spreadsheet as spreadsheet
 import os.path
 import pandas as pd
