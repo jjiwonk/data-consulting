@@ -11,6 +11,7 @@ result_dir = dr.ec2_dir
 
 if __name__ == "__main__":
     try:
+        print('start')
         batch_test.landing_check_solution_exec(doc, ADVERTISER)
     except Exception as e:
         f = open(dr.ec2_dir + '/error_log.txt', 'w')
