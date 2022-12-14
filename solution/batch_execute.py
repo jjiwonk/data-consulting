@@ -1,5 +1,5 @@
 import sys
-sys.path.append('home/ec2-user/data-consulting')
+sys.path.append('/home/ec2-user/data-consulting')
 
 import batch_test
 import setting.ec2_directory as dr
