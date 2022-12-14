@@ -38,15 +38,15 @@ def link_validation_check(url_check_list, checker):
     options.add_argument("disable-gpu")
     options.add_argument("user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.100 Safari/537.36")
 
-    chrome_ver = auto.get_chrome_version().split('.')[0]
-    driver_path = f'./{chrome_ver}/chromedriver.exe'
-    if os.path.exists(driver_path):
-        print(f'chrome driver is installed: {driver_path}')
-    else:
-        print(f'install the chrome driver(ver: {chrome_ver})')
-        auto.install(True)
-    driver = webdriver.Chrome(driver_path, options=options)
-    # driver = webdriver.Chrome(executable_path=dr.ec2_dir + '/token/chromedriver', options=options)
+    # chrome_ver = auto.get_chrome_version().split('.')[0]
+    # driver_path = f'./{chrome_ver}/chromedriver.exe'
+    # if os.path.exists(driver_path):
+    #     print(f'chrome driver is installed: {driver_path}')
+    # else:
+    #     print(f'install the chrome driver(ver: {chrome_ver})')
+    #     auto.install(True)
+    # driver = webdriver.Chrome(driver_path, options=options)
+    driver = webdriver.Chrome(executable_path=dr.ec2_dir + '/token/chromedriver', options=options)
     # driver = webdriver.Chrome(ChromeDriverManager().install(), options=options)
     recheck_list = pd.DataFrame(columns=['id', 'url'])
     for index, row in url_check_list.iterrows():
