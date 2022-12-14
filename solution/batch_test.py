@@ -1,9 +1,7 @@
 import sys
 sys.path.append('home/ec2-user/data-consulting')
 
-import setting.ec2_directory as dr
 from spreadsheet import spreadsheet
-
 import os.path
 import pandas as pd
 import numpy as np
@@ -15,11 +13,6 @@ import warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
 import time
 start = time.time()
-
-
-doc = spreadsheet.spread_document_read('https://docs.google.com/spreadsheets/d/14i42NrpnA_9k8nCgyc4Y5KssLP8tOOXUyzYw0un7qXY/edit#gid=211027705')
-ADVERTISER = '무신사'
-result_dir = dr.ec2_dir
 
 
 def get_url_check_list(doc, ADVERTISER):
@@ -131,10 +124,3 @@ def landing_check_solution_exec(doc, ADVERTISER):
     print('time :', time.time() - start)
 
 
-if __name__ == "__main__":
-    try:
-        landing_check_solution_exec(doc, ADVERTISER)
-    except Exception as e:
-        f = open(dr.ec2_dir + '/error_log.txt', 'w')
-        f.write(f'error with {e}.')
-        f.close()
