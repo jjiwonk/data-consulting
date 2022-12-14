@@ -58,9 +58,9 @@ def calc_cost(df, media_name):
 
     # 만약에 대시보드에 구글은 100만 나눠서, 애플은 1200 곱해서 보여주고 싶다고 하면 아래 코드 사용
 
-    if media_name in ['google', 'pmax'] :
+    if media_name in ['Google_SA', 'AC_Install', 'Google_PMAX'] :
         df['cost(대시보드)'] = df['cost(대시보드)'] / 1000000
-    elif media_name == 'ASA' :
+    elif media_name == 'Apple_SA' :
         df['cost(대시보드)'] = df['cost(대시보드)'] * 1200
 
     return df
@@ -71,32 +71,41 @@ def get_basic_data(media_name) :
     return df
 
 def asa_prep() -> pd.DataFrame:
-    df = get_basic_data('ASA')
+    df = get_basic_data('Apple_SA')
     return df
 
 def criteo_prep() -> pd.DataFrame:
-    df = get_basic_data('criteo')
+    df = get_basic_data('Criteo')
     return df
 
 def fb_prep() -> pd.DataFrame:
-    df = get_basic_data('facebook')
+    df = get_basic_data('FBIG')
     return df
 
-def gg_prep() -> pd.DataFrame:
-    df = get_basic_data('google')
+def gg_sa_prep() -> pd.DataFrame:
+    df = get_basic_data('Google_SA')
+    return df
+def gg_ac_prep() -> pd.DataFrame:
+    df = get_basic_data('AC_Install')
+    df = df.loc[df['캠페인'] == 'AOS_Install_2022']
     return df
 def pmax_prep() -> pd.DataFrame:
-    df = get_basic_data('pmax')
+    df = get_basic_data('Google_PMAX')
     df = df.loc[df['캠페인']=='PMax: Madit_Google_SmartShopping']
     return df
 
 def kkm_prep() -> pd.DataFrame:
-    df = get_basic_data('kakaomoment')
+    df = get_basic_data('Kakao_Moment')
     df = df.loc[df['캠페인'].str.contains('madit')]
+    df = df.loc[df['캠페인'].isin(['madit_display_conversion', 'madit_display_prospecting'])]
+    return df
+def kkbz_prep() -> pd.DataFrame:
+    df = get_basic_data('Kakao_Bizboard')
+    df = df.loc[df['캠페인'].str.contains('madit')]
+    df = df.loc[df['캠페인'].isin(['madit_bizboard_conversion', 'madit_bizboard_prospecting'])]
     return df
 def nasa_prep() -> pd.DataFrame:
-    df = get_basic_data('naver_sa')
-
+    df = get_basic_data('Naver_SA')
     # naver_sa 데이터 선별
     df['캠페인타입']
     df = df.loc[df['캠페인타입'].isin([1.0, 2.0])]
@@ -108,7 +117,7 @@ def nasa_prep() -> pd.DataFrame:
     return df
 
 def nabs_prep() -> pd.DataFrame:
-    df = get_basic_data('naver_bs')
+    df = get_basic_data('Naver_BSA')
 
     # naver_bs 데이터 선별
     df = df.loc[df['캠페인타입'].isin([0.0, 4.0])]
@@ -119,13 +128,13 @@ def nabs_prep() -> pd.DataFrame:
         pd.to_numeric)
     return df
 def nosp_prep() -> pd.DataFrame:
-    df = get_basic_data('nosp')
+    df = get_basic_data('Naver_NOSP')
     return df
 def remerge_prep() -> pd.DataFrame:
-    df = get_basic_data('remerge')
+    df = get_basic_data('Remerge')
     return df
 def rtb_prep() -> pd.DataFrame:
-    df = get_basic_data('rtbhouse')
+    df = get_basic_data('RTBhouse')
     return df
 def tw_prep() -> pd.DataFrame:
     df = get_basic_data('twitter')
