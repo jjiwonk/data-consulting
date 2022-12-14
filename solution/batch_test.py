@@ -20,6 +20,8 @@ ADVERTISER = '무신사'
 result_dir = dr.ec2_dir
 
 def get_url_check_list(doc, ADVERTISER):
+    print('get url check list')
+
     url_check_list = spreadsheet.spread_sheet(doc, ADVERTISER).reset_index(drop=True)
     url_check_list = url_check_list[['id', 'url']].replace('', np.nan).dropna().reset_index(drop=True)
 
@@ -27,6 +29,8 @@ def get_url_check_list(doc, ADVERTISER):
 
 
 def link_validation_check(url_check_list, checker):
+    print('link validation check')
+
     result_df = pd.DataFrame(columns=['id', 'url', 'checker'])
     options = webdriver.ChromeOptions()
     options.add_argument('headless')
