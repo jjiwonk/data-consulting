@@ -48,13 +48,13 @@ def calc_cost(df, media_name):
     df['cost(정산기준)'] = df['cost(대시보드)'].copy()
 
     for div in div_list :
-        df['cost(정산기준)'] = df['cost(정산기준)'] / div
+        df['cost(정산기준)'] = df['cost(정산기준)'].astype(float) / div
 
     mul_list = info['prep']['곱하기'].split('/')
     mul_list = [float(mul) for mul in mul_list]
 
     for mul in mul_list :
-        df['cost(정산기준)'] = df['cost(정산기준)'] * mul
+        df['cost(정산기준)'] = df['cost(정산기준)'].astype(float) * mul
 
     # 만약에 대시보드에 구글은 100만 나눠서, 애플은 1200 곱해서 보여주고 싶다고 하면 아래 코드 사용
 
