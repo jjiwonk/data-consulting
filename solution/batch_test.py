@@ -64,7 +64,7 @@ def link_validation_check(url_check_list, checker):
                 print(f'{e}\n url 문제 발생:', url)
                 recheck_list = recheck_list.append(row)
                 driver.quit()
-                driver = webdriver.Chrome(executable_path=dr.ec2_dir + '/token/chromedriver.exe', options=options)
+                driver = webdriver.Chrome(executable_path=dr.ec2_dir + '/token/chromedriver', options=options)
                 continue
             if 'Alert' in str(e):
                 row['checker'] = 'alert'
