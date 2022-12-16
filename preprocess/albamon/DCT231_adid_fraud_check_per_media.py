@@ -8,7 +8,7 @@ import setting.report_date as rdate
 import warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
 
-raw_dir = dr.dropbox_dir + '/광고사업부/4. 광고주/알바몬/4-1. 광고주 제공자료/애드저스트 RAW/10월/1001-1031'
+raw_dir = dr.dropbox_dir + '/광고사업부/4. 광고주/알바몬/4-1. 광고주 제공자료/애드저스트 RAW/프로드비율_67810월 가공요청 raw_221207/10월'
 # raw_dir = 'D:/매드업/데이터분석/알바몬'
 result_dir = dr.download_dir
 
@@ -35,15 +35,20 @@ def get_raw_data(raw_dir):
     }
     index_columns = list(dtypes.keys())
     convert_ops = pacsv.ConvertOptions(column_types=dtypes, include_columns=index_columns)
-    ro = pacsv.ReadOptions(block_size=10 << 20, encoding='utf-8')
     table_list = []
 
     files = os.listdir(raw_dir)
     files = [f for f in files if '.csv' in f]
 
     for f in files:
-        temp = pacsv.read_csv(raw_dir + '/' + f, convert_options=convert_ops, read_options=ro)
+        try:
+            ro = pacsv.ReadOptions(block_size=10 << 20, encoding='cp949')
+            temp = pacsv.read_csv(raw_dir + '/' + f, convert_options=convert_ops, read_options=ro)
+        except:
+            ro = pacsv.ReadOptions(block_size=10 << 20, encoding='utf-8-sig')
+            temp = pacsv.read_csv(raw_dir + '/' + f, convert_options=convert_ops, read_options=ro)
         table_list.append(temp)
+        print(f'{f} is loaded.')
     print('Raw data read successfully.')
 
     raw_data = pa.concat_tables(table_list)
@@ -224,11 +229,10 @@ def deduction_calculate(raw_data):
 
 
 raw_data = get_raw_data(raw_dir)
-raw_data = raw_data.loc[(raw_data['created_at'] >= '2022-10-01')&(raw_data['created_at'] < '2022-11-01')]
+# raw_data = raw_data.loc[(raw_data['created_at'] >= '2022-10-01')&(raw_data['created_at'] < '2022-11-01')]
 
 fraud_checked_df = fraud_calculate(raw_data)
 deduction_checked_df = deduction_calculate(raw_data)
 merged_df = pd.merge(fraud_checked_df, deduction_checked_df, how='outer', on=[('network_name', ''), ('adid', '')])
 
-merged_df.loc[0:800000,:].to_excel(dr.download_dir + '/알바몬_미디어별_중복전환_ADID(1).xlsx', encoding='utf-8')
-merged_df.loc[800000:,:].to_excel(dr.download_dir + '/알바몬_미디어별_중복전환_ADID(2).xlsx', encoding='utf-8')
+merged_df.to_excel(dr.download_dir + '/알바몬_미디어별_중복전환_ADID_10월.xlsx', encoding='utf-8-sig')

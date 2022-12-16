@@ -21,14 +21,15 @@ open_app = file_read('app')
 def app_open_prep(df):
     df['Event Datetime'] = pd.to_datetime(df['Event Datetime'])
     df['Touchpoint Datetime'] = pd.to_datetime(df['Touchpoint Datetime'])
-    df = df.loc[(df['Event Datetime'].dt.date >= datetime.date(2022, 11, 1))]
+    df = df.loc[(df['Event Datetime'].dt.date >= datetime.date(2022, 11, 1))&(df['Event Datetime'].dt.date <= datetime.date(2022, 11, 30))]
     df = df.loc[(df['Event Datetime'] - df['Touchpoint Datetime']) < datetime.timedelta(minutes=30)]
-    df = df.sort_values(by=['Event Datetime'] ,ascending= True)
-    df1 = df.loc[df['Event Category'] == 'Open (App)']
-    df2 = df.loc[df['Event Category'] == 'Deeplink Open (App)']
-    df1.drop_duplicates(subset = 'Airbridge Device ID', keep='first', inplace = True)
-    df2.drop_duplicates(subset = 'Airbridge Device ID', keep='first', inplace = True)
-    df = pd.concat([df1,df2])
+    df = df.sort_values(by=['Airbridge Device ID', 'Event Datetime'], ascending=True)
+    df['ET'] = df['Event Datetime'].shift(1)
+    df['ETET'] = df['Event Datetime'] - df['ET']
+    df['compareid'] = df['Airbridge Device ID'].shift(1)
+    df['dup'] = '-'
+    df.loc[(df['Airbridge Device ID'] == df['compareid']) & (df['ETET'] < datetime.timedelta(minutes=30)), 'dup'] = 'yes'
+    df = df.loc[df['dup'] != 'yes']
     df = df.loc[df['Is View-through'] == False]
     return df
 
@@ -36,9 +37,15 @@ open_app2 = app_open_prep(open_app)
 
 def web_open_prep(df):
     df['Event Datetime'] = pd.to_datetime(df['Event Datetime'])
-    df = df.loc[(df['Event Datetime'].dt.date >= datetime.date(2022, 11, 1))]
-    df = df.sort_values(by=['Event Datetime'] ,ascending= True)
-    df.drop_duplicates(subset='Cookie ID', keep='first', inplace=True)
+    df = df.loc[df['Event Datetime'].dt.date >= datetime.date(2022, 11, 1)]
+    df = df.loc[df['Event Datetime'].dt.date <= datetime.date(2022, 11, 30)]
+    df = df.sort_values(by=['Cookie ID', 'Event Datetime'], ascending=True)
+    df['ET'] = df['Event Datetime'].shift(1)
+    df['ETET'] = df['Event Datetime'] - df['ET']
+    df['compareid'] = df['Cookie ID'].shift(1)
+    df['dup'] = '-'
+    df.loc[(df['Cookie ID'] == df['compareid']) & (df['ETET'] < datetime.timedelta(minutes=30)), 'dup'] = 'yes'
+    df = df.loc[df['dup'] != 'yes']
     return df
 
 open_web2 = web_open_prep(open_web)
@@ -55,5 +62,4 @@ app_pivot[['Deeplink Open (App)', 'Open (App)']] = app_pivot[['Deeplink Open (Ap
 web_pivot = data_pivot(open_web2)
 open_pivot = pd.merge(app_pivot,web_pivot, how = 'outer', on = 'Channel').fillna(0)
 open_pivot.to_csv(dr.download_dir +'/GSSHOP_open_data.csv', index = False)
-
 

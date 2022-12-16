@@ -1,14 +1,10 @@
-#!pip install selenium
-#!pip install datetime
-#!pip install warnings
-# !pip install webdriver_manager
-
 import setting.directory as dr
 from spreadsheet import spreadsheet
 
 import pandas as pd
 import numpy as np
 from selenium import webdriver
+from webdriver_manager.chrome import ChromeDriverManager
 from pytz import timezone
 import datetime
 import warnings
@@ -37,7 +33,8 @@ def link_validation_check(url_check_list, checker):
     options.add_argument("disable-gpu")
     options.add_argument("user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.100 Safari/537.36")
 
-    driver = webdriver.Chrome(executable_path=dr.dropbox_dir + '/광고사업부/데이터컨설팅/token/chromedriver', options=options)
+    # driver = webdriver.Chrome(executable_path=dr.dropbox_dir + '/광고사업부/데이터컨설팅/token/chromedriver', options=options)
+    driver = webdriver.Chrome(ChromeDriverManager().install(), options=options)
     recheck_list = pd.DataFrame(columns=['id', 'url'])
     for index, row in url_check_list.iterrows():
         url = row['url']
@@ -122,4 +119,10 @@ def landing_check_solution_exec(doc, ADVERTISER):
     print('time :', time.time() - start)
 
 
-landing_check_solution_exec(doc, ADVERTISER)
+if __name__ == "__main__":
+    try:
+        landing_check_solution_exec(doc, ADVERTISER)
+    except Exception as e:
+        f = open(dr.download_dir + '/error_log.txt', 'w')
+        f.write(f'error with {e}.')
+        f.close()
