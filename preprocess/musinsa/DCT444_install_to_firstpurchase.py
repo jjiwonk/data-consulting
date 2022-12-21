@@ -88,7 +88,7 @@ organic_df = organic_data_prep()
 df = pd.concat([paid_df,organic_df])
 
 install_df = df.loc[df['event_name'] == 'install']
-install_df = install_df.loc[install_df['media_source'].isin(['googleadwords_int' , 'Facebook Ads', 'kakao_banner', 'facebook_network', 'adisonofferwall_int', 'adisonofferwall_int'])]
+install_df = install_df.loc[install_df['media_source'].isin(['googleadwords_int' , 'Facebook Ads', 'kakao_banner', 'facebook_network', 'adisonofferwall_int', 'adisonofferwall_int','organic'])]
 
 first_purchase = df.loc[df['event_name'].isin(['af_purchase','first_purchase'])]
 first_purchase = first_purchase.sort_values( by= 'event_time' )
@@ -106,6 +106,7 @@ df.to_csv(dr.download_dir+'/무신사_install_to_firstpurchase.csv', index = Fal
 #피벗
 
 df['day'] = df['ITET'].dt.days
+df = df.loc[df['day'] >= 0]
 pivot2 = df.pivot_table(index = 'media_source', columns= 'platform' , values= 'day', aggfunc = ['min','mean','median','max']).reset_index()
 pivot2.to_csv(dr.download_dir+'/무신사_install_to_firstpurchase_피벗2.csv', index = False)
 
@@ -116,11 +117,11 @@ def day (x):
     if x < 1:
         return '~Day 1'
     elif 1<= x < 7:
-        return 'Day 1~7'
+        return 'Day 1~6'
     elif 7<= x < 14:
-        return 'Day 7~14'
+        return 'Day 7~13'
     elif 14<= x < 30:
-        return 'Day 14~30'
+        return 'Day 14~29'
     else :
         return 'over Day 30'
 
@@ -128,11 +129,6 @@ df['day'] = df.apply(lambda x : day(x['day']),axis =1)
 
 pivot1 = df.pivot_table(index = 'media_source', columns= 'day' , values= 'Cnt', aggfunc = 'sum').reset_index()
 pivot1.to_csv(dr.download_dir+'/무신사_install_to_firstpurchase_피벗.csv', index = False)
-
-
-
-
-
 
 
 
