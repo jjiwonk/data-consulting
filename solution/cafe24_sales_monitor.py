@@ -273,7 +273,7 @@ class Cafe24SalesMonitor():
 
                 sheet = gss_client.get_work_sheet(spreadsheet_url, raw_sheet_name)
                 sheet_data: List[GSS_ROW] = gss_client.get_all_rows(sheet)
-                last_row = max(len(sheet_data), num_sales)
+                last_row = max(len(sheet_data), num_sales) + 1
 
                 # raw 매출 데이터 업데이트
                 update_cell_list = []
@@ -365,7 +365,7 @@ if __name__ == "__main__":
         spreadsheet_url="https://docs.google.com/spreadsheets/d/1wiZwTa0fuRyYe_y9ff1yrgJVVX6TtjiMXGTtomXC8_Y/edit#gid=0",
         raw_sheet_name="RD",
         sales_sheet_name="Summary",
-        n_products="10"
+        # n_products="10"
     )
     test_attr = dict(
         schedule_time="2022-09-30 11:00:00", owner_id="bb", product_id="bb"
