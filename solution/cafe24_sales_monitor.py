@@ -335,44 +335,20 @@ class Cafe24SalesMonitor():
             driver.quit()
             logging.info("크롬 브라우저 종료")
 
-        return "Process end."
-        # if slack_mention_id:
-        #     slack_msg = slack_mention_id + "\n" + slack_msg
-        # response = requests.post(slack_webhook_url, json={"text": slack_msg})
-        #
-        # if response.status_code == 200:
-        #     return "Cafe24SalesMonitor Job complete."
-        #     # return {
-        #     #     ResultKey.CODE.value: ResultCode.SUCCESS,
-        #     #     ResultKey.MSG.value: "Cafe24SalesMonitor Job complete.",
-        #     # }
-        # else:
-        #     return "Cafe24SalesMonitor Job FAILED."
-        #     # return {
-        #     #     ResultKey.CODE.value: ResultCode.ERROR,
-        #     #     ResultKey.MSG.value: "Cafe24SalesMonitor Job FAILED.",
-        #     # }
+        # return "Process end."
+        if slack_mention_id:
+            slack_msg = slack_mention_id + "\n" + slack_msg
+        response = requests.post(slack_webhook_url, json={"text": slack_msg})
 
-
-if __name__ == "__main__":
-    test_set = dict(
-        cafe24_id="latib",
-        cafe24_pw="fkxlqm2022*!",
-        store_name="latib",
-        # monitor_detail='false',
-        # slack_webhook_url="https://hooks.slack.com/services/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",
-        # slack_mention_id="UN9Q07FQB",
-        spreadsheet_url="https://docs.google.com/spreadsheets/d/1wiZwTa0fuRyYe_y9ff1yrgJVVX6TtjiMXGTtomXC8_Y/edit#gid=0",
-        raw_sheet_name="RD",
-        sales_sheet_name="Summary",
-        # n_products="10"
-    )
-    test_attr = dict(
-        schedule_time="2022-09-30 11:00:00", owner_id="bb", product_id="bb"
-    )
-    Key.USE_HEADLESS = False
-    # from madup_argo.core.util.log import change_level_info
-
-    # change_level_info()
-    worker = Cafe24SalesMonitor(test_attr, test_set)
-    print(worker.do_work(test_attr, test_set))
+        if response.status_code == 200:
+            return "Cafe24SalesMonitor Job complete."
+            # return {
+            #     ResultKey.CODE.value: ResultCode.SUCCESS,
+            #     ResultKey.MSG.value: "Cafe24SalesMonitor Job complete.",
+            # }
+        else:
+            return "Cafe24SalesMonitor Job FAILED."
+            # return {
+            #     ResultKey.CODE.value: ResultCode.ERROR,
+            #     ResultKey.MSG.value: "Cafe24SalesMonitor Job FAILED.",
+            # }
