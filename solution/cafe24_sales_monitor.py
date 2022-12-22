@@ -18,6 +18,7 @@ from selenium.common.exceptions import NoAlertPresentException, ElementClickInte
 
 from utils.selenium_util import get_chromedriver, click_and_find_downloaded_filename
 from utils.path_util import get_tmp_path
+import utils.os_util as os_util
 # from madup_argo.mgmt.abstract_worker import AlbamonWorker
 from selenium.common.exceptions import StaleElementReferenceException, TimeoutException
 from selenium.webdriver.support.ui import WebDriverWait
@@ -87,7 +88,10 @@ class Cafe24SalesMonitor:
         os.makedirs(Key.tmp_path, exist_ok=True)
 
         # 크롬 브라우저 생성
-        download_dir = Key.tmp_path.replace('/', '\\')
+        if os_util.is_windows_os():
+            download_dir = Key.tmp_path.replace('/', '\\')
+        else:
+            download_dir = Key.tmp_path
         driver = get_chromedriver(headless=Key.USE_HEADLESS, download_dir=download_dir)
 
         slack_msg = f"*{store_name} cafe24 매출 모니터링*\n{schedule_date} {schedule_time}\n\n"
