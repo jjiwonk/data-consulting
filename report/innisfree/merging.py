@@ -246,6 +246,7 @@ def integrate_data():
         df_list.append(df)
 
     total_df = pd.concat(df_list, sort=False, ignore_index=True)
+    total_df = total_df.fillna(0)
     total_df = total_df.loc[total_df[ref.columns.metric_cols
                                      + ref.columns.apps_metric_columns
                                      + ref.columns.ga_metric_cols_kor].values.sum(axis = 1) > 0]
