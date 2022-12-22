@@ -1,7 +1,9 @@
+import logging
 import os
 import time
 
 import gspread
+import typing
 from gspread.utils import finditem
 from oauth2client.service_account import ServiceAccountCredentials
 import pandas as pd
@@ -13,6 +15,7 @@ from utils.s3 import download_file
 
 RETRY_CNT = 5
 WAITING_TIME = 15
+GSS_ROW = typing.Dict[str, gspread.Cell]
 
 
 class WorkSheet(gspread.worksheet.Worksheet):
@@ -82,3 +85,25 @@ class GoogleDrive:
                     continue
                 raise e
         return work_sheet
+
+    def get_all_rows(self, sheet: gspread.Worksheet, column_list: list = None, header_idx=0) -> typing.List[GSS_ROW]:
+        result_data = []
+        row_idx = 0
+        skip_rows = header_idx + 1
+        for row in sheet.get_all_values():
+            row_idx += 1
+            if skip_rows > 0:
+                if skip_rows == 1 and not column_list:
+                    column_list = row
+                skip_rows -= 1
+                continue
+
+            dict_row = dict()
+            for col_idx, cell_value in enumerate(row):
+                if col_idx >= len(column_list):
+                    if cell_value:
+                        logging.warning(f"Undefined value[{cell_value}] row[{row_idx}] col[{col_idx}]")
+                else:
+                    dict_row[column_list[col_idx]] = gspread.Cell(row_idx, col_idx + 1, cell_value)
+            result_data.append(dict_row)
+        return result_data
