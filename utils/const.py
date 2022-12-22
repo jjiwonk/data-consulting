@@ -1,0 +1,7 @@
+EMPTY_STRING = ""
+
+DEFAULT_S3_PRIVATE_BUCKET = "data-consulting-private"
+DEFAULT_S3_PUBLIC_BUCKET = "data-consulting-public"
+
+DEFAULT_SPREAD_SHEET_CREDENTIAL_FILE_PATH = "token/madup-355605-cd37b0ac201f.json"
+DEFAULT_SPREAD_SHEET_CREDENTIAL_FILE_NAME = "madup-355605-cd37b0ac201f.json"
