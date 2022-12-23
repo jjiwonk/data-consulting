@@ -13,7 +13,7 @@ if __name__ == "__main__":
         # monitor_detail='false',
         slack_webhook_url=WEBHOOK_URL['bb_latib_매출_모니터링'],
         # slack_mention_id="UN9Q07FQB",
-        spreadsheet_url="https://docs.google.com/spreadsheets/d/1wiZwTa0fuRyYe_y9ff1yrgJVVX6TtjiMXGTtomXC8_Y/edit#gid=0",
+        spreadsheet_url="https://docs.google.com/spreadsheets/d/1I1J4LStGRKyT_TUE-cFXon9DZwt4kYg_V69orgRcSPI/edit#gid=0",
         raw_sheet_name="RD",
         sales_sheet_name="Summary",
         # n_products="10"
