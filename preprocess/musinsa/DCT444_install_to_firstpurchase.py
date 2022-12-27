@@ -13,6 +13,7 @@ def paid_data_prep():
         'attributed_touch_time': pa.string(),
         'install_time': pa.string(),
         'media_source': pa.string(),
+        'campaign': pa.string(),
         'event_name': pa.string(),
         'appsflyer_id': pa.string(),
         'platform': pa.string()}
@@ -50,6 +51,7 @@ def organic_data_prep():
         'Event Time': pa.string(),
         'Event Name': pa.string(),
         'Media Source': pa.string(),
+        'Campaign': pa.string(),
         'AppsFlyer ID': pa.string(),
         'Platform': pa.string()}
     index_columns = list(dtypes.keys())
@@ -88,7 +90,8 @@ organic_df = organic_data_prep()
 df = pd.concat([paid_df,organic_df])
 
 install_df = df.loc[df['event_name'] == 'install']
-install_df = install_df.loc[install_df['media_source'].isin(['googleadwords_int' , 'Facebook Ads', 'kakao_banner', 'facebook_network', 'adisonofferwall_int', 'adisonofferwall_int','organic'])]
+#install_df = install_df.loc[install_df['media_source'].isin(['googleadwords_int' , 'Facebook Ads', 'kakao_banner', 'facebook_network', 'adisonofferwall_int', 'adisonofferwall_int','organic'])]
+install_df = install_df.loc[install_df['media_source'].isin(['kakao_banner'])]
 
 first_purchase = df.loc[df['event_name'].isin(['af_purchase','first_purchase'])]
 first_purchase = first_purchase.sort_values( by= 'event_time' )
@@ -107,7 +110,7 @@ df.to_csv(dr.download_dir+'/무신사_install_to_firstpurchase.csv', index = Fal
 
 df['day'] = df['ITET'].dt.days
 df = df.loc[df['day'] >= 0]
-pivot2 = df.pivot_table(index = 'media_source', columns= 'platform' , values= 'day', aggfunc = ['min','mean','median','max']).reset_index()
+pivot2 = df.pivot_table(index = 'campaign', columns= 'platform' , values= 'day', aggfunc = ['min','mean','median','max']).reset_index()
 pivot2.to_csv(dr.download_dir+'/무신사_install_to_firstpurchase_피벗2.csv', index = False)
 
 #비중 구하기
@@ -127,7 +130,7 @@ def day (x):
 
 df['day'] = df.apply(lambda x : day(x['day']),axis =1)
 
-pivot1 = df.pivot_table(index = 'media_source', columns= 'day' , values= 'Cnt', aggfunc = 'sum').reset_index()
+pivot1 = df.pivot_table(index = 'campaign', columns= 'day' , values= 'Cnt', aggfunc = 'sum').reset_index().fillna(0)
 pivot1.to_csv(dr.download_dir+'/무신사_install_to_firstpurchase_피벗.csv', index = False)
 
 
