@@ -18,6 +18,7 @@ from selenium.common.exceptions import NoAlertPresentException, ElementClickInte
 
 from utils.selenium_util import get_chromedriver, click_and_find_downloaded_filename
 from utils.path_util import get_tmp_path
+import utils.os_util as os_util
 # from madup_argo.mgmt.abstract_worker import AlbamonWorker
 from selenium.common.exceptions import StaleElementReferenceException, TimeoutException
 from selenium.webdriver.support.ui import WebDriverWait
@@ -57,7 +58,7 @@ def wait_for_element(driver, css_selector, by=By.CSS_SELECTOR):
         return elements
 
 
-class Cafe24SalesMonitor():
+class Cafe24SalesMonitor:
     def __init__(self, header, body):
         logging.info(f"input job_attr[{header}]")
         logging.info(f"input job_info[{body}]")
@@ -87,7 +88,10 @@ class Cafe24SalesMonitor():
         os.makedirs(Key.tmp_path, exist_ok=True)
 
         # 크롬 브라우저 생성
-        download_dir = Key.tmp_path.replace('/', '\\')
+        if os_util.is_windows_os():
+            download_dir = Key.tmp_path.replace('/', '\\')
+        else:
+            download_dir = Key.tmp_path
         driver = get_chromedriver(headless=Key.USE_HEADLESS, download_dir=download_dir)
 
         slack_msg = f"*{store_name} cafe24 매출 모니터링*\n{schedule_date} {schedule_time}\n\n"
@@ -98,9 +102,9 @@ class Cafe24SalesMonitor():
             driver.implicitly_wait(3)
             logging.info(f"로그인페이지 접속: {Key.LOGIN_URL}")
 
-            driver.find_element_by_xpath("//input[@placeholder='아이디를 입력해 주세요.']").send_keys(cafe24_id)
-            driver.find_element_by_xpath("//input[@placeholder='비밀번호를 입력해 주세요.']").send_keys(cafe24_pw)
-            driver.find_element_by_xpath("//input[@placeholder='비밀번호를 입력해 주세요.']").send_keys(Keys.ENTER)
+            driver.find_element(By.XPATH, "//input[@placeholder='아이디를 입력해 주세요.']").send_keys(cafe24_id)
+            driver.find_element(By.XPATH, "//input[@placeholder='비밀번호를 입력해 주세요.']").send_keys(cafe24_pw)
+            driver.find_element(By.XPATH, "//input[@placeholder='비밀번호를 입력해 주세요.']").send_keys(Keys.ENTER)
             driver.implicitly_wait(3)
             logging.info("로그인 완료")
 
@@ -108,7 +112,7 @@ class Cafe24SalesMonitor():
                 sales_manage_tab = wait_for_element(driver, ".link.order")
                 sales_manage_tab.click()
             except ElementClickInterceptedException:
-                driver.find_element_by_css_selector(".btnClose.eClose").click()
+                driver.find_element(By.CSS_SELECTOR, ".btnClose.eClose").click()
                 sales_manage_tab = wait_for_element(driver, ".link.order")
                 sales_manage_tab.click()
 
@@ -161,22 +165,22 @@ class Cafe24SalesMonitor():
                         logging.info("'오늘'자로 기간 설정")
                         break
 
-                driver.find_element_by_id("search_button").click()
+                driver.find_element(By.ID, "search_button").click()
                 logging.info("검색 버튼 클릭")
                 time.sleep(2)
 
-                driver.find_element_by_css_selector(".mState .gRight #eExcelDownloadBtn").click()
+                driver.find_element(By.CSS_SELECTOR, ".mState .gRight #eExcelDownloadBtn").click()
                 logging.info("엑셀 다운로드 버튼 클릭")
                 driver.implicitly_wait(2)
 
                 driver.switch_to.window(driver.window_handles[-1])
                 logging.info("다운로드 탭으로 이동")
 
-                driver.find_element_by_css_selector("#aManagesList #리포트").click()  # 양식선택 - 리포트
+                driver.find_element(By.CSS_SELECTOR, "#aManagesList #리포트").click()  # 양식선택 - 리포트
                 logging.info("리포트 양식 선택")
-                driver.find_element_by_id("Password").send_keys(cafe24_pw)
-                driver.find_element_by_id("PasswordConfirm").send_keys(cafe24_pw)
-                driver.find_element_by_class_name("excelSubmit").click()
+                driver.find_element(By.ID, "Password").send_keys(cafe24_pw)
+                driver.find_element(By.ID, "PasswordConfirm").send_keys(cafe24_pw)
+                driver.find_element(By.CLASS_NAME, "excelSubmit").click()
                 logging.info("비밀번호 입력 후 조회")
                 time.sleep(2)
 
@@ -188,13 +192,13 @@ class Cafe24SalesMonitor():
                 except NoAlertPresentException:
                     pass
 
-                driver.find_elements_by_css_selector(".center tr")[0].find_element_by_css_selector(".btnNormal").click()
-                driver.find_element_by_id("password").send_keys(cafe24_pw)
-                driver.find_element_by_id("reason_for_download").send_keys("다운로드")
+                driver.find_elements(By.CSS_SELECTOR, ".center tr")[0].find_element(By.CSS_SELECTOR, ".btnNormal").click()
+                driver.find_element(By.ID, "password").send_keys(cafe24_pw)
+                driver.find_element(By.ID, "reason_for_download").send_keys("다운로드")
                 logging.info("리포트 다운로드 시작...")
 
                 report_zipfile = click_and_find_downloaded_filename(
-                    clickable_btn=driver.find_element_by_id("excel_download"),
+                    clickable_btn=driver.find_element(By.ID, "excel_download"),
                     download_dir=Key.tmp_path,
                     download_file_ext="zip",
                     wait_sec=180,
