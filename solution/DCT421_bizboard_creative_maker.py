@@ -32,7 +32,22 @@ class info :
                 'sub_text_y': 111
             }
         },
-        '앱고지형': {}
+        '앱고지형':  {
+            '한줄형': {
+                'app_text_x' : 90,
+                'app_text_y' : 59,
+                'main_text_x': 48,
+                'main_text_y': 95,
+            },
+            '두줄형': {
+                'app_text_x': 90,
+                'app_text_y': 34,
+                'main_text_x': 48,
+                'main_text_y': 70,
+                'sub_text_x': 48,
+                'sub_text_y': 133
+            }
+        }
     }
 
 class font :
@@ -51,6 +66,26 @@ def create_biz_banner(cre_info_dict):
     default_image = Image.new('RGBA', (1029, 222))
     imdraw = ImageDraw.Draw(default_image)
 
+    if cre_info_dict['배너 타입'] == '앱고지형':
+        # 앱 로고 이미지
+        app_logo_image = Image.open(directory.dropbox_dir + cre_info_dict['앱 로고 경로']).convert("RGBA")
+
+        if cre_info_dict['num_of_line'] == '한줄형' :
+            app_y = 62
+        elif cre_info_dict['num_of_line'] == '두줄형' :
+            app_y = 37
+        default_image.paste(app_logo_image, (48, app_y), app_logo_image)
+
+        # 앱 랜딩 고지문
+        x = text_info['app_text_x']
+        y = text_info['app_text_y']
+        imdraw.text((x, y), cre_info_dict['앱 랜딩 고지문'], (119, 119, 119), font.app_font)
+        arrow_x = default_image.getbbox()[2]
+
+        # 화살표 넣기
+        arrow = Image.open(directory.dropbox_dir + '/광고사업부/데이터컨설팅/데이터 솔루션/비즈보드 소재 자동화/object/비즈보드_화살표.png')
+        default_image.paste(arrow, (arrow_x + 6, app_y + 10), arrow)
+
     x = text_info['main_text_x']
     y = text_info['main_text_y']
     imdraw.text((x, y), cre_info_dict['메인문구'], (76, 76, 76), font.main_font)
@@ -59,9 +94,6 @@ def create_biz_banner(cre_info_dict):
         x = text_info['sub_text_x']
         y = text_info['sub_text_y']
         imdraw.text((x, y), cre_info_dict['서브문구'], (119, 119, 119), font.sub_font)
-
-    if cre_info_dict['배너 타입'] == '앱고지형':
-        pass
 
     object_image = Image.open(directory.dropbox_dir + cre_info_dict['오브제 이미지 경로'])
 
