@@ -1,8 +1,4 @@
 from PIL import Image, ImageDraw, ImageFont
-import gspread
-import pandas as pd
-import time
-from oauth2client.service_account import ServiceAccountCredentials
 from setting import directory as dr
 from spreadsheet import spreadsheet
 
