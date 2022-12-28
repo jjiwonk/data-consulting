@@ -122,8 +122,8 @@ def kkbz_prep() -> pd.DataFrame:
 
 def nasa_prep() -> pd.DataFrame:
     df = get_basic_data('Naver_SA')
+
     # naver_sa 데이터 선별
-    df['캠페인타입']
     df = df.loc[df['캠페인타입'].isin([1.0, 2.0])]
     # 데이터 추가 가공
     df['네이버 purchase_web'] = df['1_1_conversion_count'].apply(pd.to_numeric) + df['2_1_conversion_count'].apply(
@@ -151,8 +151,15 @@ def nosp_prep() -> pd.DataFrame:
     return df
 
 
-def gfa_prep() -> pd.DataFrame:
+def na_gfa_prep() -> pd.DataFrame:
     df = get_basic_data('Naver_GFA')
+    df = df.loc[~(df['광고그룹'].str.contains('smartchannel'))]
+    return df
+
+
+def na_smch_prep() -> pd.DataFrame:
+    df = get_basic_data('Naver_Smartchannel')
+    df = df.loc[df['광고그룹'].str.contains('smartchannel')]
     return df
 
 

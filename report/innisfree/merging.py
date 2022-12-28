@@ -38,7 +38,9 @@ def integrate_media_data():
         elif media == 'Naver_NOSP':
             df = load.nosp_prep()
         elif media == 'Naver_GFA':
-            df = load.gfa_prep()
+            df = load.na_gfa_prep()
+        elif media == 'Naver_Smartchannel':
+            df = load.na_smch_prep()
         elif media == 'Remerge':
             df = load.remerge_prep()
         elif media == 'RTBhouse':
@@ -103,7 +105,6 @@ def index_mapping(df, data_type, source, medium, right_on, index_source) -> pd.D
     if 'group_id' in right_on :
         df_pivot['group_id'] = df_pivot['광고그룹']
         df_pivot = df_pivot.drop('광고그룹', axis=1)
-
 
     add_cols = [col for col in key_columns if col not in df_pivot.columns]
     add_cols = list(set(right_on) | set(add_cols))
@@ -189,6 +190,7 @@ def data_merge(merging_info, media_df, apps_df, ga_df):
     concat_data_pivot = concat_data.pivot_table(index=concat_pivot_index, aggfunc='sum').reset_index()
     return concat_data_pivot
 
+
 def integrate_data():
     table = ref.info_df[['사용 여부', '매체']].iloc[1:]
     media_list = table.loc[table['사용 여부']=='TRUE', '매체'].to_list()
@@ -237,7 +239,10 @@ def integrate_data():
             df = load.nosp_prep()
             df = data_merge(merging_info, df, apps_pivot_df, ga_pivot_df)
         elif media == 'Naver_GFA':
-            df = load.gfa_prep()
+            df = load.na_gfa_prep()
+            df = data_merge(merging_info, df, apps_pivot_df, ga_pivot_df)
+        elif media == 'Naver_Smartchannel':
+            df = load.na_smch_prep()
             df = data_merge(merging_info, df, apps_pivot_df, ga_pivot_df)
         elif media == 'Remerge':
             df = load.remerge_prep()
