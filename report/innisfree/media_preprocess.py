@@ -40,6 +40,8 @@ def get_media_raw_data(media_name):
 
     df_rename['매체'] = media_name
     return df_rename
+
+
 def calc_cost(df, media_name):
     info = ref.info_dict[media_name]
     div_list = info['prep']['나누기'].split('/')
@@ -65,45 +67,59 @@ def calc_cost(df, media_name):
 
     return df
 
+
 def get_basic_data(media_name) :
     df = get_media_raw_data(media_name)
     df = calc_cost(df, media_name)
     return df
 
+
 def asa_prep() -> pd.DataFrame:
     df = get_basic_data('Apple_SA')
     return df
+
 
 def criteo_prep() -> pd.DataFrame:
     df = get_basic_data('Criteo')
     return df
 
+
 def fb_prep() -> pd.DataFrame:
     df = get_basic_data('FBIG')
     return df
 
+
 def gg_sa_prep() -> pd.DataFrame:
     df = get_basic_data('Google_SA')
     return df
+
+
 def gg_ac_prep() -> pd.DataFrame:
     df = get_basic_data('AC_Install')
     df = df.loc[df['캠페인'] == 'AOS_Install_2022']
     return df
+
+
 def pmax_prep() -> pd.DataFrame:
     df = get_basic_data('Google_PMAX')
     df = df.loc[df['캠페인']=='PMax: Madit_Google_SmartShopping']
     return df
+
 
 def kkm_prep() -> pd.DataFrame:
     df = get_basic_data('Kakao_Moment')
     df = df.loc[df['캠페인'].str.contains('madit')]
     df = df.loc[df['캠페인'].isin(['madit_display_conversion', 'madit_display_prospecting'])]
     return df
+
+
 def kkbz_prep() -> pd.DataFrame:
     df = get_basic_data('Kakao_Bizboard')
     df = df.loc[df['캠페인'].str.contains('madit')]
     df = df.loc[df['캠페인'].isin(['madit_bizboard_conversion', 'madit_bizboard_prospecting'])]
     return df
+
+
 def nasa_prep() -> pd.DataFrame:
     df = get_basic_data('Naver_SA')
     # naver_sa 데이터 선별
@@ -116,6 +132,7 @@ def nasa_prep() -> pd.DataFrame:
         pd.to_numeric)
     return df
 
+
 def nabs_prep() -> pd.DataFrame:
     df = get_basic_data('Naver_BSA')
 
@@ -127,15 +144,28 @@ def nabs_prep() -> pd.DataFrame:
     df['네이버 revenue_web'] = df['1_1_sales_by_conversion'].apply(pd.to_numeric) + df['2_1_sales_by_conversion'].apply(
         pd.to_numeric)
     return df
+
+
 def nosp_prep() -> pd.DataFrame:
     df = get_basic_data('Naver_NOSP')
     return df
+
+
+def gfa_prep() -> pd.DataFrame:
+    df = get_basic_data('Naver_GFA')
+    return df
+
+
 def remerge_prep() -> pd.DataFrame:
     df = get_basic_data('Remerge')
     return df
+
+
 def rtb_prep() -> pd.DataFrame:
     df = get_basic_data('RTBhouse')
     return df
+
+
 def tw_prep() -> pd.DataFrame:
     df = get_basic_data('twitter')
     return df

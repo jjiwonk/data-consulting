@@ -37,6 +37,8 @@ def integrate_media_data():
             df = load.tw_prep()
         elif media == 'Naver_NOSP':
             df = load.nosp_prep()
+        elif media == 'Naver_GFA':
+            df = load.gfa_prep()
         elif media == 'Remerge':
             df = load.remerge_prep()
         elif media == 'RTBhouse':
@@ -233,6 +235,9 @@ def integrate_data():
             df = data_merge(merging_info, df, apps_pivot_df, ga_pivot_df)
         elif media == 'Naver_NOSP':
             df = load.nosp_prep()
+            df = data_merge(merging_info, df, apps_pivot_df, ga_pivot_df)
+        elif media == 'Naver_GFA':
+            df = load.gfa_prep()
             df = data_merge(merging_info, df, apps_pivot_df, ga_pivot_df)
         elif media == 'Remerge':
             df = load.remerge_prep()
