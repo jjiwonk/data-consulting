@@ -25,7 +25,8 @@ def upload_file(local_path: str, s3_path: str, s3_bucket: str = DEFAULT_S3_PUBLI
     except Exception as e:
         print(e)
         raise e
-    return f"https://{s3_bucket}.s3.ap-northeast-2.amazonaws.com/{s3_path}"
+    url = f"https://{s3_bucket}.s3.ap-northeast-2.amazonaws.com/{s3_path}"
+    return url
 
 
 def delete_file(s3_bucket: str, s3_path: str):
