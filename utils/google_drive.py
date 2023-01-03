@@ -107,3 +107,24 @@ class GoogleDrive:
                     dict_row[column_list[col_idx]] = gspread.Cell(row_idx, col_idx + 1, cell_value)
             result_data.append(dict_row)
         return result_data
+
+    def update_cell(self, sheet, cell: gspread.Cell, value: str, value_input_option: str=None, response_value_render_option: str=None):
+        sheet.update(
+                   f"{_convert_idx_to_char(cell.col)}{cell.row}",
+                   value,
+                   value_input_option=value_input_option,
+                   response_value_render_option=response_value_render_option)
+
+
+def _convert_idx_to_char(idx: int):
+    # first column(idx:1) has column label 'A'
+    # A's ASCII value is 65
+    ret = ''
+    idx -= 1
+    if idx >= 26:
+        tens_idx = int(idx / 26) - 1
+        idx = idx % 26
+        ret = chr(tens_idx + ord('A'))
+    column_ascii_number = idx + ord('A')
+    ret += chr(column_ascii_number)
+    return ret
