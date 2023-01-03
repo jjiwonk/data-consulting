@@ -17,7 +17,7 @@ if __name__ == "__main__":
         schedule_time=datetime.now().strftime('%Y-%m-%d %H:%M:%S'), owner_id="bb", product_id="1950"
     )
 
-    Key.USE_HEADLESS = False
+    # Key.USE_HEADLESS = False
     # from madup_argo.core.util.log import change_level_info
 
     # change_level_info()
