@@ -11,6 +11,7 @@ setting_df = spreadsheet.spread_sheet(doc, '매체 전처리', 0, 0).reset_index
 index_df = spreadsheet.spread_sheet(doc, '광고 인덱스').reset_index(drop=True)
 index_df = index_df.loc[index_df['매체'] != '']
 merging_df = spreadsheet.spread_sheet(doc, '자동화 머징 정보', 0, 1).reset_index(drop=True)
+handi_df = spreadsheet.spread_sheet(doc, '수기 데이터').reset_index(drop=True)
 
 
 class report_date :
@@ -80,11 +81,11 @@ item_list = ['read', 'prep', 'temp', 'dimension', 'metric']
 
 info_dict = {}
 
-for media in info_df['매체'][1:].to_list() :
+for media in info_df['소스'][1:].to_list() :
     info_dict[media] = {}
     for item in item_list :
-        item_df = info_df.loc[info_df['매체'].isin(['type',media])]
-        item_df = item_df.set_index('매체').transpose()
+        item_df = info_df.loc[info_df['소스'].isin(['type',media])]
+        item_df = item_df.set_index('소스').transpose()
         item_df = item_df.loc[item_df['type']==item]
         item_df = item_df.loc[item_df[media].str.len()>0]
 
@@ -151,3 +152,15 @@ class ga_info:
         'desktop' : 'PC',
         'tablet' : 'Mobile'
     }
+
+
+class media_info:
+    bs_ad_dict = {'메인이미지.링크': 'main', '메인이미지.이미지': 'main', '메인텍스트.타이틀': 'main',
+                  '버튼[1].텍스트': 'button_1', '버튼[2].텍스트': 'button_2',
+                  '브랜드소식.링크': 'brandnews', '브랜드추천.더보기링크': 'more',
+                  '브랜드추천.브랜드추천[1].링크': 'product_1', '브랜드추천.브랜드추천[2].링크': 'product_2',
+                  '브랜드추천.브랜드추천[3].링크': 'product_3', '브랜드추천.브랜드추천[4].링크': 'product_4',
+                  '서브링크[1].텍스트': 'button_1', '서브링크[2].텍스트': 'button_2',
+                  '썸네일[1].링크': 'thumb_1', '썸네일[2].링크': 'thumb_2', '썸네일[3].링크': 'thumb_3',
+                  '홈링크.링크': 'homelink', 'x': '-', '쇼핑라이브.라이브링크': 'brandnews', '쇼핑라이브.예고페이지': 'brandnews',
+                  '서브링크[3].텍스트': 'button_3', '서브링크[4].텍스트': 'button_4'}
