@@ -178,7 +178,13 @@ def integrate_data():
             df = data_merge(merging_info, df, apps_pivot_df, ga_pivot_df)
         elif media == 'AC_Install':
             df = load.gg_ac_prep()
+            ac_camp_list = ref.index_df.loc[ref.index_df['매체'] == 'AC_Install', '캠페인'].unique().tolist()
+            apps_pivot_df = apps_pivot_df.loc[apps_pivot_df['campaign'].isin(ac_camp_list)]
             df = data_merge(merging_info, df, apps_pivot_df, ga_pivot_df)
+            df['source'] = 'google'
+            df['medium'] = 'uac'
+            df['ad'] = df['group_id']
+            df['group_id'] = df['캠페인']
         elif media == 'Google_PMAX':
             df = load.pmax_prep()
             df = data_merge(merging_info, df, apps_pivot_df, ga_pivot_df)
@@ -197,6 +203,11 @@ def integrate_data():
         elif media == 'Apple_SA':
             df = load.asa_prep()
             df = data_merge(merging_info, df, apps_pivot_df, ga_pivot_df)
+            df['source'] = 'apple'
+            df['medium'] = 'appstore'
+            df['group_id'] = df['campaign_id']
+            df['campaign_id'] = 'madit_prospecting_al'
+            df['ad'] = 'na'
         elif media == 'Criteo':
             df = load.criteo_prep()
             right_on_media = ['캠페인', '광고그룹']
@@ -204,6 +215,8 @@ def integrate_data():
             # 매체 데이터에 ad 추출 안됨, ga 매핑X
             apps_pivot_df['ad'] = ''
             df = data_merge(merging_info, df, apps_pivot_df, ga_pivot_df, right_on_media=right_on_media, right_on_apps=right_on_apps)
+            df['ad'] = 'na'
+            df['medium'] = df['캠페인'].apply(lambda x: 'dpa' if x == 'innisfreekr Dynamic Inapp AOS' else 'da')
         elif media == 'twitter':
             df = load.tw_prep()
             df = data_merge(merging_info, df, apps_pivot_df, ga_pivot_df)
@@ -221,6 +234,8 @@ def integrate_data():
             right_on_media = ['캠페인', 'ad']
             right_on_apps = ['campaign_id', 'group_id']
             df = data_merge(merging_info, df, apps_pivot_df, ga_pivot_df, right_on_media=right_on_media, right_on_apps=right_on_apps)
+            df['ad'] = df['group_id']
+            df['group_id'] = df['campaign_id'].apply(lambda x: 'retotal_aos' if 'aos' in x else 'retotal_ios')
         elif media == 'RTBhouse':
             df = load.rtb_prep()
             right_on_media = ['캠페인', '광고그룹']
@@ -228,6 +243,8 @@ def integrate_data():
             # 매체 데이터에 ad 추출 안됨, ga 매핑X
             apps_pivot_df['ad'] = ''
             df = data_merge(merging_info, df, apps_pivot_df, ga_pivot_df, right_on_media=right_on_media, right_on_apps=right_on_apps)
+            df['medium'] = 'others'
+            df['ad'] = 'RTB_dynamic'
         else:
             df = pd.DataFrame(columns=ref.columns.result_columns)
         df_list.append(df)
@@ -241,3 +258,21 @@ def integrate_data():
     return total_df
 
 
+def final_prep(df):
+    # df = pd.read_csv('C:/Dropbox (주식회사매드업)/광고사업부/4. 광고주/이니스프리/자동화리포트_최종/integrated_report_202301.csv')
+    df['일자'] = df['일자'].apply(pd.to_datetime)
+    df['Year'] = df['일자'].dt.year
+    df['month'] = df['일자'].dt.month
+    df['week'] = df['일자'].dt.strftime('%U').apply(pd.to_numeric)
+    weekday_list = ['월', '화', '수', '목', '금', '토', '일']
+    df['day'] = df['일자'].dt.day.apply(str) + '_' + df['일자'].dt.weekday.apply(lambda x: weekday_list[x])
+    df['일자'] = df['일자'].dt.date
+    df['cost(0.88)'] = df['cost(정산기준)'] / 0.88
+    df['cost(0.90)'] = df['cost(정산기준)'] / 0.90
+    df['Device'] = ''
+    df['이미지 링크'] = ''
+    df = df.rename(columns=ref.columns.final_dict)
+    df = df[ref.columns.final_cols]
+    # df.to_excel('C:/Users/MADUP/Downloads/final_integrated_report.xlsx', index=False, encoding='utf-8-sig')
+
+    return df

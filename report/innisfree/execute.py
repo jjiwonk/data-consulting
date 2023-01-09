@@ -6,6 +6,11 @@ from report.innisfree import directory as dr
 import warnings
 warnings.filterwarnings("ignore")
 
+integrated_df = merging.integrate_data()
+integrated_df = merging.final_prep(integrated_df)
+integrated_df.to_csv(dr.download_dir + f'/integrated_report_{ref.report_date.yearmonth}.csv', index=False, encoding='utf-8-sig')
+print('download successfully')
+
 integrated_media_df = merging.integrate_media_data()
 integrated_media_df.to_csv(dr.download_dir + f'/integrated_media_{ref.report_date.yearmonth}.csv', index=False, encoding='utf-8-sig')
 print('download successfully')
@@ -26,7 +31,3 @@ print('download successfully')
 # facebook_test.to_csv(dr.download_dir + f'/facebook_merge_test_{ref.report_date.yearmonth}.csv', index=False, encoding='utf-8-sig')
 # print('download successfully')
 
-
-integrated_df = merging.integrate_data()
-integrated_df.to_csv(dr.download_dir + f'/integrated_report_{ref.report_date.yearmonth}.csv', index=False, encoding='utf-8-sig')
-print('download successfully')
