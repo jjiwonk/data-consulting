@@ -12,6 +12,7 @@ from utils.google_drive import (
     GoogleDrive,
 )
 from selenium.common.exceptions import NoSuchElementException
+from selenium.webdriver.common.by import By
 from utils.selenium_util import get_chromedriver
 from utils.path_util import get_tmp_path
 
@@ -148,7 +149,7 @@ class NaverKeywordAdMonitor():
 
     def _get_text_from_element(self, element, selector: str):
         try:
-            text = element.find_element_by_css_selector(selector).text
+            text = element.find_element(By.CSS_SELECTOR, selector).text
         except NoSuchElementException:
             text = ""
 
@@ -159,17 +160,17 @@ class NaverKeywordAdMonitor():
         # 파워링크
         if ad_type == "powerlink":
             if device_type == "PC":
-                ad_elements = driver.find_elements_by_css_selector("#power_link_body > ul > li")[:ad_cnt]
+                ad_elements = driver.find_elements(By.CSS_SELECTOR, "#power_link_body > ul > li")[:ad_cnt]
             else:
-                ad_elements = driver.find_elements_by_css_selector("#power_link_body > li")[:ad_cnt]
+                ad_elements = driver.find_elements(By.CSS_SELECTOR, "#power_link_body > li")[:ad_cnt]
         # 쇼핑
         else:
             if device_type == "PC":
-                ad_elements = driver.find_elements_by_css_selector(".sc_new.sp_nshop .shop_list_divide .box._ad")[
+                ad_elements = driver.find_elements(By.CSS_SELECTOR, ".sc_new.sp_nshop .shop_list_divide .box._ad")[
                     :ad_cnt
                 ]
             else:
-                ad_elements = driver.find_elements_by_css_selector(".shop_default_group ._ad")[:ad_cnt]
+                ad_elements = driver.find_elements(By.CSS_SELECTOR, ".shop_default_group ._ad")[:ad_cnt]
 
         return ad_elements
 
