@@ -118,7 +118,7 @@ def pmax_prep() -> pd.DataFrame:
 
 def kkm_prep() -> pd.DataFrame:
     df = get_basic_data('Kakao_Moment')
-    kkm_camp_list = ref.index_df.loc[ref.index_df['매체'] == 'Google_PMAX', '캠페인'].unique().tolist()
+    kkm_camp_list = ref.index_df.loc[ref.index_df['매체'] == 'Kakao_Moment', '캠페인'].unique().tolist()
     df = df.loc[df['캠페인'].isin(kkm_camp_list)]
     return df
 
