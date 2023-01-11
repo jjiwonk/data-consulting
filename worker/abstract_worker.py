@@ -1,23 +1,42 @@
 from abc import ABCMeta, abstractmethod
+from datetime import datetime
+import os
+import traceback
 
-from utils.os_util import get_exec_env
 from utils.slack_util import send_result_slack_msg
 from worker.const import ResultCode
-from worker.log_handler import logger
+from worker.log_handler import get_logger
 
 
 class Worker(metaclass=ABCMeta):
-    def work(self, info):
-        worker_file_name = __file__.split("/")[-1]
-        result_code = ResultCode.SUCCESS
+    def __init__(self, job_name):
+        self.job_name = os.path.basename(job_name)
+        self.logger = get_logger(os.path.basename(self.job_name))
+        self.start_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    def work(self, info: dict):
+        result = dict()
+        alert_channel = None
 
         try:
             result = self.do_work(info)
+            if not isinstance(result, dict):
+                result = {"msg": str(result)}
+            if not result.get("result_code"):
+                result["result_code"] = ResultCode.SUCCESS
+            if info.get("slack_channel"):
+                alert_channel = info.get("slack_channel")
         except Exception as e:
-            logger.error(e)
-            result_code = ResultCode.ERROR
-        send_result_slack_msg(result_code)
+            tb = traceback.format_exc()
+            result["traceback"] = tb
+            result["result_code"] = ResultCode.ERROR
+            alert_channel = info.get("error_slack_channel")
+            self.logger.error(f"{e}\n{tb}")
+        try:
+            send_result_slack_msg(result, self.job_name, self.start_time, alert_channel)
+        except Exception as e:
+            self.logger.error(f"슬랙 메시지 전송 실패\n{e}")
 
     @abstractmethod
-    def do_work(self, info):
+    def do_work(self, info: dict) -> dict:
         pass
