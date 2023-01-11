@@ -11,6 +11,13 @@ def get_media_raw_data(media_name):
     result_cols = list(info['dimension'].keys()) + list(info['metric'].keys())
     read_cols = list(info['temp'].values()) + list(info['dimension'].values()) + list(info['metric'].values())
 
+    # 매체전처리 체크 박스 반영 코드
+    # table = ref.info_df[['사용 여부', '소스']].iloc[1:]
+    # media_list = table.loc[table['사용 여부']=='TRUE', '소스'].to_list()
+    # if media_name not in media_list:
+    #     df = pd.DataFrame(columns=result_cols)
+    #     return df
+
     raw_dir = info['read']['경로']
     file_name = info['read']['파일명'] + info['read']['suffix']
 

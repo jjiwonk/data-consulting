@@ -69,8 +69,8 @@ class columns :
                            'sub_param_3', 'sub_param_4', 'platform', 'original_url', 'keywords', 'Installs', 're-install',
                            're-open', 'Register', 'Add to Cart_app', 'Purchases_app', 'Revenue_app', 'Open']
 
-    index_columns = ['랜딩2', '캠페인 목표', 'OS', 'Part', 'Promotion', 'Promotion Name', '매체 구분자', '소재설명1', '소재설명2', '소재설명3',
-                     '품목', '구분', '랜딩', '전략', 'source', 'medium']
+    index_columns = ['랜딩2', '캠페인 목표', 'OS', '디바이스', 'Part', 'Promotion', 'Promotion Name', '매체 구분자', '소재설명1', '소재설명2', '소재설명3',
+                     '품목', '구분', '랜딩', '전략', 'source', 'medium', '이미지 업로드URL']
 
     ### GA
     ga_dimension_cols = ['date','dimension50','sourceMedium', 'campaign', 'adContent', 'keyword', 'deviceCategory', 'operatingSystem', 'dataSource']
@@ -92,12 +92,12 @@ class columns :
                   '매체': '매체',
                   '광고그룹': 'group',
                   'ad': 'ad',
-                  'Device': 'Device',
+                  '디바이스': 'Device',
                   'OS': 'os',
                   '랜딩': '랜딩',
                   '랜딩2': '랜딩2',
                   '전략': '전략',
-                  '이미지 링크': '이미지 링크',
+                  '이미지 업로드URL': '이미지 링크',
                   'cost(대시보드)': 'cost(dashboard)',
                   'cost(정산기준)': 'Cost',
                   'imp': 'impression',
@@ -179,7 +179,7 @@ class columns :
                   'engage_comment',
                   'engage_save',
                   'engage_share'
-]
+                  ]
 
 
 item_list = ['read', 'prep', 'temp', 'dimension', 'metric']

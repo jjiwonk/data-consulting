@@ -113,7 +113,7 @@ def index_mapping(df, data_type, source, medium, right_on, index_source) -> pd.D
 
     index_df_dedup = index_df.drop_duplicates(right_on)[add_cols + ref.columns.index_columns]
     mapping_df = df_pivot.merge(index_df_dedup, how='left', on= right_on)
-    mapping_df['정합성 점검용 데이터 소스'] = data_type + ' / ' + str(index_source)
+    # mapping_df['정합성 점검용 데이터 소스'] = data_type + ' / ' + str(index_source)
     return mapping_df
 
 
@@ -151,17 +151,16 @@ def data_merge(merging_info, media_df, apps_df, ga_df, right_on_media=None, righ
 
     concat_data = pd.concat([mapped_ga, mapped_media, mapped_apps], sort=False, ignore_index=True)
 
-    concat_pivot_index = ['정합성 점검용 데이터 소스'] \
-                         + ref.columns.dimension_cols + ['campaign_id', 'group_id'] + ref.columns.index_columns
+    concat_pivot_index = ref.columns.dimension_cols + ['campaign_id', 'group_id'] + ref.columns.index_columns
     concat_data[concat_pivot_index] = concat_data[concat_pivot_index].fillna('')
+    concat_data[concat_pivot_index] = concat_data[concat_pivot_index].astype(str)
     concat_data = concat_data.fillna(0)
     concat_data_pivot = concat_data.pivot_table(index=concat_pivot_index, aggfunc='sum').reset_index()
     return concat_data_pivot
 
 
 def integrate_data():
-    table = ref.info_df[['사용 여부', '소스']].iloc[1:]
-    media_list = table.loc[table['사용 여부']=='TRUE', '소스'].to_list()
+    media_list = ref.index_df['매체'].drop_duplicates().to_list()
 
     apps_pivot_df = tracker_preprocess.apps_log_data_prep()
     ga_pivot_df = tracker_preprocess.ga_prep()
@@ -269,8 +268,7 @@ def final_prep(df):
     df['일자'] = df['일자'].dt.date
     df['cost(0.88)'] = df['cost(정산기준)'] / 0.88
     df['cost(0.90)'] = df['cost(정산기준)'] / 0.90
-    df['Device'] = ''
-    df['이미지 링크'] = ''
+    df['디바이스'] = df['디바이스'].apply(lambda x: 'none' if x == '' else x)
     df = df.rename(columns=ref.columns.final_dict)
     df = df[ref.columns.final_cols]
     # df.to_excel('C:/Users/MADUP/Downloads/final_integrated_report.xlsx', index=False, encoding='utf-8-sig')
