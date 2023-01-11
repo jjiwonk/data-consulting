@@ -11,6 +11,7 @@ setting_df = spreadsheet.spread_sheet(doc, '매체 전처리', 0, 0).reset_index
 index_df = spreadsheet.spread_sheet(doc, '광고 인덱스').reset_index(drop=True)
 index_df = index_df.loc[index_df['매체'] != '']
 merging_df = spreadsheet.spread_sheet(doc, '자동화 머징 정보', 0, 1).reset_index(drop=True)
+handi_df = spreadsheet.spread_sheet(doc, '수기 데이터').reset_index(drop=True)
 
 
 class report_date :
@@ -76,15 +77,120 @@ class columns :
     ga_metric_cols = ['sessions', 'bounces', 'sessionDuration', 'goal3Completions', 'goal1Completions', 'goal2Completions', 'pageviews', 'transactions', 'transactionRevenue']
     ga_metric_cols_kor = ['세션','회원가입목표완료수','장바구니목표완료수','거래수','수익','이탈수','로그인목표완료수','페이지뷰','세션시간']
 
+    ### 최종 리포트
+    final_dict = {'품목': '품목',
+                  'Part': 'Part',
+                  '일자': 'date',
+                  '캠페인 목표': '캠페인',
+                  'campaign_id': 'campaign ID',
+                  'source': 'source',
+                  'medium': 'medium',
+                  '캠페인': 'campaign_name',
+                  'Promotion': 'promotion',
+                  'Promotion Name': 'promotion_name',
+                  '구분': '구분',
+                  '매체': '매체',
+                  '광고그룹': 'group',
+                  'ad': 'ad',
+                  'Device': 'Device',
+                  'OS': 'os',
+                  '랜딩': '랜딩',
+                  '랜딩2': '랜딩2',
+                  '전략': '전략',
+                  '이미지 링크': '이미지 링크',
+                  'cost(대시보드)': 'cost(dashboard)',
+                  'cost(정산기준)': 'Cost',
+                  'imp': 'impression',
+                  'click': 'click',
+                  '네이버 purchase_web': '네이버 purchase_web',
+                  '네이버 revenue_web': '네이버 revenue_web',
+                  '세션': 'Sessions_ga',
+                  '회원가입목표완료수': 'Register_ga',
+                  '장바구니목표완료수': 'Add to Cart_ga',
+                  '거래수': 'Transactions_ga',
+                  '수익': 'Revenue_ga',
+                  '이탈수': '이탈수',
+                  'Installs': 'Installs_app',
+                  're-install': 're-install_app',
+                  're-open': 're-open_app',
+                  'Open': 'Open(Installs+re-install+re-open)_app',
+                  'Register': 'Register_app',
+                  'Add to Cart_app': 'Add to Cart_app',
+                  'Purchases_app': 'Purchases_app',
+                  'Revenue_app': 'Revenue_app',
+                  'view': 'view',
+                  'reach': 'reach',
+                  'engage': 'engage',
+                  'engage_like': 'engage_like',
+                  'engage_comment': 'engage_comment',
+                  'engage_save': 'engage_save',
+                  'engage_share': 'engage_share'
+                  }
+    final_cols = ['품목',
+                  'Part',
+                  'Year',
+                  'month',
+                  'week',
+                  'date',
+                  'day',
+                  '캠페인',
+                  'campaign ID',
+                  'source',
+                  'medium',
+                  'campaign_name',
+                  'promotion',
+                  'promotion_name',
+                  '구분',
+                  '매체',
+                  'group',
+                  'ad',
+                  'Device',
+                  'os',
+                  '랜딩',
+                  '랜딩2',
+                  '전략',
+                  '이미지 링크',
+                  'cost(dashboard)',
+                  'Cost',
+                  'impression',
+                  'click',
+                  '네이버 purchase_web',
+                  '네이버 revenue_web',
+                  'Sessions_ga',
+                  'Register_ga',
+                  'Add to Cart_ga',
+                  'Transactions_ga',
+                  'Revenue_ga',
+                  '이탈수',
+                  'Installs_app',
+                  're-install_app',
+                  're-open_app',
+                  'Open(Installs+re-install+re-open)_app',
+                  'Register_app',
+                  'Add to Cart_app',
+                  'Purchases_app',
+                  'Revenue_app',
+                  'cost(0.88)',
+                  'cost(0.90)',
+                  'view',
+                  'reach',
+                  'engage',
+                  'engage_like',
+                  'engage_comment',
+                  'engage_save',
+                  'engage_share'
+]
+
+
 item_list = ['read', 'prep', 'temp', 'dimension', 'metric']
 
 info_dict = {}
 
-for media in info_df['매체'][1:].to_list() :
+for media in info_df['소스'][1:].to_list() :
     info_dict[media] = {}
     for item in item_list :
-        item_df = info_df.loc[info_df['매체'].isin(['type',media])]
-        item_df = item_df.set_index('매체').transpose()
+        item_df = info_df.loc[info_df['소스'].isin(['type',media])]
+        item_df = item_df.set_index('소스').transpose()
         item_df = item_df.loc[item_df['type']==item]
         item_df = item_df.loc[item_df[media].str.len()>0]
 
@@ -151,3 +257,15 @@ class ga_info:
         'desktop' : 'PC',
         'tablet' : 'Mobile'
     }
+
+
+class media_info:
+    bs_ad_dict = {'메인이미지.링크': 'main', '메인이미지.이미지': 'main', '메인텍스트.타이틀': 'main',
+                  '버튼[1].텍스트': 'button_1', '버튼[2].텍스트': 'button_2',
+                  '브랜드소식.링크': 'brandnews', '브랜드추천.더보기링크': 'more',
+                  '브랜드추천.브랜드추천[1].링크': 'product_1', '브랜드추천.브랜드추천[2].링크': 'product_2',
+                  '브랜드추천.브랜드추천[3].링크': 'product_3', '브랜드추천.브랜드추천[4].링크': 'product_4',
+                  '서브링크[1].텍스트': 'button_1', '서브링크[2].텍스트': 'button_2',
+                  '썸네일[1].링크': 'thumb_1', '썸네일[2].링크': 'thumb_2', '썸네일[3].링크': 'thumb_3',
+                  '홈링크.링크': 'homelink', 'x': '-', '쇼핑라이브.라이브링크': 'brandnews', '쇼핑라이브.예고페이지': 'brandnews',
+                  '서브링크[3].텍스트': 'button_3', '서브링크[4].텍스트': 'button_4'}
