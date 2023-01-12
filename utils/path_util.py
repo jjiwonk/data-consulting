@@ -21,3 +21,7 @@ def get_resource(resource_file: str = EMPTY_STRING):
         return path
     else:
         return None
+
+
+def get_log_directory():
+    return get_root_directory() + "/logs"
