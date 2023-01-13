@@ -67,7 +67,7 @@ def integrate_media_data():
 
 def index_mapping(df, data_type, source, medium, right_on, index_source) -> pd.DataFrame:
     key_columns = ['캠페인', 'campaign_id', '광고그룹', 'group_id', 'ad']
-    index_df = ref.index_df.loc[ref.index_df['매체'] == index_source][key_columns + ref.columns.index_columns]
+    index_df = ref.index_df.loc[ref.index_df['매체(표기)'] == index_source][key_columns + ref.columns.index_columns]
 
     if data_type == 'media':
         media_col = '매체'
@@ -166,7 +166,7 @@ def data_merge(merging_info, media_df, apps_df, ga_df, right_on_media=None, righ
 
 
 def integrate_data():
-    media_list = ref.index_df['매체'].drop_duplicates().to_list()
+    media_list = ref.index_df['매체(표기)'].drop_duplicates().to_list()
 
     apps_pivot_df = tracker_preprocess.apps_log_data_prep()
     ga_pivot_df = tracker_preprocess.ga_prep()
@@ -185,7 +185,7 @@ def integrate_data():
             df = data_merge(merging_info, df, apps_df, ga_df)
         elif media == 'AC_Install':
             df = load.gg_ac_prep()
-            tracker_camp_list = ref.index_df.loc[ref.index_df['매체'] == 'AC_Install', '캠페인'].unique().tolist()
+            tracker_camp_list = ref.index_df.loc[ref.index_df['매체(표기)'] == 'AC_Install', '캠페인'].unique().tolist()
             apps_df = apps_df.loc[apps_df['campaign'].isin(tracker_camp_list)]
             df = data_merge(merging_info, df, apps_df, ga_df)
             df['source'] = 'google'
@@ -197,7 +197,7 @@ def integrate_data():
             right_on_media = ['캠페인']
             right_on_apps = ['campaign_id']
             right_on_ga = ['campaign_id', 'group_id']
-            tracker_camp_list = ref.index_df.loc[ref.index_df['매체'] == 'Google_PMAX', '캠페인'].unique().tolist()
+            tracker_camp_list = ref.index_df.loc[ref.index_df['매체(표기)'] == 'Google_PMAX', '캠페인'].unique().tolist()
             apps_df = apps_df.loc[apps_df['campaign'].isin(tracker_camp_list)]
             df = data_merge(merging_info, df, apps_df, ga_df,
                             right_on_media=right_on_media, right_on_apps=right_on_apps, right_on_ga=right_on_ga)
@@ -227,7 +227,7 @@ def integrate_data():
             right_on_media = ['캠페인', '광고그룹']
             right_on_apps = ['campaign_id', 'group_id']
             # 매체 데이터에 ad 추출 안됨, ga 매핑X
-            apps_pivot_df['ad'] = ''
+            apps_df['ad'] = ''
             df = data_merge(merging_info, df, apps_df, ga_df, right_on_media=right_on_media, right_on_apps=right_on_apps)
             df['ad'] = 'na'
             df['medium'] = df['캠페인'].apply(lambda x: 'dpa' if x == 'innisfreekr Dynamic Inapp AOS' else 'da')
@@ -262,7 +262,7 @@ def integrate_data():
             right_on_media = ['캠페인', '광고그룹']
             right_on_apps = ['campaign_id', 'group_id']
             # 매체 데이터에 ad 추출 안됨, ga 매핑X
-            apps_pivot_df['ad'] = ''
+            apps_df['ad'] = ''
             df = data_merge(merging_info, df, apps_df, ga_df, right_on_media=right_on_media, right_on_apps=right_on_apps)
             df['medium'] = 'others'
             df['ad'] = 'RTB_dynamic'
@@ -275,7 +275,7 @@ def integrate_data():
     # for media in handi_media:
     #     merging_info = ref.merging_df.loc[ref.merging_df['index'] == media].reset_index(drop=True)
     #     df = handi_df.loc[handi_df['매체'] == media]
-    #     df = data_merge(merging_info, df, apps_pivot_df, ga_pivot_df)
+    #     df = data_merge(merging_info, df, apps_df, ga_df)
     # handi_df = data_merge
     # df_list.append(handi_df)
 

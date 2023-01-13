@@ -100,35 +100,35 @@ def get_basic_data(media_name):
 
 def asa_prep() -> pd.DataFrame:
     df = get_basic_data('Apple_SA')
-    camp_list = ref.index_df.loc[ref.index_df['매체'] == 'Apple_SA', '캠페인'].unique().tolist()
+    camp_list = ref.index_df.loc[ref.index_df['매체(표기)'] == 'Apple_SA', '캠페인'].unique().tolist()
     df = df.loc[df['캠페인'].isin(camp_list)]
     return df
 
 
 def criteo_prep() -> pd.DataFrame:
     df = get_basic_data('Criteo')
-    camp_list = ref.index_df.loc[ref.index_df['매체'] == 'Criteo', '캠페인'].unique().tolist()
+    camp_list = ref.index_df.loc[ref.index_df['매체(표기)'] == 'Criteo', '캠페인'].unique().tolist()
     df = df.loc[df['캠페인'].isin(camp_list)]
     return df
 
 
 def fb_prep() -> pd.DataFrame:
     df = get_basic_data('FBIG')
-    camp_list = ref.index_df.loc[ref.index_df['매체'] == 'FBIG', '캠페인'].unique().tolist()
+    camp_list = ref.index_df.loc[ref.index_df['매체(표기)'] == 'FBIG', '캠페인'].unique().tolist()
     df = df.loc[df['캠페인'].isin(camp_list)]
     return df
 
 
 def gg_sa_prep() -> pd.DataFrame:
     df = get_basic_data('Google_SA')
-    camp_list = ref.index_df.loc[ref.index_df['매체'] == 'Google_SA', '캠페인'].unique().tolist()
+    camp_list = ref.index_df.loc[ref.index_df['매체(표기)'] == 'Google_SA', '캠페인'].unique().tolist()
     df = df.loc[df['캠페인'].isin(camp_list)]
     return df
 
 
 def gg_ac_prep() -> pd.DataFrame:
     df = get_basic_data('Google_SA')
-    gg_ac_camp_list = ref.index_df.loc[ref.index_df['매체'] == 'AC_Install', '캠페인'].unique().tolist()
+    gg_ac_camp_list = ref.index_df.loc[ref.index_df['매체(표기)'] == 'AC_Install', '캠페인'].unique().tolist()
     df = df.loc[df['캠페인'].isin(gg_ac_camp_list)]
     df['매체'] = 'AC_Install'
     return df
@@ -136,14 +136,14 @@ def gg_ac_prep() -> pd.DataFrame:
 
 def pmax_prep() -> pd.DataFrame:
     df = get_basic_data('Google_PMAX')
-    pmax_camp_list = ref.index_df.loc[ref.index_df['매체'] == 'Google_PMAX', '캠페인'].unique().tolist()
+    pmax_camp_list = ref.index_df.loc[ref.index_df['매체(표기)'] == 'Google_PMAX', '캠페인'].unique().tolist()
     df = df.loc[df['캠페인'].isin(pmax_camp_list)]
     return df
 
 
 def kkm_prep() -> pd.DataFrame:
     df = get_basic_data('Kakao_Moment')
-    camp_list = ref.index_df.loc[ref.index_df['매체'] == 'Kakao_Moment', '캠페인'].unique().tolist()
+    camp_list = ref.index_df.loc[ref.index_df['매체(표기)'] == 'Kakao_Moment', '캠페인'].unique().tolist()
     df = df.loc[df['캠페인'].isin(camp_list)]
     return df
 
@@ -151,7 +151,7 @@ def kkm_prep() -> pd.DataFrame:
 def kkbz_prep() -> pd.DataFrame:
     df = get_basic_data('Kakao_Moment')
     df = df.loc[df['캠페인'].str.contains('madit')]
-    camp_list = ref.index_df.loc[ref.index_df['매체'] == 'Kakao_Bizboard', '캠페인'].unique().tolist()
+    camp_list = ref.index_df.loc[ref.index_df['매체(표기)'] == 'Kakao_Bizboard', '캠페인'].unique().tolist()
     df = df.loc[df['캠페인'].isin(camp_list)]
     df['매체'] = 'Kakao_Bizboard'
     return df
@@ -167,7 +167,7 @@ def nasa_prep() -> pd.DataFrame:
         pd.to_numeric)
     df['네이버 revenue_web'] = df['1_1_sales_by_conversion'].apply(pd.to_numeric) + df['2_1_sales_by_conversion'].apply(
         pd.to_numeric)
-    camp_list = ref.index_df.loc[ref.index_df['매체'] == 'Naver_SA', '캠페인'].unique().tolist()
+    camp_list = ref.index_df.loc[ref.index_df['매체(표기)'] == 'Naver_SA', '캠페인'].unique().tolist()
     df = df.loc[df['캠페인'].isin(camp_list)]
     return df
 
@@ -182,7 +182,7 @@ def nabs_prep() -> pd.DataFrame:
         pd.to_numeric)
 
     df2 = get_basic_data('Naver_NOSP')
-    camp_list = ref.index_df.loc[ref.index_df['매체'] == 'Naver_BSA', '캠페인'].unique().tolist()
+    camp_list = ref.index_df.loc[ref.index_df['매체(표기)'] == 'Naver_BSA', '캠페인'].unique().tolist()
     df2 = df2.loc[df2['캠페인'].isin(camp_list)]
     ad_dict = ref.media_info.bs_ad_dict
     df2['ad'] = df2['ad_detail'].apply(lambda x: ad_dict[x])
@@ -194,21 +194,21 @@ def nabs_prep() -> pd.DataFrame:
 
 def nosp_prep() -> pd.DataFrame:
     df = get_basic_data('Naver_NOSP')
-    except_camp_list = ref.index_df.loc[ref.index_df['매체'] == 'Naver_BSA', '캠페인'].unique().tolist()
+    except_camp_list = ref.index_df.loc[ref.index_df['매체(표기)'] == 'Naver_BSA', '캠페인'].unique().tolist()
     df = df.loc[~(df['캠페인'].isin(except_camp_list))]
     return df
 
 
 def na_gfa_prep() -> pd.DataFrame:
     df = get_basic_data('Naver_GFA')
-    camp_list = ref.index_df.loc[ref.index_df['매체'] == 'Naver_GFA', '캠페인'].unique().tolist()
+    camp_list = ref.index_df.loc[ref.index_df['매체(표기)'] == 'Naver_GFA', '캠페인'].unique().tolist()
     df = df.loc[df['캠페인'].isin(camp_list)]
     return df
 
 
 def na_smch_prep() -> pd.DataFrame:
     df = get_basic_data('Naver_GFA')
-    camp_list = ref.index_df.loc[ref.index_df['매체'] == 'Naver_스마트채널', '캠페인'].unique().tolist()
+    camp_list = ref.index_df.loc[ref.index_df['매체(표기)'] == 'Naver_스마트채널', '캠페인'].unique().tolist()
     df = df.loc[df['캠페인'].isin(camp_list)]
     df['매체'] = 'Naver_스마트채널'
     return df
@@ -216,7 +216,7 @@ def na_smch_prep() -> pd.DataFrame:
 
 def na_dpa_prep() -> pd.DataFrame:
     df = get_basic_data('Naver_GFA')
-    camp_list = ref.index_df.loc[ref.index_df['매체'] == 'Naver_DPA', '캠페인'].unique().tolist()
+    camp_list = ref.index_df.loc[ref.index_df['매체(표기)'] == 'Naver_DPA', '캠페인'].unique().tolist()
     df = df.loc[df['캠페인'].isin(camp_list)]
     df['매체'] = 'Naver_DPA'
     return df
@@ -224,7 +224,7 @@ def na_dpa_prep() -> pd.DataFrame:
 
 def na_shoppingalarm_prep() -> pd.DataFrame:
     df = get_basic_data('Naver_GFA')
-    camp_list = ref.index_df.loc[ref.index_df['매체'] == 'Naver_쇼핑알람', '캠페인'].unique().tolist()
+    camp_list = ref.index_df.loc[ref.index_df['매체(표기)'] == 'Naver_쇼핑알람', '캠페인'].unique().tolist()
     df = df.loc[df['캠페인'].isin(camp_list)]
     df['매체'] = 'Naver_쇼핑알람'
     return df
@@ -232,20 +232,20 @@ def na_shoppingalarm_prep() -> pd.DataFrame:
 
 def remerge_prep() -> pd.DataFrame:
     df = get_basic_data('Remerge')
-    camp_list = ref.index_df.loc[ref.index_df['매체'] == 'Remerge', '캠페인'].unique().tolist()
+    camp_list = ref.index_df.loc[ref.index_df['매체(표기)'] == 'Remerge', '캠페인'].unique().tolist()
     df = df.loc[df['캠페인'].isin(camp_list)]
     return df
 
 
 def rtb_prep() -> pd.DataFrame:
     df = get_basic_data('RTBhouse')
-    camp_list = ref.index_df.loc[ref.index_df['매체'] == 'RTBhouse', '캠페인'].unique().tolist()
+    camp_list = ref.index_df.loc[ref.index_df['매체(표기)'] == 'RTBhouse', '캠페인'].unique().tolist()
     df = df.loc[df['캠페인'].isin(camp_list)]
     return df
 
 
 def tw_prep() -> pd.DataFrame:
     df = get_basic_data('twitter')
-    camp_list = ref.index_df.loc[ref.index_df['매체'] == 'twitter', '캠페인'].unique().tolist()
+    camp_list = ref.index_df.loc[ref.index_df['매체(표기)'] == 'twitter', '캠페인'].unique().tolist()
     df = df.loc[df['캠페인'].isin(camp_list)]
     return df
