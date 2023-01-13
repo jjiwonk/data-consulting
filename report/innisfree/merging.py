@@ -39,8 +39,12 @@ def integrate_media_data():
             df = load.nosp_prep()
         elif media == 'Naver_GFA':
             df = load.na_gfa_prep()
-        elif media == 'Naver_Smartchannel':
+        elif media == 'Naver_스마트채널':
             df = load.na_smch_prep()
+        elif media == 'Naver_DPA':
+            df = load.na_dpa_prep()
+        elif media == 'Naver_쇼핑알람':
+            df = load.na_shoppingalarm_prep()
         elif media == 'Remerge':
             df = load.remerge_prep()
         elif media == 'RTBhouse':
@@ -48,8 +52,9 @@ def integrate_media_data():
         else:
             df = pd.DataFrame()
         df_list.append(df)
-    # handi_df = load.get_handi_data()
-    # df_list.append(handi_df)
+    print('handi data merging')
+    handi_df = load.get_handi_data()
+    df_list.append(handi_df)
 
     total_df = pd.concat(df_list, sort=False, ignore_index=True)
     total_df_pivot = total_df.pivot_table(index = ref.columns.dimension_cols, values = ref.columns.metric_cols, aggfunc = 'sum').reset_index()
@@ -70,32 +75,32 @@ def index_mapping(df, data_type, source, medium, right_on, index_source) -> pd.D
         df = df.loc[df[media_col].isin(source)]
 
     elif data_type == 'apps':
-        media_col = 'media_source'
-        source_col = 'sub_param_2'
+        source_col = 'media_source'
+        medium_col = 'sub_param_2'
         metric_cols = ref.columns.apps_metric_columns
         df['ad_detail'] = ''
         df = df.rename(columns={'date': '일자',
                                 'campaign': '캠페인',
                                 'adset': '광고그룹'})
         if (len(medium) == 1) & (medium[0] == ''):
-            df = df.loc[df[media_col].isin(source)]
+            df = df.loc[df[source_col].isin(source)]
         else:
-            df = df.loc[(df[media_col].isin(source)) & (df[source_col].isin(medium))]
+            df = df.loc[(df[source_col].isin(source)) & (df[medium_col].isin(medium))]
 
     elif data_type == 'ga':
         df['source'] = df['소스/매체'].apply(lambda x : x.split(' / ')[0])
         df['medium'] = df['소스/매체'].apply(lambda x : x.split(' / ')[-1])
-        media_col = 'source'
-        source_col = 'medium'
+        source_col = 'source'
+        medium_col = 'medium'
         metric_cols = ref.columns.ga_metric_cols_kor
         df['ad_detail'] = ''
         df = df.rename(columns = {'날짜' : '일자',
                                   'utm_trg' : '광고그룹',
                                   '광고콘텐츠' : 'ad'})
         if (len(medium) == 1) & (medium[0] == ''):
-            df = df.loc[df[media_col].isin(source)]
+            df = df.loc[df[source_col].isin(source)]
         else:
-            df = df.loc[(df[media_col].isin(source)) & (df[source_col].isin(medium))]
+            df = df.loc[(df[source_col].isin(source)) & (df[medium_col].isin(medium))]
 
     df['매체'] = index_source
 
@@ -113,7 +118,7 @@ def index_mapping(df, data_type, source, medium, right_on, index_source) -> pd.D
 
     index_df_dedup = index_df.drop_duplicates(right_on)[add_cols + ref.columns.index_columns]
     mapping_df = df_pivot.merge(index_df_dedup, how='left', on= right_on)
-    # mapping_df['정합성 점검용 데이터 소스'] = data_type + ' / ' + str(index_source)
+    mapping_df['정합성 점검용 데이터 소스'] = data_type + ' / ' + str(index_source)
     return mapping_df
 
 
@@ -127,8 +132,8 @@ def data_merge(merging_info, media_df, apps_df, ga_df, right_on_media=None, righ
         right_on_apps = ['campaign_id', 'ad']
 
     data_type = 'ga'
-    source = list(merging_info['source'].drop_duplicates().values)
-    medium = list(merging_info['medium'].drop_duplicates().values)
+    source = list(merging_info['ga_source'].drop_duplicates().values)
+    medium = list(merging_info['ga_medium'].drop_duplicates().values)
     mapped_ga = index_mapping(ga_df, data_type, source, medium, right_on_ga, media_index)
 
     data_type = 'media'
@@ -136,8 +141,8 @@ def data_merge(merging_info, media_df, apps_df, ga_df, right_on_media=None, righ
     mapped_media = index_mapping(media_df, data_type, source, None, right_on_media, media_index)
 
     data_type = 'apps'
-    source = list(merging_info['apps'].drop_duplicates().values)
-    medium = list(merging_info['medium'].drop_duplicates().values)
+    source = list(merging_info['apps_source'].drop_duplicates().values)
+    medium = list(merging_info['apps_medium'].drop_duplicates().values)
     mapped_apps = index_mapping(apps_df, data_type, source, medium, right_on_apps, media_index)
 
     if media_index == 'FBIG':
@@ -151,7 +156,8 @@ def data_merge(merging_info, media_df, apps_df, ga_df, right_on_media=None, righ
 
     concat_data = pd.concat([mapped_ga, mapped_media, mapped_apps], sort=False, ignore_index=True)
 
-    concat_pivot_index = ref.columns.dimension_cols + ['campaign_id', 'group_id'] + ref.columns.index_columns
+    concat_pivot_index = ['정합성 점검용 데이터 소스']\
+                         + ref.columns.dimension_cols + ['campaign_id', 'group_id'] + ref.columns.index_columns
     concat_data[concat_pivot_index] = concat_data[concat_pivot_index].fillna('')
     concat_data[concat_pivot_index] = concat_data[concat_pivot_index].astype(str)
     concat_data = concat_data.fillna(0)
@@ -169,39 +175,48 @@ def integrate_data():
     for media in media_list:
         print(f"{media} merging")
         merging_info = ref.merging_df.loc[ref.merging_df['index'] == media].reset_index(drop=True)
+        apps_df = apps_pivot_df.copy()
+        ga_df = ga_pivot_df.copy()
         if media == 'FBIG':
             df = load.fb_prep()
-            df = data_merge(merging_info, df, apps_pivot_df, ga_pivot_df)
+            df = data_merge(merging_info, df, apps_df, ga_df)
         elif media == 'Google_SA':
             df = load.gg_sa_prep()
-            df = data_merge(merging_info, df, apps_pivot_df, ga_pivot_df)
+            df = data_merge(merging_info, df, apps_df, ga_df)
         elif media == 'AC_Install':
             df = load.gg_ac_prep()
-            ac_camp_list = ref.index_df.loc[ref.index_df['매체'] == 'AC_Install', '캠페인'].unique().tolist()
-            apps_pivot_df = apps_pivot_df.loc[apps_pivot_df['campaign'].isin(ac_camp_list)]
-            df = data_merge(merging_info, df, apps_pivot_df, ga_pivot_df)
+            tracker_camp_list = ref.index_df.loc[ref.index_df['매체'] == 'AC_Install', '캠페인'].unique().tolist()
+            apps_df = apps_df.loc[apps_df['campaign'].isin(tracker_camp_list)]
+            df = data_merge(merging_info, df, apps_df, ga_df)
             df['source'] = 'google'
             df['medium'] = 'uac'
             df['ad'] = df['group_id']
             df['group_id'] = df['캠페인']
         elif media == 'Google_PMAX':
             df = load.pmax_prep()
-            df = data_merge(merging_info, df, apps_pivot_df, ga_pivot_df)
+            right_on_media = ['캠페인']
+            right_on_apps = ['campaign_id']
+            right_on_ga = ['campaign_id', 'group_id']
+            tracker_camp_list = ref.index_df.loc[ref.index_df['매체'] == 'Google_PMAX', '캠페인'].unique().tolist()
+            apps_df = apps_df.loc[apps_df['campaign'].isin(tracker_camp_list)]
+            df = data_merge(merging_info, df, apps_df, ga_df,
+                            right_on_media=right_on_media, right_on_apps=right_on_apps, right_on_ga=right_on_ga)
         elif media == 'Kakao_Moment':
             df = load.kkm_prep()
-            df = data_merge(merging_info, df, apps_pivot_df, ga_pivot_df)
+            df = data_merge(merging_info, df, apps_df, ga_df)
         elif media == 'Kakao_Bizboard':
             df = load.kkbz_prep()
-            df = data_merge(merging_info, df, apps_pivot_df, ga_pivot_df)
+            df = data_merge(merging_info, df, apps_df, ga_df)
         elif media == 'Naver_SA':
+            # 사용X 보류
             df = load.nasa_prep()
-            df = data_merge(merging_info, df, apps_pivot_df, ga_pivot_df)
+            df = data_merge(merging_info, df, apps_df, ga_df)
         elif media == 'Naver_BSA':
             df = load.nabs_prep()
-            df = data_merge(merging_info, df, apps_pivot_df, ga_pivot_df)
+            df = data_merge(merging_info, df, apps_df, ga_df)
         elif media == 'Apple_SA':
             df = load.asa_prep()
-            df = data_merge(merging_info, df, apps_pivot_df, ga_pivot_df)
+            df = data_merge(merging_info, df, apps_df, ga_df)
             df['source'] = 'apple'
             df['medium'] = 'appstore'
             df['group_id'] = df['campaign_id']
@@ -213,26 +228,33 @@ def integrate_data():
             right_on_apps = ['campaign_id', 'group_id']
             # 매체 데이터에 ad 추출 안됨, ga 매핑X
             apps_pivot_df['ad'] = ''
-            df = data_merge(merging_info, df, apps_pivot_df, ga_pivot_df, right_on_media=right_on_media, right_on_apps=right_on_apps)
+            df = data_merge(merging_info, df, apps_df, ga_df, right_on_media=right_on_media, right_on_apps=right_on_apps)
             df['ad'] = 'na'
             df['medium'] = df['캠페인'].apply(lambda x: 'dpa' if x == 'innisfreekr Dynamic Inapp AOS' else 'da')
         elif media == 'twitter':
             df = load.tw_prep()
-            df = data_merge(merging_info, df, apps_pivot_df, ga_pivot_df)
+            df = data_merge(merging_info, df, apps_df, ga_df)
         elif media == 'Naver_NOSP':
+            # Naver_BAS로 데이터 모두 들어가는 중
             df = load.nosp_prep()
-            df = data_merge(merging_info, df, apps_pivot_df, ga_pivot_df)
+            df = data_merge(merging_info, df, apps_df, ga_df)
         elif media == 'Naver_GFA':
             df = load.na_gfa_prep()
-            df = data_merge(merging_info, df, apps_pivot_df, ga_pivot_df)
-        elif media == 'Naver_Smartchannel':
+            df = data_merge(merging_info, df, apps_df, ga_df)
+        elif media == 'Naver_스마트채널':
             df = load.na_smch_prep()
-            df = data_merge(merging_info, df, apps_pivot_df, ga_pivot_df)
+            df = data_merge(merging_info, df, apps_df, ga_df)
+        elif media == 'Naver_DPA':
+            df = load.na_dpa_prep()
+            df = data_merge(merging_info, df, apps_df, ga_df)
+        elif media == 'Naver_쇼핑알람':
+            df = load.na_shoppingalarm_prep()
+            df = data_merge(merging_info, df, apps_df, ga_df)
         elif media == 'Remerge':
             df = load.remerge_prep()
             right_on_media = ['캠페인', 'ad']
             right_on_apps = ['campaign_id', 'group_id']
-            df = data_merge(merging_info, df, apps_pivot_df, ga_pivot_df, right_on_media=right_on_media, right_on_apps=right_on_apps)
+            df = data_merge(merging_info, df, apps_df, ga_df, right_on_media=right_on_media, right_on_apps=right_on_apps)
             df['ad'] = df['group_id']
             df['group_id'] = df['campaign_id'].apply(lambda x: 'retotal_aos' if 'aos' in x else 'retotal_ios')
         elif media == 'RTBhouse':
@@ -241,12 +263,21 @@ def integrate_data():
             right_on_apps = ['campaign_id', 'group_id']
             # 매체 데이터에 ad 추출 안됨, ga 매핑X
             apps_pivot_df['ad'] = ''
-            df = data_merge(merging_info, df, apps_pivot_df, ga_pivot_df, right_on_media=right_on_media, right_on_apps=right_on_apps)
+            df = data_merge(merging_info, df, apps_df, ga_df, right_on_media=right_on_media, right_on_apps=right_on_apps)
             df['medium'] = 'others'
             df['ad'] = 'RTB_dynamic'
         else:
             df = pd.DataFrame(columns=ref.columns.result_columns)
         df_list.append(df)
+    # print('handi data merging')
+    # handi_df = load.get_handi_data()
+    # handi_media = handi_df['매체'].unique().tolist()
+    # for media in handi_media:
+    #     merging_info = ref.merging_df.loc[ref.merging_df['index'] == media].reset_index(drop=True)
+    #     df = handi_df.loc[handi_df['매체'] == media]
+    #     df = data_merge(merging_info, df, apps_pivot_df, ga_pivot_df)
+    # handi_df = data_merge
+    # df_list.append(handi_df)
 
     total_df = pd.concat(df_list, sort=False, ignore_index=True)
     total_df = total_df.fillna(0)
@@ -270,7 +301,7 @@ def final_prep(df):
     df['cost(0.90)'] = df['cost(정산기준)'] / 0.90
     df['디바이스'] = df['디바이스'].apply(lambda x: 'none' if x == '' else x)
     df = df.rename(columns=ref.columns.final_dict)
-    df = df[ref.columns.final_cols]
+    df = df[['정합성 점검용 데이터 소스']+ref.columns.final_cols]
     # df.to_excel('C:/Users/MADUP/Downloads/final_integrated_report.xlsx', index=False, encoding='utf-8-sig')
 
     return df
