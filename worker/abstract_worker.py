@@ -14,12 +14,12 @@ class Worker(metaclass=ABCMeta):
         self.logger = get_logger(os.path.basename(self.job_name))
         self.start_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    def work(self, info: dict):
+    def work(self, info: dict, attr: dict = None):
         result = dict()
         alert_channel = None
 
         try:
-            result = self.do_work(info)
+            result = self.do_work(info, attr)
             if not isinstance(result, dict):
                 result = {"msg": str(result)}
             if not result.get("result_code"):
@@ -38,5 +38,5 @@ class Worker(metaclass=ABCMeta):
             self.logger.error(f"슬랙 메시지 전송 실패\n{e}")
 
     @abstractmethod
-    def do_work(self, info: dict) -> dict:
+    def do_work(self, info: dict, attr: dict) -> dict:
         pass

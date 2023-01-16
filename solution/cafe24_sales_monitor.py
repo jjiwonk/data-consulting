@@ -19,7 +19,7 @@ from selenium.common.exceptions import NoAlertPresentException, ElementClickInte
 from utils.selenium_util import get_chromedriver, click_and_find_downloaded_filename
 from utils.path_util import get_tmp_path
 import utils.os_util as os_util
-# from madup_argo.mgmt.abstract_worker import AlbamonWorker
+from worker.abstract_worker import Worker
 from selenium.common.exceptions import StaleElementReferenceException, TimeoutException
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions
@@ -58,11 +58,7 @@ def wait_for_element(driver, css_selector, by=By.CSS_SELECTOR):
         return elements
 
 
-class Cafe24SalesMonitor:
-    def __init__(self, header, body):
-        logging.info(f"input job_attr[{header}]")
-        logging.info(f"input job_info[{body}]")
-
+class Cafe24SalesMonitor(Worker):
     def do_work(self, attr: dict, info: dict):
         logging.info(f"Cafe24SalesMonitor job info: [{info}]")
 
