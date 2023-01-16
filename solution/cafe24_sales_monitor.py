@@ -59,7 +59,7 @@ def wait_for_element(driver, css_selector, by=By.CSS_SELECTOR):
 
 
 class Cafe24SalesMonitor(Worker):
-    def do_work(self, attr: dict, info: dict):
+    def do_work(self, info: dict, attr: dict):
         logging.info(f"Cafe24SalesMonitor job info: [{info}]")
 
         schedule_date = attr["schedule_time"].split(" ")[0]

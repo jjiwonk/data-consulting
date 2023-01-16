@@ -16,4 +16,5 @@ if __name__ == '__main__':
         error_slack_channel="ap_james_test",
         a=b,
     )
-    x.work(test_set)
+    test_attr = dict()
+    x.work(test_set, test_attr)
