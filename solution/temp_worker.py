@@ -2,7 +2,7 @@ from worker.abstract_worker import Worker
 
 
 class TempWorker(Worker):
-    def do_work(self, info: dict) -> dict:
+    def do_work(self, info: dict, attr: dict) -> dict:
         result = 2 // info.get("a")
         self.logger.info(result)
         return dict(msg=result, test="success")
