@@ -39,6 +39,8 @@ def integrate_data():
         print(f'merging {info["파일명"]}')
         media = info['매체']
         raw_dir = dr.dropbox_dir + info['경로']
+        if '\\' in raw_dir:
+            raw_dir = raw_dir.replace('\\', '/')
         file_name = info['파일명']
         if info['헤더번호'] == '':
             header = 0
