@@ -2,7 +2,6 @@ from report.innisfree import directory as dr
 from report.innisfree import ref
 
 import pandas as pd
-import numpy as np
 
 
 def get_media_raw_data(media_name):
@@ -49,8 +48,9 @@ def get_media_raw_data(media_name):
     return df_rename
 
 
-def get_handi_data():
+def get_handi_data(media_name):
     df = ref.handi_df
+    df = df.loc[df['매체'] == media_name]
     for col in ref.columns.dimension_cols:
         if col in df.columns:
             df[col] = df[col].fillna('')
@@ -59,12 +59,13 @@ def get_handi_data():
 
     for col in ref.columns.metric_cols:
         if col in df.columns:
-            df[col] = df[col].apply(lambda x: x.replace(',', ''))
+            df[col] = df[col].apply(lambda x: str(x).replace(',', ''))
             df[col] = pd.to_numeric(df[col])
             df[col] = df[col].fillna(0)
         else:
             df[col] = 0
     return df
+
 
 def calc_cost(df, media_name):
     info = ref.info_dict[media_name]
@@ -203,6 +204,8 @@ def na_gfa_prep() -> pd.DataFrame:
     df = get_basic_data('Naver_GFA')
     camp_list = ref.index_df.loc[ref.index_df['매체(표기)'] == 'Naver_GFA', '캠페인'].unique().tolist()
     df = df.loc[df['캠페인'].isin(camp_list)]
+    group_list = ref.index_df.loc[ref.index_df['매체(표기)'] == 'Naver_GFA', '광고그룹'].unique().tolist()
+    df = df.loc[df['광고그룹'].isin(group_list)]
     return df
 
 
@@ -210,6 +213,8 @@ def na_smch_prep() -> pd.DataFrame:
     df = get_basic_data('Naver_GFA')
     camp_list = ref.index_df.loc[ref.index_df['매체(표기)'] == 'Naver_스마트채널', '캠페인'].unique().tolist()
     df = df.loc[df['캠페인'].isin(camp_list)]
+    group_list = ref.index_df.loc[ref.index_df['매체(표기)'] == 'Naver_스마트채널', '광고그룹'].unique().tolist()
+    df = df.loc[df['광고그룹'].isin(group_list)]
     df['매체'] = 'Naver_스마트채널'
     return df
 
@@ -218,6 +223,8 @@ def na_dpa_prep() -> pd.DataFrame:
     df = get_basic_data('Naver_GFA')
     camp_list = ref.index_df.loc[ref.index_df['매체(표기)'] == 'Naver_DPA', '캠페인'].unique().tolist()
     df = df.loc[df['캠페인'].isin(camp_list)]
+    group_list = ref.index_df.loc[ref.index_df['매체(표기)'] == 'Naver_DPA', '광고그룹'].unique().tolist()
+    df = df.loc[df['광고그룹'].isin(group_list)]
     df['매체'] = 'Naver_DPA'
     return df
 
@@ -226,6 +233,8 @@ def na_shoppingalarm_prep() -> pd.DataFrame:
     df = get_basic_data('Naver_GFA')
     camp_list = ref.index_df.loc[ref.index_df['매체(표기)'] == 'Naver_쇼핑알람', '캠페인'].unique().tolist()
     df = df.loc[df['캠페인'].isin(camp_list)]
+    group_list = ref.index_df.loc[ref.index_df['매체(표기)'] == 'Naver_쇼핑알람', '광고그룹'].unique().tolist()
+    df = df.loc[df['광고그룹'].isin(group_list)]
     df['매체'] = 'Naver_쇼핑알람'
     return df
 
