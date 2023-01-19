@@ -46,7 +46,7 @@ def wait_for_element(driver, css_selector, by=By.CSS_SELECTOR):
     try:
         elements = WebDriverWait(
             driver,
-            10,
+            20,
         ).until(expected_conditions.presence_of_all_elements_located((by, css_selector)))
     except StaleElementReferenceException or TimeoutException as e:
         logging.warning(e)
