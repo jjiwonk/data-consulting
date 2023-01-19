@@ -359,6 +359,10 @@ def get_no_index_data():
             camp_list = ref.index_df.loc[ref.index_df['매체(표기)'] == media, '캠페인'].unique().tolist()
             df = df.loc[~(df['캠페인'].isin(camp_list))]
             df['매체'] = media
+            apps_camp_list = ref.index_df.loc[ref.index_df['매체(표기)'] == 'Google_SA', 'campaign_id'].unique().tolist()
+            apps_df = apps_df.loc[apps_df['campaign'].isin(apps_camp_list)]
+            apps_empty_df = pd.DataFrame(columns=apps_df.columns)
+            right_on_apps = ['campaign_id']
             right_on_ga = ['campaign_id']
             ga_df['medium'] = ga_df['소스/매체'].apply(lambda x: x.split(' / ')[-1])
             index_df_pc = index_df.loc[index_df['디바이스'] == 'pc']
@@ -366,13 +370,15 @@ def get_no_index_data():
             ga_df_pc = ga_df.loc[(ga_df['medium'].isin(ga_medium_pc)) & (ga_df['기기 카테고리'] == 'PC')]
             pc_camp_list = index_df_pc.캠페인.unique().tolist()
             df_pc = df.loc[df['캠페인'].isin(pc_camp_list)]
-            df_pc = data_merge(merging_info, df_pc, apps_df, ga_df_pc, index_df_pc, True, right_on_ga=right_on_ga)
+            df_pc = data_merge(merging_info, df_pc, apps_empty_df, ga_df_pc, index_df_pc, True, right_on_ga=right_on_ga,
+                               right_on_apps=right_on_apps)
             index_df_mo = index_df.loc[index_df['디바이스'] == 'mo']
-            ga_medium_mo = index_df_mo.medium.unique()  .tolist()
+            ga_medium_mo = index_df_mo.medium.unique().tolist()
             ga_df_mo = ga_df.loc[(ga_df['medium'].isin(ga_medium_mo)) & (ga_df['기기 카테고리'] == 'Mobile')]
             mo_camp_list = index_df_mo.캠페인.unique().tolist()
             df_mo = df.loc[df['캠페인'].isin(mo_camp_list)]
-            df_mo = data_merge(merging_info, df_mo, apps_df, ga_df_mo, index_df_mo, True, right_on_ga=right_on_ga)
+            df_mo = data_merge(merging_info, df_mo, apps_df, ga_df_mo, index_df_mo, True, right_on_ga=right_on_ga,
+                               right_on_apps=right_on_apps)
             df = pd.concat([df_pc, df_mo], sort=False, ignore_index=True).drop_duplicates(ignore_index=True)
         elif media == 'AC_Install':
             df = load.get_basic_data(source)
