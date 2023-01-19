@@ -43,19 +43,25 @@ class Key:
 
 
 def wait_for_element(driver, css_selector, by=By.CSS_SELECTOR):
-    try:
-        elements = WebDriverWait(
-            driver,
-            20,
-        ).until(expected_conditions.presence_of_all_elements_located((by, css_selector)))
-    except StaleElementReferenceException or TimeoutException as e:
-        logging.warning(e)
-        raise e
-
-    if len(elements) == 1:
-        return elements[0]
-    else:
-        return elements
+    max_retry_cnt = 3
+    while max_retry_cnt >= 0:
+        try:
+            elements = WebDriverWait(
+                driver,
+                10,
+            ).until(expected_conditions.presence_of_all_elements_located((by, css_selector)))
+            if len(elements) == 1:
+                return elements[0]
+            else:
+                return elements
+        except StaleElementReferenceException or TimeoutException as e:
+            logging.warning(e)
+            if max_retry_cnt > 0:
+                max_retry_cnt -= 1
+                logging.warning(e)
+                time.sleep(1)
+            else:
+                raise e
 
 
 class Cafe24SalesMonitor(Worker):
@@ -113,7 +119,7 @@ class Cafe24SalesMonitor(Worker):
                 sales_manage_tab.click()
 
             side_menu_found = False
-            side_menus = list(wait_for_element(driver, ".subMenu .depthList .depth2 > li"))
+            side_menus = wait_for_element(driver, ".subMenu .depthList .depth2 > li")
 
             if monitor_detail:
                 side_menu_item = "전체주문조회"
