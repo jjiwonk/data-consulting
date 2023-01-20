@@ -30,6 +30,7 @@ def integrate_data():
     doc = spreadsheet.spread_document_read(
         'https://docs.google.com/spreadsheets/d/1TXE1ZXyQJRTgiH-5R7tubn1dONSQbAZCFI6eUvaga_o')
     column_info = spreadsheet.spread_sheet(doc, ADVERTISER).reset_index(drop=True)
+    column_info = column_info.rename(columns={'경로(폴더까지만 작성)':'경로', '파일명(확장자 포함 작성)':'파일명', '헤더번호(컬럼으로 사용할 행번호)':'헤더번호'})
     total_cols = list(column_info.columns[4:])
     total_df = pd.DataFrame(columns=['매체구분']+total_cols)
 
@@ -38,6 +39,8 @@ def integrate_data():
         print(f'merging {info["파일명"]}')
         media = info['매체']
         raw_dir = dr.dropbox_dir + info['경로']
+        if '\\' in raw_dir:
+            raw_dir = raw_dir.replace('\\', '/')
         file_name = info['파일명']
         if info['헤더번호'] == '':
             header = 0

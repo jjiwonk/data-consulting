@@ -43,24 +43,30 @@ class Key:
 
 
 def wait_for_element(driver, css_selector, by=By.CSS_SELECTOR):
-    try:
-        elements = WebDriverWait(
-            driver,
-            10,
-        ).until(expected_conditions.presence_of_all_elements_located((by, css_selector)))
-    except StaleElementReferenceException or TimeoutException as e:
-        logging.warning(e)
-        raise e
-
-    if len(elements) == 1:
-        return elements[0]
-    else:
-        return elements
+    max_retry_cnt = 3
+    while max_retry_cnt >= 0:
+        try:
+            elements = WebDriverWait(
+                driver,
+                10,
+            ).until(expected_conditions.presence_of_all_elements_located((by, css_selector)))
+            if len(elements) == 1:
+                return elements[0]
+            else:
+                return elements
+        except StaleElementReferenceException or TimeoutException as e:
+            logging.warning(e)
+            if max_retry_cnt > 0:
+                max_retry_cnt -= 1
+                logging.warning(e)
+                time.sleep(1)
+            else:
+                raise e
 
 
 class Cafe24SalesMonitor(Worker):
     def do_work(self, info: dict, attr: dict):
-        logging.info(f"Cafe24SalesMonitor job info: [{info}]")
+        self.logger.info(f"Cafe24SalesMonitor job info: [{info}]")
 
         schedule_date = attr["schedule_time"].split(" ")[0]
         schedule_time = attr["schedule_time"].split(" ")[1].split(".")[0]
@@ -96,13 +102,13 @@ class Cafe24SalesMonitor(Worker):
             # 로그인
             driver.get(Key.LOGIN_URL)
             driver.implicitly_wait(3)
-            logging.info(f"로그인페이지 접속: {Key.LOGIN_URL}")
+            self.logger.info(f"로그인페이지 접속: {Key.LOGIN_URL}")
 
             driver.find_element(By.XPATH, "//input[@placeholder='아이디를 입력해 주세요.']").send_keys(cafe24_id)
             driver.find_element(By.XPATH, "//input[@placeholder='비밀번호를 입력해 주세요.']").send_keys(cafe24_pw)
             driver.find_element(By.XPATH, "//input[@placeholder='비밀번호를 입력해 주세요.']").send_keys(Keys.ENTER)
             driver.implicitly_wait(3)
-            logging.info("로그인 완료")
+            self.logger.info("로그인 완료")
 
             try:
                 sales_manage_tab = wait_for_element(driver, ".link.order")
@@ -127,10 +133,10 @@ class Cafe24SalesMonitor(Worker):
                     break
 
             if not side_menu_found:
-                logging.warning(f"{side_menu_item} 탭을 찾지 못했습니다.")
+                self.logger.warning(f"{side_menu_item} 탭을 찾지 못했습니다.")
                 raise Exception(f"{side_menu_item} 탭을 찾지 못했습니다.")
             else:
-                logging.info(f"{side_menu_item} 탭 클릭")
+                self.logger.info(f"{side_menu_item} 탭 클릭")
 
             if "service-api" in driver.current_url:
                 driver.back()
@@ -146,52 +152,52 @@ class Cafe24SalesMonitor(Worker):
                     retry_cnt += 1
                     time.sleep(2)
 
-                logging.info(f"실시간 매출현황: {cur_sales_amt}원")
+                self.logger.info(f"실시간 매출현황: {cur_sales_amt}원")
                 slack_msg += f"실시간 매출현황: *{cur_sales_amt}원*"
 
             else:
                 # 기간 설정
                 date_elements = wait_for_element(driver, ".btnDate")
                 if len(date_elements) == 0:
-                    logging.warning("기간 설정 엘리먼트를 찾지 못했습니다.")
+                    self.logger.warning("기간 설정 엘리먼트를 찾지 못했습니다.")
                     raise Exception("기간 설정 엘리먼트를 찾지 못했습니다.")
                 for date_element in date_elements:
                     if date_element.text.strip() == "오늘":
                         date_element.click()
-                        logging.info("'오늘'자로 기간 설정")
+                        self.logger.info("'오늘'자로 기간 설정")
                         break
 
                 driver.find_element(By.ID, "search_button").click()
-                logging.info("검색 버튼 클릭")
+                self.logger.info("검색 버튼 클릭")
                 time.sleep(2)
 
                 driver.find_element(By.CSS_SELECTOR, ".mState .gRight #eExcelDownloadBtn").click()
-                logging.info("엑셀 다운로드 버튼 클릭")
+                self.logger.info("엑셀 다운로드 버튼 클릭")
                 driver.implicitly_wait(2)
 
                 driver.switch_to.window(driver.window_handles[-1])
-                logging.info("다운로드 탭으로 이동")
+                self.logger.info("다운로드 탭으로 이동")
 
                 driver.find_element(By.CSS_SELECTOR, "#aManagesList #리포트").click()  # 양식선택 - 리포트
-                logging.info("리포트 양식 선택")
+                self.logger.info("리포트 양식 선택")
                 driver.find_element(By.ID, "Password").send_keys(cafe24_pw)
                 driver.find_element(By.ID, "PasswordConfirm").send_keys(cafe24_pw)
                 driver.find_element(By.CLASS_NAME, "excelSubmit").click()
-                logging.info("비밀번호 입력 후 조회")
+                self.logger.info("비밀번호 입력 후 조회")
                 time.sleep(2)
 
                 # 얼럿 창 제거
                 try:
                     alert = driver.switch_to.alert
                     alert.dismiss()
-                    logging.info("얼럿 창 종료")
+                    self.logger.info("얼럿 창 종료")
                 except NoAlertPresentException:
                     pass
 
                 driver.find_elements(By.CSS_SELECTOR, ".center tr")[0].find_element(By.CSS_SELECTOR, ".btnNormal").click()
                 driver.find_element(By.ID, "password").send_keys(cafe24_pw)
                 driver.find_element(By.ID, "reason_for_download").send_keys("다운로드")
-                logging.info("리포트 다운로드 시작...")
+                self.logger.info("리포트 다운로드 시작...")
 
                 report_zipfile = click_and_find_downloaded_filename(
                     clickable_btn=driver.find_element(By.ID, "excel_download"),
@@ -199,7 +205,7 @@ class Cafe24SalesMonitor(Worker):
                     download_file_ext="zip",
                     wait_sec=180,
                 )
-                logging.info("리포트 다운로드 완료")
+                self.logger.info("리포트 다운로드 완료")
 
                 # zip file 열기
                 with ZipFile(os.path.join(Key.tmp_path, report_zipfile)) as zf:
@@ -217,7 +223,7 @@ class Cafe24SalesMonitor(Worker):
                     ].drop("주문날짜", axis=1).reset_index(drop=True)
                 # fmt:on
                 num_sales = len(sales_report)
-                logging.info(f"오늘 주문 - {str(num_sales)}건")
+                self.logger.info(f"오늘 주문 - {str(num_sales)}건")
 
                 # 옵션명이 비어있는 경우 상품명을 가져옴
                 sales_report["상품옵션"] = sales_report["상품옵션"].fillna(sales_report["상품명(한국어 쇼핑몰)"])
@@ -230,46 +236,46 @@ class Cafe24SalesMonitor(Worker):
                     .to_dict(orient="index")
                     .values()
                 )
-                logging.info(f"동일한 주문자의 주문 - {len(unique_orders)}행")
+                self.logger.info(f"동일한 주문자의 주문 - {len(unique_orders)}행")
 
                 for order_num, unique_order in enumerate(unique_orders):
                     compare_data = sales_report.copy()
                     for key, val in unique_order.items():
                         compare_data = compare_data[compare_data[key] == val]
-                    logging.info(f"{str(order_num + 1)} 주문자의 주문 건수: {str(len(compare_data))}건")
+                    self.logger.info(f"{str(order_num + 1)} 주문자의 주문 건수: {str(len(compare_data))}건")
                     product_columns = ["상품명(한국어 쇼핑몰)", "상품옵션"]
                     unique_products = compare_data[product_columns].drop_duplicates()[product_columns].values
-                    logging.info(f"{str(order_num+1)} 주문자가 주문한 상품 종류: {str(len(unique_products))}개")
+                    self.logger.info(f"{str(order_num+1)} 주문자가 주문한 상품 종류: {str(len(unique_products))}개")
                     if len(unique_products) == 1:
                         continue
                     else:
                         coupon_dc_values = compare_data["쿠폰 할인금액"].unique()
                         if len(coupon_dc_values) == len(compare_data):
-                            logging.info("쿠폰 할인금액이 중복되지 않음")
+                            self.logger.info("쿠폰 할인금액이 중복되지 않음")
 
                         elif len(coupon_dc_values) == 1:
                             if coupon_dc_values[0] == 0:
-                                logging.info("쿠폰 할인금액이 없음")
+                                self.logger.info("쿠폰 할인금액이 없음")
                             else:
-                                logging.info("쿠폰 할인금액이 중복되므로 첫행만 남기고 삭제")
+                                self.logger.info("쿠폰 할인금액이 중복되므로 첫행만 남기고 삭제")
                                 for index in list(compare_data.index)[1:]:
                                     sales_report.loc[index, "쿠폰 할인금액"] = 0
 
                         mileage_values = compare_data["사용한 적립금액(최초)"].unique()
                         if len(mileage_values) == len(compare_data):
-                            logging.info("사용한 적립금액이 중복되지 않음")
+                            self.logger.info("사용한 적립금액이 중복되지 않음")
                             continue
                         elif len(mileage_values) == 1:
                             if mileage_values[0] == 0:
-                                logging.info("사용한 적립금액이 없음")
+                                self.logger.info("사용한 적립금액이 없음")
                                 continue
-                            logging.info("사용한 적립금액이 중복되므로 첫행만 남기고 삭제")
+                            self.logger.info("사용한 적립금액이 중복되므로 첫행만 남기고 삭제")
                             for index in list(compare_data.index)[1:]:
                                 sales_report.loc[index, "사용한 적립금액(최초)"] = 0
 
                 # 구글 스프레드시트 입력
                 gss_client = GoogleDrive()
-                logging.info("구글 스프레드시트 연결")
+                self.logger.info("구글 스프레드시트 연결")
 
                 sheet = gss_client.get_work_sheet(spreadsheet_url, raw_sheet_name)
                 sheet_data: List[GSS_ROW] = gss_client.get_all_rows(sheet)
@@ -286,13 +292,13 @@ class Cafe24SalesMonitor(Worker):
                         for cell in row_cells:
                             cell.value = ""
                             update_cell_list.append(cell)
-                        logging.info(f"{str(row_num + 1)}행 삭제 완료")
+                        self.logger.info(f"{str(row_num + 1)}행 삭제 완료")
                     else:
                         sales_values = sales_report.loc[row_num]
                         for col_num, cell in enumerate(row_cells):
                             cell.value = str(sales_values[col_num])
                             update_cell_list.append(cell)
-                        logging.info(f"{str(row_num + 1)}행 입력 완료")
+                        self.logger.info(f"{str(row_num + 1)}행 입력 완료")
 
                 sheet.update_cells(update_cell_list, value_input_option="USER_ENTERED")
 
@@ -325,15 +331,15 @@ class Cafe24SalesMonitor(Worker):
 
                 # 로컬 폴더 삭제
                 shutil.rmtree(Key.tmp_path)
-                logging.info("tmp 폴더 삭제")
+                self.logger.info("tmp 폴더 삭제")
 
         except Exception as e:
-            logging.warning(str(e))
+            self.logger.warning(str(e))
             raise e
 
         finally:
             driver.quit()
-            logging.info("크롬 브라우저 종료")
+            self.logger.info("크롬 브라우저 종료")
 
         # return "Process end."
         if slack_mention_id:
