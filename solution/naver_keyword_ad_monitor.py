@@ -1,6 +1,5 @@
 import csv
 import datetime
-import logging
 import os
 import shutil
 from functools import wraps
@@ -11,6 +10,7 @@ from utils import s3
 from utils.google_drive import (
     GoogleDrive,
 )
+from worker.abstract_worker import Worker
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.by import By
 from utils.selenium_util import get_chromedriver
@@ -34,8 +34,8 @@ def retry_func(function):
             try:
                 return function(self, driver, *args)
             except Exception as e:
-                logging.warning(e)
-                logging.info(f"retrying... {retry_cnt}")
+                self.logger.warning(e)
+                self.logger.info(f"retrying... {retry_cnt}")
                 driver.refresh()
                 time.sleep(2)
                 retry_cnt += 1
@@ -53,13 +53,9 @@ class Key:
     spreadsheet_credential = "spreadsheet_credential"
 
 
-class NaverKeywordAdMonitor():
-    def __init__(self, header, body):
-        logging.info(f"input job_attr[{header}]")
-        logging.info(f"input job_info[{body}]")
-
-    def do_work(self, attr: dict, info: dict):
-        logging.info(f"NaverSmartstoreQnaMonitor job info: [{info}]")
+class NaverKeywordAdMonitor(Worker):
+    def do_work(self, info: dict, attr: dict):
+        self.logger.info(f"NaverSmartstoreQnaMonitor job info: [{info}]")
 
         keyword = info.get(Key.keyword).strip()
         powerlink_ad_cnt_pc = int(info.get(Key.powerlink_ad_cnt_pc, "5"))
@@ -93,7 +89,7 @@ class NaverKeywordAdMonitor():
                 keyword_search_url = BASE_URL[device_type] + keyword
                 driver.get(keyword_search_url)
                 driver.implicitly_wait(3)
-                logging.info(f"{device_type} 수집 시작")
+                self.logger.info(f"{device_type} 수집 시작")
 
                 for ad_type in ["powerlink", "shopping"]:
                     slack_msg += "\n"
@@ -105,11 +101,11 @@ class NaverKeywordAdMonitor():
                     try:
                         previous_file_path = s3.download_file(s3_path=s3_path_dic[ad_type], local_path=ad_tmp_path)
                     except:
-                        logging.info(f"no previous file on {s3_path_dic[ad_type]}")
+                        self.logger.info(f"no previous file on {s3_path_dic[ad_type]}")
                         pass
 
                     slack_msg += f"*{keyword} - {AD_TYPE[ad_type]} {device_type} 광고 현황*\n"
-                    logging.info(f"{keyword} - {ad_type} {device_type} 광고 현황 수집 시작")
+                    self.logger.info(f"{keyword} - {ad_type} {device_type} 광고 현황 수집 시작")
 
                     ad_elements = self.get_ad_status(driver, ad_type, device_type, ad_cnt_dic[ad_type][device_type])
                     if not ad_elements:
@@ -203,7 +199,7 @@ class NaverKeywordAdMonitor():
 
         if previous_file:
             report_path = previous_file
-            logging.info(f"{ad_type} - {device_type} previous file exists.")
+            self.logger.info(f"{ad_type} - {device_type} previous file exists.")
             f = open(report_path, "a")
             csv_writer = csv.writer(f, delimiter="\t")
 
@@ -223,12 +219,12 @@ class NaverKeywordAdMonitor():
                 index=total_rowcnt + (i + 2),
             )
 
-            logging.info(f"{ad_type} {device_type} - {i + 1}번째 행 시트 입력 완료")
+            self.logger.info(f"{ad_type} {device_type} - {i + 1}번째 행 시트 입력 완료")
 
             # csv 파일에 입력
             csv_writer.writerow(total_values + [device_type])
 
-            logging.info(f"{i + 1}번째 행 csv 파일 입력 완료")
+            self.logger.info(f"{i + 1}번째 행 csv 파일 입력 완료")
 
             if ad_type == "powerlink":
                 title, sub_title, _, desc = ad_values
@@ -241,7 +237,7 @@ class NaverKeywordAdMonitor():
 
         # s3 upload
         s3.upload_file(local_path=report_path, s3_path=s3_path)
-        logging.info(f"{keyword}.csv s3 업로드 완료 - {s3_path}")
+        self.logger.info(f"{keyword}.csv s3 업로드 완료 - {s3_path}")
         os.remove(report_path)
 
         return msg
