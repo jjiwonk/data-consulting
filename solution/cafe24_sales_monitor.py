@@ -58,7 +58,7 @@ def wait_for_element(driver, css_selector, by=By.CSS_SELECTOR):
             logging.warning(e)
             if max_retry_cnt > 0:
                 max_retry_cnt -= 1
-                logging.warning(e)
+                driver.refresh()
                 time.sleep(1)
             else:
                 raise e
