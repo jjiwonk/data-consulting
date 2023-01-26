@@ -119,7 +119,14 @@ class Cafe24SalesMonitor(Worker):
                 sales_manage_tab.click()
 
             side_menu_found = False
-            side_menus = wait_for_element(driver, ".subMenu .depthList .depth2 > li")
+            side_menus = '-'
+            retry_cnt = 0
+            while type(side_menus) != list:
+                if retry_cnt == 2:
+                    break
+                side_menus = wait_for_element(driver, ".subMenu .depthList .depth2 > li")
+                retry_cnt += 1
+                time.sleep(2)
 
             if monitor_detail:
                 side_menu_item = "전체주문조회"
