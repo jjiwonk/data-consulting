@@ -200,6 +200,16 @@ def nosp_prep() -> pd.DataFrame:
     return df
 
 
+def na_snow_prep() -> pd.DataFrame:
+    df = get_basic_data('Naver_NOSP')
+    camp_list = ref.index_df.loc[ref.index_df['매체(표기)'] == 'Snow', '캠페인'].unique().tolist()
+    df = df.loc[df['캠페인'].isin(camp_list)]
+    handi_df = get_handi_data('Snow')
+    df = pd.concat([df, handi_df], sort=False, ignore_index=True)
+    df['매체'] = 'Snow'
+    return df
+
+
 def na_gfa_prep() -> pd.DataFrame:
     df = get_basic_data('Naver_GFA')
     camp_list = ref.index_df.loc[ref.index_df['매체(표기)'] == 'Naver_GFA', '캠페인'].unique().tolist()
