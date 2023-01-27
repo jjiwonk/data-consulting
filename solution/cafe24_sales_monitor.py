@@ -43,7 +43,7 @@ class Key:
 
 
 def wait_for_element(driver, css_selector, by=By.CSS_SELECTOR):
-    max_retry_cnt = 3
+    max_retry_cnt = 5
     while max_retry_cnt >= 0:
         try:
             elements = WebDriverWait(
