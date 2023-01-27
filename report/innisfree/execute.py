@@ -12,7 +12,6 @@ integrated_df.to_csv(dr.download_dir + f'/integrated_report_{ref.report_date.yea
 print('download successfully')
 
 index_check_df = merging.get_no_index_data()
-index_check_df = merging.final_prep(index_check_df, True)
 index_check_df = index_check_df.loc[index_check_df['Part'] == '']
 index_check_df.to_csv(dr.download_dir + f'/index_check_report_{ref.report_date.yearmonth}.csv', index=False, encoding='utf-8-sig')
 print('download successfully')

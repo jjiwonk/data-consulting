@@ -36,6 +36,8 @@ def integrate_media_data():
             df = load.tw_prep()
         elif media == 'Naver_NOSP':
             df = load.nosp_prep()
+        elif media == 'Snow':
+            df = load.na_snow_prep()
         elif media == 'Naver_GFA':
             df = load.na_gfa_prep()
         elif media == 'Naver_스마트채널':
@@ -270,6 +272,9 @@ def integrate_data():
             # Naver_BAS로 데이터 모두 들어가는 중
             df = load.nosp_prep()
             df = data_merge(merging_info, df, apps_df, ga_df, index_df, False)
+        elif media == 'Snow':
+            df = load.na_snow_prep()
+            df = data_merge(merging_info, df, apps_df, ga_df, index_df, False)
         elif media == 'Naver_GFA':
             df = load.na_gfa_prep()
             df = data_merge(merging_info, df, apps_df, ga_df, index_df, False)
@@ -304,6 +309,7 @@ def integrate_data():
         df_list.append(df)
 
     total_df = pd.concat(df_list, sort=False, ignore_index=True)
+    total_df[['스마트스토어sessions', '스마트스토어결제수(마지막클릭)', '스마트스토어결제금액(마지막클릭)']] = 0
     total_df = total_df.fillna(0)
     total_df = total_df.loc[total_df[ref.columns.metric_cols
                                      + ref.columns.apps_metric_columns
@@ -480,6 +486,12 @@ def get_no_index_data():
             df = df.loc[~(df['캠페인'].isin(camp_list))]
             df['매체'] = media
             df = data_merge(merging_info, df, apps_df, ga_df, index_df, True)
+        elif media == 'Snow':
+            df = load.get_basic_data(source)
+            camp_list = ref.index_df.loc[ref.index_df['매체(표기)'] == media, '캠페인'].unique().tolist()
+            df = df.loc[~(df['캠페인'].isin(camp_list))]
+            df['매체'] = media
+            df = data_merge(merging_info, df, apps_df, ga_df, index_df, True)
         elif media == 'Naver_GFA':
             df = load.get_basic_data(source)
             camp_list = ref.index_df.loc[ref.index_df['매체(표기)'] == media, '캠페인'].unique().tolist()
@@ -528,10 +540,12 @@ def get_no_index_data():
             df['ad'] = 'RTB_dynamic'
         else:
             df = load.get_handi_data(media)
-            df = data_merge(merging_info, df, apps_df, ga_df, index_df, False)
+            df['매체'] = media
+            df = data_merge(merging_info, df, apps_df, ga_df, index_df, True)
         df_list.append(df)
 
     total_df = pd.concat(df_list, sort=False, ignore_index=True)
+    total_df[['스마트스토어sessions', '스마트스토어결제수(마지막클릭)', '스마트스토어결제금액(마지막클릭)']] = 0
     total_df = total_df.fillna(0)
     total_df = total_df.loc[total_df[ref.columns.metric_cols
                                      + ref.columns.apps_metric_columns
