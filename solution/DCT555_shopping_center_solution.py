@@ -5,18 +5,20 @@ import os
 import pandas as pd
 from datetime import date
 
-# 쇼파센 입장하기
-
 drop_dir = 'C:/Users/MADUP/Dropbox (주식회사매드업)/광고사업부/데이터컨설팅/데이터 솔루션/쇼핑파트너센터 다운 자동화'
 target_date = date.today()
-brand = 'SIV'
+
+f = open(drop_dir + '/spc_login.txt', 'r')
+login_info = f.read()
+login_info = eval(login_info)
+
+brand = login_info['brand']
 
 def selenium_download():
     driver = webdriver.Chrome("C:/Users/MADUP/Dropbox (주식회사매드업)/광고사업부/데이터컨설팅/token/chromedriver.exe")
     driver.get('https://center.shopping.naver.com')
 
     # 로그인하기
-    login_info = pd.read_csv(f'C:/Users/MADUP/Dropbox (주식회사매드업)/광고사업부/데이터컨설팅/데이터 솔루션/쇼핑파트너센터 다운 자동화/spc_login_{brand}.csv')
 
     id_input = driver.find_element(by=By.ID, value='normal_login_username')
     id_input.send_keys(login_info['id'])
@@ -43,7 +45,8 @@ def selenium_download():
         return int(down_num) + 1
 
     down_num = down_num()
-    # 엑셀 다운받기....
+
+    # 엑셀 다운받기
 
     excel_down = driver.find_element(by=By.CSS_SELECTOR, value='#excelDown > a')
     excel_down.click()
@@ -52,6 +55,7 @@ def selenium_download():
     total_excel_down.click()
 
     # 팝업창으로 바꿔주기
+
     driver.switch_to.window(driver.window_handles[-1])
 
     start_down = driver.find_element(by=By.CSS_SELECTOR, value='#downloadList > tr > td.last > a')
@@ -65,22 +69,22 @@ def selenium_download():
             percent = file_grp.get_attribute('style')
 
             if percent == 'width: 100%;':
-                file_down = file_down = driver.find_element(by=By.CSS_SELECTOR,value=f'#downloadList > tr:nth-child({i+1}) > td.last > a')
+                file_down = driver.find_element(by=By.CSS_SELECTOR,value=f'#downloadList > tr:nth-child({i+1}) > td.last > a')
                 file_down.click()
             else:
                 driver.implicitly_wait(time_to_wait=5)
-                file_down = file_down = driver.find_element(by=By.CSS_SELECTOR,value=f'#downloadList > tr:nth-child({i+1}) > td.last > a')
+                file_down = driver.find_element(by=By.CSS_SELECTOR,value=f'#downloadList > tr:nth-child({i+1}) > td.last > a')
                 file_down.click()
         result = 'file read success'
 
-    except Exception as error:
+    except Exception as e:
         result = 'file read failed'
 
     return result
 
-def file_conat():
-    result = selenium_download()
+result = selenium_download()
 
+def file_conat():
     if result == 'file read success':
 
         file_dir = dr.download_dir
