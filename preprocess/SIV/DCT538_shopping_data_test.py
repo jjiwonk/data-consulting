@@ -6,7 +6,8 @@ class info :
     raw_dir = dr.download_dir
     index_columns = ['collected_at', 'customer_id', 'campaign_id', 'adgroup_id','ad_id', 'search_keyword',  'pc_mobile_type']
     master_report_mapping_key = ['customer_id', 'adgroup_id', 'ad_id']
-    master_index_columns = master_report_mapping_key + ['ad_product_name','resource_product_id', 'resource_product_id_of_mall', 'product_name', 'category_name_of_mall']
+    master_index_columns = master_report_mapping_key + ['ad_product_name','resource_product_id', 'resource_product_id_of_mall', 'product_name', 'category_name_of_mall',
+                                                        'ad_image_url', 'product_image_url']
     # 컬럼 rename 필요한 경우엔 info에 넣고, 마지막 단계에 바꿔서 드려도 될 것 같습니다
 
 def get_conv_pivot():
@@ -75,4 +76,3 @@ def shopping_report_merge():
 
 
 shopping_report_merge()
-
