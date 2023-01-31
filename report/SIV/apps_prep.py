@@ -49,9 +49,16 @@ def apps_prep():
     df.loc[(df['media_source']== 'criteonew_int')&(df['platform'] =='android'), 'campaign'] = 'LF - ANDROID'
     df.loc[(df['media_source'] == 'criteonew_int') & (df['platform'] == 'ios'), 'campaign'] = 'LF - IOS'
     df.loc[(df['media_source'] == 'criteonew_int') & (df['campaign'] == 'LF - ANDROID'), 'ad'] = '2301_sales_catalog_SVFK0034'
+    df.loc[(df['media_source'] == 'criteonew_int') & (df['campaign'] == 'LF - IOS'), 'ad'] = '2301_sales_catalog_SVCT0001'
 
-    df.loc[df['media_source']== 'Apple Search Ads','campaign'] = df['campaign'].apply(lambda x: x.replace(x, ref.exc_cdict[x]) if x in ref.exc_cdict.keys() else x)
-    df.loc[df['media_source'] == 'Apple Search Ads', 'adset'] = df['adset'].apply(lambda x: x.replace(x, ref.exc_gdict[x]) if x in ref.exc_gdict.keys() else x)
+    df.loc[(df['media_source'] == 'kakao') & (df['campaign'] == 'siv_all_m'), 'campaign'] = 'siv_all_br_main_SVFK0004'
+
+    # 시트 활용
+    c_media = ['googleadwords_int','Apple Search Ads','naver']
+    g_media = ['googleadwords_int', 'Apple Search Ads']
+
+    df.loc[df['media_source'].isin(c_media), 'campaign'] = df['campaign'].apply(lambda x: x.replace(x, ref.exc_cdict[x]) if x in ref.exc_cdict.keys() else x)
+    df.loc[df['media_source'].isin(g_media), 'adset'] = df['adset'].apply(lambda x: x.replace(x, ref.exc_gdict[x]) if x in ref.exc_gdict.keys() else x)
 
     #uv 구하기
     uv_col = ['install', 're-attribution', 're-engagement']
@@ -115,7 +122,6 @@ def apps_agg_read():
 
 agg = apps_agg_read()
 
-
 def apps_agg_prep():
     df = apps_agg_read()
     df = df.loc[(df['agencypmd_af_prt'] == 'None')|(df['agencypmd_af_prt'] == 'madup')]
@@ -131,7 +137,6 @@ def apps_agg_prep():
     df['UV(AF)'] = 0
 
     return df
-
 
 def apps_concat():
     df = apps_prep()
@@ -157,11 +162,14 @@ def apps_concat():
     apps = apps[['날짜', '매체', '캠페인', '세트', '소재', '유입(AF)','UV(AF)','appopen(AF)','구매(AF)','매출(AF)','주문취소(AF)','주문취소매출(AF)','총주문건(AF)','총매출(AF)','브랜드구매(AF)','브랜드매출(AF)','첫구매(AF)','첫구매매출(AF)','설치(AF)','재설치(AF)','가입(AF)']]
     apps = ref.adcode_mediapps(apps)
 
+    apps.to_csv(dr.download_dir + f'appsflyer_raw/appsflyer_raw_{ref.r_date.yearmonth}.csv', index=False, encoding='utf-8-sig')
+
     return apps
 
 apps = apps_concat()
 
-apps.to_csv(dr.download_dir +'앱스_raw.csv', index= False , encoding= 'utf-8-sig')
+apps.to_csv(dr.download_dir + f'appsflyer_raw/appsflyer_raw_{ref.r_date.yearmonth}.csv', index=False, encoding='utf-8-sig')
+
 
 
 
