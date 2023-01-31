@@ -168,6 +168,7 @@ def apps_concat():
 
 apps = apps_concat()
 
+apps.to_csv(dr.download_dir + f'appsflyer_raw/appsflyer_raw_{ref.r_date.yearmonth}.csv', index=False, encoding='utf-8-sig')
 
 
 

@@ -94,7 +94,7 @@ def get_구글SA():
 def get_네이버SA():
     df = media_prep('네이버SA')
     df = pd.merge(df, ref.media_index, on='캠페인', how='left').fillna('no_index')
-    df = df.loc[df['지면/상품'].isin(['검색_P', '검색_M', '쇼검브랜드형_P', '쇼검브랜드형_M'])].drop(columns=['지면/상품'])
+    df = df.loc[df['지면/상품'].isin(['검색_P', '검색_M', '쇼검브랜드형_P', '쇼검브랜드형_M','네이버BSA_P','네이버BSA_M'])].drop(columns=['지면/상품'])
     df['세트'] = '-'
     df['소재'] = '-'
     return df
@@ -151,7 +151,7 @@ def get_카카오SA_SA():
 def get_네이버SA_SA():
     df = media_prep('네이버SA')
     df = pd.merge(df, ref.media_index, on='캠페인', how='left').fillna('no_index')
-    df = df.loc[df['지면/상품'].isin(['검색_P', '검색_M', '쇼검브랜드형_P', '쇼검브랜드형_M'])].drop(columns=['지면/상품'])
+    df = df.loc[df['지면/상품'].isin(['검색_P', '검색_M', '쇼검브랜드형_P', '쇼검브랜드형_M','네이버BSA_P','네이버BSA_M'])].drop(columns=['지면/상품'])
     df['소재'] = '-'
     return df
 

@@ -43,7 +43,6 @@ def total_media_raw():
 
 #인덱싱 붙이기 (나중에 제외 필요)
 
-
 def media_tracker():
     media_raw = total_media_raw()
     ga_raw = gprep.ga_prep()

@@ -66,6 +66,7 @@ def ga_prep():
     df = df.loc[df['﻿dataSource'] == 'web']
 
     #예외처리(크리테오)
+
     df.loc[df['medium'] == 'da_app_If', 'medium'] = 'da_app_lf'
 
     criteo_dc = ['feed','(not set)','siv_banner','jaju_sales']
@@ -97,6 +98,7 @@ def ga_prep():
     df.loc[(df['campaign'] == 'jaju') & (df['medium'] == 'da_pc_lf') & (df['browser'] == 'Edge'), 'campaign'] = 'LF - Desktop'
 
     #예외처리(시트 + 브검)
+
     c_media = ['google','naver']
     df.loc[df['source'].isin(c_media), 'campaign'] = df['campaign'].apply(lambda x: x.replace(x, ref.exc_cdict[x]) if x in ref.exc_cdict.keys() else x)
 
@@ -139,6 +141,7 @@ def ga_prep():
 
 ga = ga_prep()
 
+ga.to_csv(dr.download_dir + f'GA_raw/ga_raw_{ref.r_date.yearmonth}.csv', index=False, encoding='utf-8-sig')
 
 
 
