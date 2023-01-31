@@ -1,55 +1,78 @@
-from selenium import webdriver
 from selenium.webdriver.common.by import By
+
+from utils.selenium_util import get_chromedriver, wait_for_element
+from utils.path_util import get_tmp_path
+from utils import dropbox
+import utils.os_util as os_util
+from worker.abstract_worker import Worker
+
 from setting import directory as dr
 import os
 import pandas as pd
-from datetime import date
+import datetime
 
-drop_dir = 'C:/Users/MADUP/Dropbox (주식회사매드업)/광고사업부/데이터컨설팅/데이터 솔루션/쇼핑파트너센터 다운 자동화'
-target_date = date.today()
+class Key:
+    LOGIN_URL = "https://center.shopping.naver.com/login"
+    USE_HEADLESS = False
+    tmp_path = None
+    USE_LOGGING = False
+    id_input_value = 'normal_login_username'
+    pw_input_value = 'normal_login_password'
+    login_btn_value = '#root > div > div > div > div > form > div:nth-child(4) > div > div > span > button.ant-btn.btn_main_login.ant-btn-primary'
+    service_item_value = '#content > div.tab2 > ul > li:nth-child(2) > a'
+    total_item_value = '#content > div.prdt_status_lst > h4 > a > span'
 
-f = open(drop_dir + '/spc_login.txt', 'r')
-login_info = f.read()
-login_info = eval(login_info)
+def spc_login_action(self, driver, login_id, login_pw, use_logging = Key.USE_LOGGING) :
+    id_input = driver.find_element(by=By.ID, value = Key.id_input_value)
+    id_input.send_keys(login_id)
 
-brand = login_info['brand']
+    pw_input = driver.find_element(by=By.ID, value = Key.pw_input_value)
+    pw_input.send_keys(login_pw)
 
-def selenium_download():
-    driver = webdriver.Chrome("C:/Users/MADUP/Dropbox (주식회사매드업)/광고사업부/데이터컨설팅/token/chromedriver.exe")
-    driver.get('https://center.shopping.naver.com')
-
-    # 로그인하기
-
-    id_input = driver.find_element(by=By.ID, value='normal_login_username')
-    id_input.send_keys(login_info['id'])
-
-    pw_input = driver.find_element(by=By.ID, value='normal_login_password')
-    pw_input.send_keys(login_info['pw'])
-
-    login_click = driver.find_element(by=By.CSS_SELECTOR,value='#root > div > div > div > div > form > div:nth-child(4) > div > div > span > button.ant-btn.btn_main_login.ant-btn-primary')
+    login_click = driver.find_element(by=By.CSS_SELECTOR,value = Key.login_btn_value)
     login_click.click()
+
+    if use_logging == True :
+        self.logger.info("로그인 완료")
 
     driver.implicitly_wait(time_to_wait=5)
 
-    # 상품 탭 가기
-
-    service_item = driver.find_element(by=By.CSS_SELECTOR, value='#content > div.tab2 > ul > li:nth-child(2) > a')
+def get_download_number(self, driver, use_logging = Key.USE_LOGGING):
+    service_item = driver.find_element(by=By.CSS_SELECTOR, value=Key.service_item_value)
     service_item.click()
 
     # 상품수 계산
+    total_item = driver.find_element(by=By.CSS_SELECTOR, value=Key.total_item_value)
+    total_item = total_item.text.replace(',', '')
+    down_num = int((int(total_item) / 1000)) + 1
+    if use_logging == True :
+        self.logger.info(f"상품 수 : {total_item} / 다운로드 횟수 : {down_num}")
 
-    def down_num():
-        total_item = driver.find_element(by=By.CSS_SELECTOR, value='#content > div.prdt_status_lst > h4 > a > span')
-        total_item = total_item.text.replace(',', '')
-        down_num = int(total_item) / 1000
-        return int(down_num) + 1
+    return down_num
 
-    down_num = down_num()
+
+def selenium_download(self, owner_id, product_id, login_id, login_pw):
+    Key.tmp_path = get_tmp_path() + "/spc_download/" + owner_id + "/" + product_id + "/"
+    os.makedirs(Key.tmp_path, exist_ok=True)
+
+    # 크롬 브라우저 생성
+    if os_util.is_windows_os():
+        download_dir = Key.tmp_path.replace('/', '\\')
+    else:
+        download_dir = Key.tmp_path
+
+    driver = get_chromedriver(headless=Key.USE_HEADLESS, download_dir=download_dir)
+    driver.get(Key.LOGIN_URL)
+
+    # 로그인하기
+    spc_login_action(self, driver, login_id, login_pw, logging = False)
+
+    # 상품 탭 이동 후 다운로드 횟수 계산
+    down_num = get_download_number()
 
     # 엑셀 다운받기
-
-    excel_down = driver.find_element(by=By.CSS_SELECTOR, value='#excelDown > a')
-    excel_down.click()
+    excel_down_btn = driver.find_element(by=By.CSS_SELECTOR, value='#excelDown > a')
+    excel_down_btn.click()
 
     total_excel_down = driver.find_element(by=By.CSS_SELECTOR, value='#excelDown > div > ul > li:nth-child(1) > a')
     total_excel_down.click()
@@ -58,58 +81,79 @@ def selenium_download():
 
     driver.switch_to.window(driver.window_handles[-1])
 
-    start_down = driver.find_element(by=By.CSS_SELECTOR, value='#downloadList > tr > td.last > a')
-    start_down.click()
-    driver.implicitly_wait(time_to_wait=3)
+    for i in range(down_num):
+        download_btn = wait_for_element(driver=driver, by=By.CSS_SELECTOR,
+                                        value=f'#downloadList > tr:nth-child({i + 1}) > td.last > a')
+        n = 0
+        max_download_try = 3
+        while n < max_download_try :
+            try :
+                download_btn.click()
+            except :
+                alert_message = driver.find_element(by=By.CLASS_NAME, value='swal-button-container')
+                alert_message.click()
+            n+=1
 
-    try:
-        for i in range(1, down_num):
-            driver.implicitly_wait(time_to_wait=5)
-            file_grp = driver.find_element(by=By.CSS_SELECTOR,value=f'#downloadList > tr:nth-child({i}) > td:nth-child(3) > span > span')
-            percent = file_grp.get_attribute('style')
+        progress_bar = wait_for_element(driver=driver, by=By.CSS_SELECTOR,
+                                        value=f'#downloadList > tr:nth-child({i + 1}) > td:nth-child(3) > span > span')
+        progress = progress_bar.get_attribute('style')
 
-            if percent == 'width: 100%;':
-                file_down = driver.find_element(by=By.CSS_SELECTOR,value=f'#downloadList > tr:nth-child({i+1}) > td.last > a')
-                file_down.click()
-            else:
+        n = 0
+        max_wait_try = 3
+        while n < max_wait_try:
+            if progress == 'width: 100%;':
+                break
+            else :
+                progress = progress_bar.get_attribute('style')
                 driver.implicitly_wait(time_to_wait=5)
-                file_down = driver.find_element(by=By.CSS_SELECTOR,value=f'#downloadList > tr:nth-child({i+1}) > td.last > a')
-                file_down.click()
-        result = 'file read success'
+                continue
+            n += 1
 
-    except Exception as e:
-        result = 'file read failed'
+    driver.quit()
+    self.logger.info("다운로드 완료")
 
-    return result
 
-result = selenium_download()
+def file_concat(self, schedule_time, owner_id, upload_dir):
+    file_dir = Key.tmp_path
+    files = os.listdir(file_dir)
 
-def file_conat():
-    if result == 'file read success':
+    item_df = pd.DataFrame()
 
-        file_dir = dr.download_dir
-        files = os.listdir(file_dir)
-        files = [f for f in files if '서비스_상품' in f]
+    for f in files:
+        df = pd.read_excel(file_dir + '/' + f, header = 1)
+        item_df = pd.concat([item_df,df]).fillna('')
 
-        item_df = pd.DataFrame()
+    yearmonth = datetime.datetime.strptime(schedule_time, '%Y-%m-%d %H:%M:%S').strftime('%Y%m')
+    file_name = f'{owner_id}_EP_item_list_{yearmonth}.csv'
+    file_path = file_dir + file_name
+    item_df.to_csv(file_path, index=False, encoding='utf-8-sig')
 
-        for f in files:
-            df = pd.read_excel(file_dir + '/' + f, header = 1)
-            item_df = pd.concat([item_df,df]).fillna('')
+    upload_dir = '/광고사업부/데이터컨설팅/데이터 솔루션/쇼핑파트너센터 다운 자동화'
+    dropbox_path = upload_dir + '/' + file_name
 
-        item_df.to_csv(drop_dir + f'/{brand}_EP_item_list_{target_date}.csv', index= False , encoding= 'utf-8-sig')
+    # 드롭박스 업로드로 대체
+    dropbox.upload_file(file_path = file_path, dropbox_path = dropbox_path, token = 'rEtlXqnPweAAAAAAAAAVtlY2vRHQ-LT6nsHXomwgDNZXNWXNDzJEb8N_C3NYb3W4')
+    os.remove(file_path)
 
-        for f in files:
-            os.remove(file_dir + '/' + f)
-
-    else :
-        print('file concat fail')
-
-    return item_df
-
-df = file_conat()
+    for f in files:
+        os.remove(file_dir + '/' + f)
 
 
 
+
+
+
+
+
+class SpcDownload(Worker):
+    def do_work(self, info:dict, attr:dict):
+        owner_id = attr['owner_id']
+        product_id = attr['product_id']
+        schedule_time = attr['schedule_time']
+        login_id = info['id']
+        login_pw = info['pw']
+
+        selenium_download(self, owner_id, product_id, login_id, login_pw)
+        file_concat(self, schedule_time, owner_id)
 
 
