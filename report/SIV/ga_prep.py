@@ -64,10 +64,8 @@ def ga_prep():
 
     df = df.loc[df['source'].isin(ref.columns.ga1_media)]
     df = df.loc[df['﻿dataSource'] == 'web']
-    #app_brower = df['browser'].isin(['Safari (in-app)','Android Webview'])
-    #df = df[~app_brower]
 
-    #크리테오 예외처리 ZONE
+    #예외처리(크리테오)
     df.loc[df['medium'] == 'da_app_If', 'medium'] = 'da_app_lf'
 
     criteo_dc = ['feed','(not set)','siv_banner','jaju_sales']
@@ -98,8 +96,35 @@ def ga_prep():
     df.loc[(df['campaign'] == 'jaju') & (df['medium'] == 'da_pc_lf') & (df['browser'] == 'Chrome'), 'campaign'] = 'LF - Desktop'
     df.loc[(df['campaign'] == 'jaju') & (df['medium'] == 'da_pc_lf') & (df['browser'] == 'Edge'), 'campaign'] = 'LF - Desktop'
 
-    #df.loc[df['campaign'] == 'siv_fashion_dynamic', 'campaign'] = df['광고코드']
-    #df.loc[df['campaign'] == 'jj_all_dynamic', 'campaign'] = df['광고코드']
+    #예외처리(시트 + 브검)
+    c_media = ['google','naver']
+    df.loc[df['source'].isin(c_media), 'campaign'] = df['campaign'].apply(lambda x: x.replace(x, ref.exc_cdict[x]) if x in ref.exc_cdict.keys() else x)
+
+    df.loc[df['source'] == 'criteo', 'adContent'] = df['adContent'].apply(lambda x: x.replace(x, ref.exc_ga_adict[x]) if x in ref.exc_ga_adict.keys() else x)
+
+    df['브검구분'] = df['adContent'].apply(lambda x : x.replace(x, '브랜드') if x.find('브랜드') != -1 else '-')
+    df.loc[df['브검구분'] == '-','브검구분'] = df['adContent'].apply(lambda x: x.replace(x, '일반') if x.find('일반') != -1 else '-')
+
+    df.loc[(df['campaign'] == 'jaju') & (df['source'] == 'naver') & (df['medium'] == 'sa_mo') & (df['브검구분'] == '브랜드'), 'campaign'] = 'jaju_JJFK0005'
+    df.loc[(df['campaign'] == 'jaju') & (df['source'] == 'naver') & (df['medium'] == 'sa_pc') & (df['브검구분'] == '브랜드'), 'campaign'] = 'jaju_JJFK0006'
+    df.loc[(df['campaign'] == 'jaju') & (df['source'] == 'naver') & (df['medium'] == 'sa_mo') & (df['브검구분'] == '일반'), 'campaign'] = 'jaju_JJFK0007'
+    df.loc[(df['campaign'] == 'jaju') & (df['source'] == 'naver') & (df['medium'] == 'sa_pc') & (df['브검구분'] == '일반'), 'campaign'] = 'jaju_JJFK0008'
+
+    df = df.drop(columns = '브검구분')
+
+    # 자주 구글SA 예외처리
+
+    df.loc[(df['source'] == 'google') & (df['campaign'] == 'jj_all_br_common_JJFK0003')& (df['adContent'] == '2301_pc-main_JJGS0014'), 'campaign'] = 'jj_all_br_common_JJFK0004'
+    df.loc[(df['source'] == 'google') & (df['campaign'] == 'jj_all_br_cooking_JJFK0003')& (df['adContent'] == '2301_pc-main_JJGS0027'), 'campaign'] = 'jj_all_br_cooking_JJFK0004'
+
+    df.loc[(df['source'] == 'google') & (df['campaign'] == 'jj_all_br_maincategory_JJFK0003')& (df['adContent'] == '2301_pc-main_jjgs0009'), 'campaign'] = 'jj_all_br_maincategory_JJFK0004'
+    df.loc[(df['source'] == 'google') & (df['campaign'] == 'jj_all_br_pajama_JJFK0003')& (df['adContent'] == '2301_pc-main_JJGS0019'), 'campaign'] = 'jj_all_br_pajama_JJFK0004'
+
+    df.loc[(df['source'] == 'google') & (df['campaign'] == 'jj_all_br_sitelink-benefit_JJFK0003')& (df['adContent'] == '2301_pc-main_JJGS0035'), 'campaign'] = 'jj_all_br_sitelink-benefit_JJFK0004'
+    df.loc[(df['source'] == 'google') & (df['campaign'] == 'jj_all_br_sitelink-event_JJFK0003')& (df['adContent'] == '2301_pc-main_JJGS0033'), 'campaign'] = 'jj_all_br_sitelink-event_JJFK0004'
+    df.loc[(df['source'] == 'google') & (df['campaign'] == 'jj_all_br_sitelink-newbest_JJFK0003') & (df['adContent'] == '2301_pc-main_JJGS0034'), 'campaign'] = 'jj_all_br_sitelink-newbest_JJFK0004'
+    df.loc[(df['source'] == 'google') & (df['campaign'] == 'jj_all_br_sitelink-sale_JJFK0003') & (df['adContent'] == '2301_pc-main_jjgs0036'), 'campaign'] = 'jj_all_br_sitelink-sale_JJFK0004'
+    df.loc[(df['source'] == 'google') & (df['campaign'] == 'jj_all_br_underwear_JJFK0003') & (df['adContent'] == '2301_pc-main_JJGS0021'), 'campaign'] = 'jj_all_br_underwear_JJFK0004'
 
     # 끝 (위에 코드 붙임)
     df = ref.adcode_ga(df)

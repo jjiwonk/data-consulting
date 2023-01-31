@@ -1,11 +1,10 @@
 import pandas as pd
 from report.SIV import ref
 import report.SIV.media_prep as mprep
-#import report.SIV.ga_prep as gprep
-#import report.SIV.apps_prep as aprep
+import report.SIV.ga_prep as gprep
+import report.SIV.apps_prep as aprep
 from report.SIV import directory as dr
-
-import re
+import datetime
 
 def total_media_raw():
 
@@ -23,25 +22,114 @@ def total_media_raw():
     for func in func_list:
         media_df = getattr(mprep,func)()
         df = pd.concat([df, media_df])
-        df = df.groupby(ref.columns.media_dimension)[ref.columns.media_mertic].sum().reset_index()
         df = df.sort_values(by = ['날짜', '구분'])
 
-    df['sum'] = df[ref.columns.media_mertic].sum(axis=1)
-    df = df.loc[df['sum'] >= 1]
-
+    #머징코드 위로 올리고 , 그담에 그룹바이하기
     df = ref.adcode_mediapps(df)
-
-    df = df[['구분','날짜', '캠페인', '세트', '소재', '노출', '도달', '클릭', '조회','비용','구매(대시보드)','매출(대시보드)','설치(대시보드)','SPEND_AGENCY','머징코드']]
-
-    index = ref.index_df[['지면/상품','매체','캠페인 구분','KPI','캠페인 라벨','OS','파트(주체)','파트 구분','머징코드']]
-    index = index.drop_duplicates(keep='first')
-    merge = pd.merge(df, index, on='머징코드', how='left').fillna('no_index')
-
-    merge.to_csv(dr.download_dir + 'media_raw.csv', index=False, encoding='utf-8-sig')
-
-    #df = df.drop(columns='구분')
+    df.loc[df['구분'] == 'NOSP', '소재'] = '-'
+    df = df.groupby(ref.columns.media_dimension)[ref.columns.media_mertic].sum().reset_index()
+    df['sum'] = df[ref.columns.media_mertic].sum(axis=1)
+    df = df.loc[df['sum'] >= 1].drop(columns = ['sum','구분'])
 
     return df
 
+#인덱싱 붙이기 (나중에 제외 필요)
+
 df = total_media_raw()
 
+index = ref.index_df[['지면/상품','매체','캠페인 구분','KPI','캠페인 라벨','OS','파트(주체)','파트 구분','머징코드']]
+index = index.drop_duplicates(keep='first')
+merge = pd.merge(df, index, on='머징코드', how='left').fillna('no_index')
+
+merge = merge[['파트 구분','날짜','매체','지면/상품','캠페인 구분','KPI','캠페인','세트','소재','머징코드','캠페인 라벨','OS','노출','도달','클릭','조회','구매(대시보드)','매출(대시보드)','설치(대시보드)','대시보드(친구추가)','대시보드(참여)','비용','SPEND_AGENCY']]
+
+merge.to_csv(dr.download_dir + 'media_raw.csv', index=False, encoding='utf-8-sig')
+
+
+def media_tracker():
+    media_raw = total_media_raw()
+    ga_raw = gprep.ga_prep()
+    apps_raw = aprep.apps_concat()
+    ds_raw = ref.ds_raw
+
+    #DS 예외처리
+    ds_raw['구분'] ='-'
+    ds_raw.loc[ds_raw['구분'] == '-', '머징코드'] = ds_raw['머징코드'].apply(lambda x: x.replace(x, ref.exc_code_dict[x]) if x in ref.exc_code_dict.keys() else x)
+    ds_raw = ds_raw.drop(columns =['구분'])
+
+    # 인덱스 (다음달에 raw 추가하기)
+    merge_index = media_raw[['머징코드', '캠페인', '세트', '소재']].drop_duplicates(keep='last')
+    merge_index = merge_index.loc[merge_index['머징코드'] != 'None']
+    merge_index = merge_index.drop_duplicates(subset='머징코드',keep='last')
+
+    #last 기준으로 없애기
+    merge_cdict = dict(zip(merge_index['머징코드'], merge_index['캠페인']))
+    merge_gdict = dict(zip(merge_index['머징코드'], merge_index['세트']))
+    merge_adict = dict(zip(merge_index['머징코드'], merge_index['소재']))
+
+    def merge_code(df,merge_raw,metric):
+
+        df = df.loc[df['머징코드'] != 'None']
+        merge_raw = merge_raw.loc[merge_raw['머징코드'] != 'None']
+
+        merge_raw = merge_raw.groupby(['날짜', '머징코드'])[metric].sum().reset_index()
+        merge_df = pd.merge(df, merge_raw, how='outer', on=['날짜', '머징코드']).fillna(0)
+
+        merge_df.loc[merge_df['캠페인'] == 0,'캠페인'] = merge_df['머징코드'].apply(lambda x: x.replace(x, merge_cdict[x]) if x in merge_cdict.keys() else '-')
+        merge_df.loc[merge_df['세트'] == 0, '세트'] = merge_df['머징코드'].apply(lambda x: x.replace(x, merge_gdict[x]) if x in merge_gdict.keys() else '-')
+        merge_df.loc[merge_df['소재'] == 0, '소재'] = merge_df['머징코드'].apply(lambda x: x.replace(x, merge_adict[x]) if x in merge_adict.keys() else '-')
+
+        merge_df = merge_df.loc[merge_df['캠페인'] != '-']
+
+        return merge_df
+
+    df = merge_code(media_raw,apps_raw,ref.columns.apps_metric)
+    df = merge_code(df, ga_raw, ref.columns.ga_metric)
+    df = merge_code(df, ds_raw,ref.columns.ds_raw_metric)
+
+    return df
+
+def merge_indexing() :
+    df = media_tracker()
+
+    index = ref.index_df[['지면/상품', '매체', '캠페인 구분', 'KPI', '캠페인 라벨', 'OS', '파트(주체)', '파트 구분', '머징코드']]
+    index = index.drop_duplicates(keep='last')
+    index['중복'] = index.duplicated(['머징코드'], False)
+    index = index.loc[index['머징코드'] != '']
+
+    index_du = index.loc[index['중복'] == True]
+    index_du.to_csv(dr.download_dir + '/인덱스 중복.csv', index=False, encoding='utf-8-sig')
+    index = index.loc[index['중복'] == False].drop(columns=['중복'])
+
+    merge = pd.merge(df, index, on='머징코드', how='left').fillna('no_index')
+
+    # 예외처리
+    merge.loc[merge['지면/상품'].isin(['쇼핑검색_P','쇼핑검색_M']),'구매(GA)'] = merge['구매(대시보드)']
+    merge.loc[merge['지면/상품'].isin(['쇼핑검색_P','쇼핑검색_M']),'매출(GA)'] = merge['매출(대시보드)']
+
+    ad_index = ref.index_df[['소재','캠페인(인덱스)','세트(인덱스)','프로모션','브랜드','카테고리','소재형태','소재이미지','소재카피']]
+    ad_index = ad_index.drop_duplicates(keep='last')
+    ad_index['중복'] = ad_index.duplicated(['소재'], False)
+    ad_index_dup = ad_index.loc[ad_index['중복'] != False].drop(columns=['중복'])
+    ad_index_dup.to_csv(dr.download_dir + '/인덱스 중복_소재.csv', index=False, encoding='utf-8-sig')
+    ad_index = ad_index.loc[ad_index['캠페인(인덱스)'] != ''].fillna('-').drop(columns=['중복'])
+
+    merge = pd.merge(merge, ad_index, on='소재', how='left').fillna('-')
+
+    merge['날짜'] = merge['날짜'].apply(pd.to_datetime)
+    merge['연도'] = merge['날짜'].apply(lambda x: x.strftime('%Y'))
+    merge['월'] = merge['날짜'].apply(lambda x: x.strftime('%m'))
+    merge['날짜'] = merge['날짜'].dt.date
+    week_day = 7
+    merge['주차'] = pd.to_datetime(merge['날짜']).apply(lambda x: (x + datetime.timedelta(week_day)).isocalendar()[1]) - 1
+
+    merge = merge[['머징코드','파트 구분','연도','월','주차','날짜','매체','지면/상품','캠페인 구분','KPI','캠페인','세트','소재','OS','노출','도달','클릭','조회','비용','SPEND_AGENCY',
+                   '구매(대시보드)','매출(대시보드)','세션(GA)','UA(GA)','구매(GA)','매출(GA)','브랜드구매(GA)','브랜드매출(GA)','가입(GA)','appopen(AF)','구매(AF)','매출(AF)','주문취소(AF)','주문취소매출(AF)','총주문건(AF)','총매출(AF)','브랜드구매(AF)',
+                   '브랜드매출(AF)','첫구매(AF)','첫구매매출(AF)','설치(AF)','재설치(AF)','가입(AF)','유입(AF)','UV(AF)','방문수(DS)','방문자수(DS)','구매금액(DS)','구매방문수(DS)','회원가입방문수(DS)',
+                   '캠페인(인덱스)','세트(인덱스)','프로모션','브랜드','카테고리','소재형태','소재이미지','소재카피']]
+
+    return merge
+
+merge = merge_indexing()
+
+merge.to_csv(dr.download_dir +f'daily_report_{ref.r_date.yearmonth}.csv', index= False , encoding= 'utf-8-sig')

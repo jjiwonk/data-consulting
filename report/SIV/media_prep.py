@@ -23,13 +23,6 @@ def media_raw_read(media):
 
     df['구분'] = media
 
-    if media in ref.columns.prep_media:
-        index = ref.index_df[['캠페인', '지면/상품']]
-        index = index.drop_duplicates(keep='first')
-        df = pd.merge(df, index, on='캠페인', how='left').fillna('no_index')
-        df = df.loc[df['지면/상품'] == media]
-        df = df.drop(columns=['지면/상품'])
-
     return df
 
 def cost_calc(media, df):
@@ -47,23 +40,25 @@ def media_prep(media):
     return df2
 
 #머징 함수를 위해서 함수명은 무조건 구분명과 일치하게 지정
-
 #구분 별로 ! 예외 처리는 요기다가
 
 def get_FBIG():
     df = media_prep('FBIG')
+    df['구매(대시보드)'] = df['페북전환1'] + df['페북전환2']
+    df['매출(대시보드)'] = df['페북매출1'] + df['페북매출2']
+    df = df.drop(columns=['페북전환1','페북전환2','페북매출1','페북매출2'])
     return df
 
-def get_비즈보드():
-    df = media_prep('비즈보드')
-    return df
-
-def get_디스플레이():
-    df = media_prep('디스플레이')
+def get_카카오모먼트():
+    df = media_prep('카카오모먼트')
+    df = pd.merge(df, ref.media_index, on='캠페인', how='left').fillna('no_index')
+    df = df.loc[df['지면/상품'].isin(['비즈보드','디스플레이'])].drop(columns=['지면/상품'])
     return df
 
 def get_채널메시지():
     df = media_prep('채널메시지')
+    df = pd.merge(df, ref.media_index, on='캠페인', how='left').fillna('no_index')
+    df = df.loc[df['지면/상품'].isin(['채널메시지'])].drop(columns=['지면/상품'])
     return df
 
 def get_카카오SA():
@@ -74,54 +69,44 @@ def get_카카오SA():
 
 def get_Pmax():
     df = media_prep('Pmax')
+    df = pd.merge(df, ref.media_index, on='캠페인', how='left').fillna('no_index')
+    df = df.loc[df['지면/상품'].isin(['Pmax'])].drop(columns=['지면/상품'])
     df.loc[df['캠페인'] == '[2023.01]Pmax_Pmax','캠페인'] = '[2023.01]Pmax_Pmax_SVGG0001'
     df.loc[df['캠페인'] == '정기_pmax_sales_2301_Pmax', '캠페인'] = '정기_pmax_sales_2301_Pmax_JJGG0015'
     df['세트'] = '-'
     df['소재'] = '-'
     return df
 
-
-def get_GDN_P():
-    df = media_prep('GDN_P')
+def get_구글DA():
+    df = media_prep('구글DA')
+    df = pd.merge(df, ref.media_index, on='캠페인', how='left').fillna('no_index')
+    df = df.loc[df['지면/상품'].isin(['GDN_P','GDN_M','YT디스커버리','YT인스트림','AC'])].drop(columns=['지면/상품'])
     return df
 
-def get_GDN_M():
-    df = media_prep('GDN_M')
-    return df
-
-def get_YT디스커버리():
-    df = media_prep('YT디스커버리')
-    return df
-
-def get_YT인스트림():
-    df = media_prep('YT인스트림')
-    return df
-
-def get_AC():
-    df = media_prep('AC')
-    return df
-
-df = get_AC()
-
-
-def get_구글SA_P():
-    df = media_prep('구글SA_P')
-    df['세트'] = '-'
-    df['소재'] = '-'
-    return df
-
-def get_구글SA_M():
-    df = media_prep('구글SA_M')
+def get_구글SA():
+    df = media_prep('구글SA')
+    df = pd.merge(df, ref.media_index, on='캠페인', how='left').fillna('no_index')
+    df = df.loc[df['지면/상품'].isin(['구글SA_P', '구글SA_M'])].drop(columns=['지면/상품'])
     df['세트'] = '-'
     df['소재'] = '-'
     return df
 
 def get_네이버SA():
     df = media_prep('네이버SA')
+    df = pd.merge(df, ref.media_index, on='캠페인', how='left').fillna('no_index')
+    df = df.loc[df['지면/상품'].isin(['검색_P', '검색_M', '쇼검브랜드형_P', '쇼검브랜드형_M'])].drop(columns=['지면/상품'])
     df['세트'] = '-'
     df['소재'] = '-'
     return df
 
+def get_네이버SS():
+    df = media_prep('네이버SS')
+    df = pd.merge(df, ref.media_index, on='캠페인', how='left').fillna('no_index')
+    df = df.loc[df['지면/상품'].isin(['쇼핑검색_P', '쇼핑검색_M'])]
+    df = df.drop(columns=['지면/상품'])
+    df['세트'] = '-'
+    df['소재'] = '-'
+    return df
 
 def get_AppleSA():
     df = media_prep('AppleSA')
@@ -152,14 +137,39 @@ def get_NOSP():
 
 def get_버티컬():
     df = ref.vertical_df
-    #index = ref.index_df[['캠페인','매체','지면/상품','캠페인 구분','KPI','캠페인 라벨','OS','파트 구분']]
-    #index = index.drop_duplicates(keep ='first')
-    #df = pd.merge(df,index ,on = '캠페인',how = 'left').fillna('no_index')
-
-    df[ref.columns.media_mertic] = df[ref.columns.media_mertic].astype(float)
     df[ref.columns.media_dimension] = df[ref.columns.media_dimension].astype(str)
+    df[ref.columns.media_mertic] = df[ref.columns.media_mertic].astype(float)
     return  df
 
+#SA용 매체 코드
 
+def get_카카오SA_SA():
+    df = media_prep('카카오SA')
+    df['소재'] = '-'
+    return df
 
+def get_네이버SA_SA():
+    df = media_prep('네이버SA')
+    df = pd.merge(df, ref.media_index, on='캠페인', how='left').fillna('no_index')
+    df = df.loc[df['지면/상품'].isin(['검색_P', '검색_M', '쇼검브랜드형_P', '쇼검브랜드형_M'])].drop(columns=['지면/상품'])
+    df['소재'] = '-'
+    return df
+
+def get_NOSP_SA():
+    df = media_prep('NOSP')
+    df['세트'] = '-'
+
+    pat = re.compile('[A-Z]{4,4}\d{4,4}')
+    df['소재'] = df['캠페인']
+    df['캠페인'] = df['캠페인'].apply(lambda x: pat.findall(str(x))[-1] if pat.search(str(x)) else 'None')
+    df.loc[df['구분'] == 'NOSP','캠페인'] = df['캠페인'].apply(lambda x: x.replace(x, ref.exc_cdict[x]) if x in ref.exc_cdict.keys() else x)
+
+    return df
+
+def get_구글SA_SA():
+    df = media_prep('구글SA')
+    df = pd.merge(df, ref.media_index, on='캠페인', how='left').fillna('no_index')
+    df = df.loc[df['지면/상품'].isin(['구글SA_P', '구글SA_M'])].drop(columns=['지면/상품'])
+    df['소재'] = '-'
+    return df
 
