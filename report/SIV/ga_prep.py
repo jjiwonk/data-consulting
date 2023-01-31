@@ -133,11 +133,13 @@ def ga_prep():
 
     df = df[['머징코드','날짜','﻿dataSource', 'browser', 'campaign', 'source', 'medium', 'keyword','adContent', '세션(GA)', 'UA(GA)', '구매(GA)','매출(GA)','브랜드구매(GA)', '브랜드매출(GA)','가입(GA)']]
 
+    df.to_csv(dr.download_dir + f'GA_raw/ga_raw_{ref.r_date.yearmonth}.csv', index=False, encoding='utf-8-sig')
+
     return df
 
 ga = ga_prep()
 
-ga.to_csv(dr.download_dir +'ga_raw.csv', index= False , encoding= 'utf-8-sig')
+
 
 
 

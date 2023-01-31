@@ -31,19 +31,17 @@ def total_media_raw():
     df['sum'] = df[ref.columns.media_mertic].sum(axis=1)
     df = df.loc[df['sum'] >= 1].drop(columns = ['sum','구분'])
 
+    index = ref.index_df[['지면/상품', '매체', '캠페인 구분', 'KPI', '캠페인 라벨', 'OS', '파트(주체)', '파트 구분', '머징코드']]
+    index = index.drop_duplicates(keep='first')
+    merge = pd.merge(df, index, on='머징코드', how='left').fillna('no_index')
+
+    merge = merge[['파트 구분', '날짜', '매체', '지면/상품', '캠페인 구분', 'KPI', '캠페인', '세트', '소재', '머징코드', '캠페인 라벨', 'OS', '노출', '도달', '클릭','조회', '구매(대시보드)', '매출(대시보드)', '설치(대시보드)', '대시보드(친구추가)', '대시보드(참여)', '비용', 'SPEND_AGENCY']]
+
+    merge.to_csv(dr.download_dir + f'media_raw/media_raw_{ref.r_date.yearmonth}.csv', index=False, encoding='utf-8-sig')
+
     return df
 
 #인덱싱 붙이기 (나중에 제외 필요)
-
-df = total_media_raw()
-
-index = ref.index_df[['지면/상품','매체','캠페인 구분','KPI','캠페인 라벨','OS','파트(주체)','파트 구분','머징코드']]
-index = index.drop_duplicates(keep='first')
-merge = pd.merge(df, index, on='머징코드', how='left').fillna('no_index')
-
-merge = merge[['파트 구분','날짜','매체','지면/상품','캠페인 구분','KPI','캠페인','세트','소재','머징코드','캠페인 라벨','OS','노출','도달','클릭','조회','구매(대시보드)','매출(대시보드)','설치(대시보드)','대시보드(친구추가)','대시보드(참여)','비용','SPEND_AGENCY']]
-
-merge.to_csv(dr.download_dir + 'media_raw.csv', index=False, encoding='utf-8-sig')
 
 
 def media_tracker():
@@ -132,4 +130,4 @@ def merge_indexing() :
 
 merge = merge_indexing()
 
-merge.to_csv(dr.download_dir +f'daily_report_{ref.r_date.yearmonth}.csv', index= False , encoding= 'utf-8-sig')
+merge.to_csv(dr.download_dir +f'daily_report/daily_report_{ref.r_date.yearmonth}.csv', index= False , encoding= 'utf-8-sig')

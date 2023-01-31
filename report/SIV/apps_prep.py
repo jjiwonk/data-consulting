@@ -162,11 +162,13 @@ def apps_concat():
     apps = apps[['날짜', '매체', '캠페인', '세트', '소재', '유입(AF)','UV(AF)','appopen(AF)','구매(AF)','매출(AF)','주문취소(AF)','주문취소매출(AF)','총주문건(AF)','총매출(AF)','브랜드구매(AF)','브랜드매출(AF)','첫구매(AF)','첫구매매출(AF)','설치(AF)','재설치(AF)','가입(AF)']]
     apps = ref.adcode_mediapps(apps)
 
+    apps.to_csv(dr.download_dir + f'appsflyer_raw/appsflyer_raw_{ref.r_date.yearmonth}.csv', index=False, encoding='utf-8-sig')
+
     return apps
 
 apps = apps_concat()
 
-apps.to_csv(dr.download_dir +'앱스_raw.csv', index= False , encoding= 'utf-8-sig')
+
 
 
 
