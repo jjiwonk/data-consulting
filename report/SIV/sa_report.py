@@ -111,6 +111,8 @@ def sa_merging():
     notset_merge_df = notset_merge_df.loc[notset_merge_df['주차'] >= 3]
 
     # 본래 ga 코드
+    ga_df = ga_df.loc[ga_df['키워드'] !='(not set)']
+
     merge_df = pd.merge(media_df, ga_df, how='outer', on= metric).fillna(0)
 
     merge_df = merge_df.loc[merge_df['주차'] >= 3 ]
