@@ -24,7 +24,6 @@ def total_media_raw():
         df = pd.concat([df, media_df])
         df = df.sort_values(by = ['날짜', '구분'])
 
-    #머징코드 위로 올리고 , 그담에 그룹바이하기
     df = ref.adcode_mediapps(df)
     df.loc[df['구분'] == 'NOSP', '소재'] = '-'
     df = df.groupby(ref.columns.media_dimension)[ref.columns.media_mertic].sum().reset_index()
@@ -120,10 +119,7 @@ def merge_indexing() :
     week_day = 7
     merge['주차'] = pd.to_datetime(merge['날짜']).apply(lambda x: (x + datetime.timedelta(week_day)).isocalendar()[1]) - 1
 
-    merge = merge[['머징코드','파트 구분','연도','월','주차','날짜','매체','지면/상품','캠페인 구분','KPI','캠페인','세트','소재','OS','노출','도달','클릭','조회','비용','SPEND_AGENCY',
-                   '구매(대시보드)','매출(대시보드)','세션(GA)','UA(GA)','구매(GA)','매출(GA)','브랜드구매(GA)','브랜드매출(GA)','가입(GA)','appopen(AF)','구매(AF)','매출(AF)','주문취소(AF)','주문취소매출(AF)','총주문건(AF)','총매출(AF)','브랜드구매(AF)',
-                   '브랜드매출(AF)','첫구매(AF)','첫구매매출(AF)','설치(AF)','재설치(AF)','가입(AF)','유입(AF)','UV(AF)','방문수(DS)','방문자수(DS)','구매금액(DS)','구매방문수(DS)','회원가입방문수(DS)',
-                   '캠페인(인덱스)','세트(인덱스)','프로모션','브랜드','카테고리','소재형태','소재이미지','소재카피']]
+    merge = merge[ref.columns.report_col]
 
     return merge
 
