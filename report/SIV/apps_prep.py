@@ -32,6 +32,8 @@ def apps_read():
 
     return raw_data
 
+df = apps_read()
+
 def apps_prep():
     df = apps_read()
     df = df.loc[df['attributed_touch_type'] == 'click']
@@ -95,7 +97,7 @@ def apps_agg_read():
     dir = dr.report_dir + 'appsflyer_aggregated_prism'
 
     from_date = ref.r_date.start_date
-    to_date = ref.r_date.target_date
+    to_date = ref.r_date.agg_date
 
     apps_agg_list =[]
 

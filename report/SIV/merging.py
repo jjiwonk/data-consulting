@@ -53,8 +53,17 @@ def media_tracker():
     ds_raw.loc[ds_raw['구분'] == '-', '머징코드'] = ds_raw['머징코드'].apply(lambda x: x.replace(x, ref.exc_code_dict[x]) if x in ref.exc_code_dict.keys() else x)
     ds_raw = ds_raw.drop(columns =['구분'])
 
+    ds_raw['날짜'] = pd.to_datetime(ds_raw['날짜'])
+    ds_raw['날짜'] = ds_raw['날짜'].dt.date
+    ds_raw = ds_raw.loc[(ref.r_date.start_date <= ds_raw['날짜']) & (ds_raw['날짜']<= ref.r_date.target_date )]
+
     # 인덱스 (다음달에 raw 추가하기)
-    merge_index = media_raw[['머징코드', '캠페인', '세트', '소재']].drop_duplicates(keep='last')
+    merge_index = media_raw[['머징코드', '캠페인', '세트', '소재']]
+    merge_index2 = pd.read_csv(dr.download_dir + f'media_raw/media_raw_{ref.r_date.index_date}.csv')
+    merge_index2 = merge_index2[['머징코드', '캠페인', '세트', '소재']]
+    merge_index = pd.concat([merge_index, merge_index2])
+
+    merge_index = merge_index[['머징코드', '캠페인', '세트', '소재']].drop_duplicates(keep='last')
     merge_index = merge_index.loc[merge_index['머징코드'] != 'None']
     merge_index = merge_index.drop_duplicates(subset='머징코드',keep='last')
 
@@ -89,6 +98,7 @@ def merge_indexing() :
     df = media_tracker()
 
     index = ref.index_df[['지면/상품', '매체', '캠페인 구분', 'KPI', '캠페인 라벨', 'OS', '파트(주체)', '파트 구분', '머징코드']]
+
     index = index.drop_duplicates(keep='last')
     index['중복'] = index.duplicated(['머징코드'], False)
     index = index.loc[index['머징코드'] != '']
