@@ -6,7 +6,7 @@ from utils.const import DEFAULT_S3_PUBLIC_BUCKET, DEFAULT_S3_PRIVATE_BUCKET
 from utils.path_util import get_tmp_path
 
 
-def download_file(s3_path: str, s3_bucket: str = DEFAULT_S3_PRIVATE_BUCKET, local_path: str = get_tmp_path()) -> str:
+def download_file(s3_path: str, s3_bucket: str = DEFAULT_S3_PUBLIC_BUCKET, local_path: str = get_tmp_path()) -> str:
     s3 = boto3.client("s3")
     if os.path.isdir(get_tmp_path()):
         local_path = local_path.rstrip("/") + "/" + s3_path.split("/")[-1]
