@@ -9,6 +9,15 @@ from selenium.webdriver.remote.webelement import WebElement
 from utils.os_util import is_mac_os, is_windows_os
 from utils.path_util import get_resource
 
+from selenium.common.exceptions import (
+    StaleElementReferenceException,
+    TimeoutException,
+)
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions
+from selenium.webdriver.common.by import By
+
+
 
 LINUX_CHROMEDRIVER = "chromedriver"
 MAC_CHROMEDRIVER = "chromedriver-mac"
@@ -81,3 +90,23 @@ def _get_file_list(*, target_dir: str = "/tmp", target_file_ext: str = None):
         return [f for f in os.listdir(target_dir) if f.endswith(target_file_ext)]
     else:
         return os.listdir(target_dir)
+
+def wait_for_element(driver, value, by=By.CSS_SELECTOR, max_retry_cnt = 3):
+    while max_retry_cnt >= 0:
+        try:
+            elements = WebDriverWait(
+                driver,
+                10,
+            ).until(expected_conditions.presence_of_all_elements_located((by, value)))
+            if len(elements) == 1:
+                return elements[0]
+            else:
+                return elements
+        except StaleElementReferenceException or TimeoutException as e:
+            logging.warning(e)
+            if max_retry_cnt > 0:
+                max_retry_cnt -= 1
+                driver.refresh()
+                time.sleep(1)
+            else:
+                raise e

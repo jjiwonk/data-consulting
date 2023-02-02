@@ -2,9 +2,7 @@ import pandas as pd
 from setting import directory
 from spreadsheet import spreadsheet
 import pyarrow as pa
-
 import re
-
 import datetime
 
 doc = spreadsheet.spread_document_read(
@@ -15,11 +13,14 @@ setting_df = spreadsheet.spread_sheet(doc, '매체 전처리', 0, 0).reset_index
 index_df = spreadsheet.spread_sheet(doc, '3.캠그소인덱싱', 0, 1).reset_index(drop=True)
 exc_df = spreadsheet.spread_sheet(doc, '예외처리', 0, 0).reset_index(drop=True)
 vertical_df = spreadsheet.spread_sheet(doc, '버티컬', 0, 0).reset_index(drop=True)
+kakaobsa_df = spreadsheet.spread_sheet(doc, '카카오BSA_raw', 0, 0).reset_index(drop=True)
+media_index = index_df[['캠페인', '지면/상품']].drop_duplicates()
+ds_df = spreadsheet.spread_sheet(doc, 'DS데이터', 0, 0 ).reset_index(drop=True)
+ds_raw = ds_df[['날짜', '머징코드', '방문수(DS)', '방문자수(DS)', '구매방문수(DS)', '구매금액(DS)', '회원가입방문수(DS)']]
 
 class r_date :
     target_date = datetime.datetime.strptime(setting_df['리포트 기준 날짜'][0], '%Y-%m-%d').date()
     start_date = datetime.date(target_date.year, target_date.month, 1)
-    #start_date = datetime.date(target_date.year, target_date.month, 15)
     yearmonth = target_date.strftime('%Y%m')
 
 class columns:
@@ -37,16 +38,16 @@ class columns:
             temp_cols.append(i)
 
 
-    media_dimension = ['날짜', '캠페인', '세트', '소재','구분']
-    media_mertic = ['노출','도달','클릭', '비용', '조회','SPEND_AGENCY','구매(대시보드)','매출(대시보드)','설치(대시보드)']
+    media_dimension = ['날짜', '캠페인', '세트', '소재','구분','머징코드']
+    media_mertic = ['노출','도달','클릭', '비용', '조회','SPEND_AGENCY','구매(대시보드)','매출(대시보드)','설치(대시보드)','대시보드(친구추가)','대시보드(참여)']
 
     code_campaign = ['네이버SA','네이버BSA','카카오SA','카카오BSA','구글SA','naver','kakao','google','googleadwords_int']
     code_set = ['구글','AppleSA','google','googleadwords_int','Apple Search Ads']
 
-    apps_media = ['Apple Search Ads','Facebook Ads','adisonofferwall_int','criteonew_int','googleadwords_int','naver','buzzvil','kakao','kakao_plus_channel','meta']
-    google_media = ['Pmax', 'GDN_P', 'GDN_M', 'YT디스커버리', 'YT인스트림', 'AC', '구글SA_P', '구글SA_M']
-    prep_media = ['Pmax', 'GDN_P', 'GDN_M', 'YT디스커버리', 'YT인스트림', 'AC', '구글SA_P', '구글SA_M','비즈보드','디스플레이','채널메시지']
+    apps_media = ['Apple Search Ads','Facebook Ads','adisonofferwall_int','criteonew_int','googleadwords_int','naver','buzzvil','kakao','kakao_plus_channel','meta','kakao_int','doohub_int','buzzad_int','naver_int','adisonofferwall_int']
+    google_media = ['구글SA', '구글DA','Pmax']
 
+    # 앱스 데이터 컬럼
     apps_dtype = {
         'attributed_touch_type' : pa.string(),
         'attributed_touch_time' : pa.string(),
@@ -126,8 +127,10 @@ class columns:
 
     apps_agg_metric = ['re-attribution','re-engagement','installs','af_complete_registration_event_counter','completed_purchase_event_counter','completed_purchase_sales_in_krw','first_purchase_event_counter','first_purchase_sales_in_krw','cancel_purchase_event_counter','cancel_purchase_sales_in_krw']
     apps_agg_index = ['date','media_source_pid','campaign_name', 'adset_name', 'adgroup_name']
+    apps_metric =[ '유입(AF)', 'UV(AF)', 'appopen(AF)','구매(AF)', '매출(AF)', '주문취소(AF)', '주문취소매출(AF)', '총주문건(AF)', '총매출(AF)','브랜드구매(AF)', '브랜드매출(AF)', '첫구매(AF)', '첫구매매출(AF)', '설치(AF)', '재설치(AF)','가입(AF)']
 
-    ga1_media = ['naver','google','kakao','criteo','meta','kakao_plus_channel','buzzvil']
+    #ga 데이터 컬럼
+    ga1_media = ['naver','google','kakao','criteo','meta','kakao_plus_channel','buzzvil','kakao_int','naver_int','buzzad_int','doohub_int','adisonofferwall_int']
 
     ga1_dtype = {
         '﻿dataSource': pa.string(),
@@ -151,6 +154,7 @@ class columns:
                    }
 
     ga1_metric = ga1_rename.keys()
+    ga_metric = ['세션(GA)', 'UA(GA)', '구매(GA)', '매출(GA)', '가입(GA)','브랜드구매(GA)', '브랜드매출(GA)']
 
     ga3_dtype = {
         '﻿dataSource': pa.string(),
@@ -161,6 +165,21 @@ class columns:
         'goal1Completions': pa.float64(),
         'transactions': pa.float64(),
         'transactionRevenue': pa.float64()}
+
+    def merge_index(df):
+        merge_index = df[['머징코드', '캠페인', '세트', '소재']].drop_duplicates(keep='first')
+        merge_index = merge_index.loc[merge_index['머징코드'] != 'None']
+        merge_index['중복'] = merge_index.duplicated(['머징코드'], False)
+        merge_index = merge_index.loc[merge_index['중복'] == False].drop(columns=['중복'])
+        return merge_index
+
+    #DS 데이터 컬럼
+    ds_raw_metric = ['방문수(DS)', '방문자수(DS)', '구매방문수(DS)', '구매금액(DS)', '회원가입방문수(DS)']
+    ds_raw[ds_raw_metric] = ds_raw[ds_raw_metric].astype(float)
+
+    report_col = ['파트 구분','연도','월','주차','날짜','매체','지면/상품','캠페인 구분','KPI','캠페인','세트','소재','머징코드','캠페인 라벨','OS','노출','도달','클릭','조회','구매(대시보드)','매출(대시보드)','설치(대시보드)', '대시보드(친구추가)', '대시보드(참여)','비용','SPEND_AGENCY','세션(GA)','UA(GA)','구매(GA)','매출(GA)','브랜드구매(GA)','브랜드매출(GA)','가입(GA)','유입(AF)','UV(AF)','appopen(AF)','구매(AF)','매출(AF)','주문취소(AF)','주문취소매출(AF)','총주문건(AF)','총매출(AF)','브랜드구매(AF)','브랜드매출(AF)','첫구매(AF)','첫구매매출(AF)','설치(AF)','재설치(AF)','가입(AF)','방문수(DS)','방문자수(DS)','구매금액(DS)','구매방문수(DS)','회원가입방문수(DS)','캠페인(인덱스)','세트(인덱스)','프로모션','브랜드','카테고리','소재형태','소재이미지','소재카피']
+
+
 
 
 item_list = ['read', 'prep', 'temp', 'dimension', 'metric']
@@ -179,10 +198,11 @@ for media in info_df['구분'][1:].to_list() :
 
         info_dict[media][item] = item_dict
 
-
 exc_cdict = dict(zip(exc_df['캠페인'],exc_df['캠페인(변경)']))
 exc_gdict = dict(zip(exc_df['그룹'],exc_df['그룹(변경)']))
 exc_adict = dict(zip(exc_df['소재'],exc_df['소재(변경)']))
+exc_ga_adict = dict(zip(exc_df['GA소재'],exc_df['GA소재(변경)']))
+exc_code_dict = dict(zip(exc_df['코드'],exc_df['코드(변경)']))
 
 def adcode_mediapps(df):
     pat = re.compile('[A-Z]{4,4}\d{4,4}')
@@ -204,4 +224,13 @@ def adcode_ga(df):
 
     return df
 
+def adcode_sa(df):
+    pat = re.compile('[A-Z]{4,4}\d{4,4}')
 
+    df['머징코드'] = df['캠페인'].apply(lambda x: pat.findall(str(x))[-1] if pat.search(str(x)) else 'None')
+
+    df.index = range(len(df))
+    df.loc[df['머징코드'] == 'None', '머징코드'] = df['세트'].apply(lambda x: pat.findall(str(x))[-1] if pat.search(str(x)) else 'None')
+    df.loc[df['머징코드'] == 'None', '머징코드'] = df['키워드'].apply(lambda x: pat.findall(str(x))[-1] if pat.search(str(x)) else 'None')
+
+    return df
