@@ -14,6 +14,8 @@ def integrate_media_data():
 
         if media == 'FBIG':
             df = load.fb_prep()
+        elif media == 'FBIG_DPA':
+            df = load.fb_dpa_prep()
         elif media == 'Google_SA':
             df = load.gg_sa_prep()
         elif media == 'AC_Install':
