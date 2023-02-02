@@ -213,7 +213,7 @@ def na_snow_prep() -> pd.DataFrame:
     df = df.loc[df['캠페인'].isin(camp_list)]
     handi_df = get_handi_data('Snow')
     df = pd.concat([df, handi_df], sort=False, ignore_index=True)
-    df['매체'] = 'Snow'
+    df['매체'] = 'SNOW'
     return df
 
 
