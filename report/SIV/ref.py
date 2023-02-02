@@ -22,6 +22,8 @@ class r_date :
     target_date = datetime.datetime.strptime(setting_df['리포트 기준 날짜'][0], '%Y-%m-%d').date()
     start_date = datetime.date(target_date.year, target_date.month, 1)
     yearmonth = target_date.strftime('%Y%m')
+    agg_date = datetime.datetime.strptime(setting_df['집약형 종료 날짜'][0], '%Y-%m-%d').date()
+    index_date = int(yearmonth) - 1
 
 class columns:
     metric_cols = []
@@ -177,10 +179,7 @@ class columns:
     ds_raw_metric = ['방문수(DS)', '방문자수(DS)', '구매방문수(DS)', '구매금액(DS)', '회원가입방문수(DS)']
     ds_raw[ds_raw_metric] = ds_raw[ds_raw_metric].astype(float)
 
-    report_col = ['파트 구분','연도','월','주차','날짜','매체','지면/상품','캠페인 구분','KPI','캠페인','세트','소재','머징코드','캠페인 라벨','OS','노출','도달','클릭','조회','구매(대시보드)','매출(대시보드)','설치(대시보드)', '대시보드(친구추가)', '대시보드(참여)','비용','SPEND_AGENCY','세션(GA)','UA(GA)','구매(GA)','매출(GA)','브랜드구매(GA)','브랜드매출(GA)','가입(GA)','유입(AF)','UV(AF)','appopen(AF)','구매(AF)','매출(AF)','주문취소(AF)','주문취소매출(AF)','총주문건(AF)','총매출(AF)','브랜드구매(AF)','브랜드매출(AF)','첫구매(AF)','첫구매매출(AF)','설치(AF)','재설치(AF)','가입(AF)','방문수(DS)','방문자수(DS)','구매금액(DS)','구매방문수(DS)','회원가입방문수(DS)','캠페인(인덱스)','세트(인덱스)','프로모션','브랜드','카테고리','소재형태','소재이미지','소재카피']
-
-
-
+    report_col = ['파트 구분','연도','월','주차','날짜','매체','지면/상품','캠페인 구분','KPI','캠페인','세트','소재','머징코드','캠페인 라벨','OS','노출','도달','클릭','조회','구매(대시보드)','매출(대시보드)','설치(대시보드)', '대시보드(친구추가)', '대시보드(참여)','비용','SPEND_AGENCY','세션(GA)','UA(GA)','구매(GA)','매출(GA)','브랜드구매(GA)','브랜드매출(GA)','가입(GA)','유입(AF)','UV(AF)','appopen(AF)','구매(AF)','매출(AF)','주문취소(AF)','주문취소매출(AF)','총주문건(AF)','총매출(AF)','브랜드구매(AF)','브랜드매출(AF)','첫구매(AF)','첫구매매출(AF)','설치(AF)','재설치(AF)','가입(AF)','방문수(DS)','방문자수(DS)','구매방문수(DS)','구매금액(DS)','회원가입방문수(DS)','캠페인(인덱스)','세트(인덱스)','프로모션','브랜드','카테고리','소재형태','소재이미지','소재카피']
 
 item_list = ['read', 'prep', 'temp', 'dimension', 'metric']
 
