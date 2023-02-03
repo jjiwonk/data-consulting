@@ -30,8 +30,8 @@ def ga_read():
 def ga3_read():
     dir = dr.report_dir + 'ga_type3_prism'
 
-    #from_date = ref.r_date.start_date
-    from_date = datetime.date(2023, 1, 6)
+    from_date = ref.r_date.start_date
+    #from_date = datetime.date(2023, 1, 6)
     to_date = ref.r_date.target_date
 
     ga_raw = pd.DataFrame()

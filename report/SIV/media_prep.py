@@ -1,7 +1,6 @@
 from report.SIV import directory as dr
 from report.SIV import ref
 import re
-
 import pandas as pd
 
 def media_raw_read(media):
@@ -139,6 +138,9 @@ def get_버티컬():
     df = ref.vertical_df
     df[ref.columns.media_dimension] = df[ref.columns.media_dimension].astype(str)
     df[ref.columns.media_mertic] = df[ref.columns.media_mertic].astype(float)
+    df['날짜'] = pd.to_datetime(df['날짜'])
+    df['날짜'] = df['날짜'].dt.date
+    df = df.loc[(ref.r_date.start_date <= df['날짜']) & (df['날짜']<= ref.r_date.target_date )]
     return  df
 
 #SA용 매체 코드
@@ -173,3 +175,9 @@ def get_구글SA_SA():
     df['소재'] = '-'
     return df
 
+def get_카카오BSA_SA():
+    df = ref.kakaobsa_df
+    df['날짜'] = pd.to_datetime(df['날짜'])
+    df['날짜'] = df['날짜'].dt.date
+    df = df.loc[(ref.r_date.start_date <= df['날짜']) & (df['날짜'] <= ref.r_date.target_date)]
+    return  df

@@ -120,6 +120,13 @@ def fb_prep() -> pd.DataFrame:
     return df
 
 
+def fb_dpa_prep() -> pd.DataFrame:
+    df = get_basic_data('FBIG')
+    camp_list = ref.index_df.loc[ref.index_df['매체(표기)'] == 'FBIG_DPA', '캠페인'].unique().tolist()
+    df = df.loc[df['캠페인'].isin(camp_list)]
+    return df
+
+
 def gg_sa_prep() -> pd.DataFrame:
     df = get_basic_data('Google_SA')
     camp_list = ref.index_df.loc[ref.index_df['매체(표기)'] == 'Google_SA', '캠페인'].unique().tolist()
@@ -206,7 +213,7 @@ def na_snow_prep() -> pd.DataFrame:
     df = df.loc[df['캠페인'].isin(camp_list)]
     handi_df = get_handi_data('Snow')
     df = pd.concat([df, handi_df], sort=False, ignore_index=True)
-    df['매체'] = 'Snow'
+    df['매체'] = 'SNOW'
     return df
 
 

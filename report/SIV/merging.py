@@ -24,7 +24,6 @@ def total_media_raw():
         df = pd.concat([df, media_df])
         df = df.sort_values(by = ['날짜', '구분'])
 
-    #머징코드 위로 올리고 , 그담에 그룹바이하기
     df = ref.adcode_mediapps(df)
     df.loc[df['구분'] == 'NOSP', '소재'] = '-'
     df = df.groupby(ref.columns.media_dimension)[ref.columns.media_mertic].sum().reset_index()
@@ -54,8 +53,17 @@ def media_tracker():
     ds_raw.loc[ds_raw['구분'] == '-', '머징코드'] = ds_raw['머징코드'].apply(lambda x: x.replace(x, ref.exc_code_dict[x]) if x in ref.exc_code_dict.keys() else x)
     ds_raw = ds_raw.drop(columns =['구분'])
 
+    ds_raw['날짜'] = pd.to_datetime(ds_raw['날짜'])
+    ds_raw['날짜'] = ds_raw['날짜'].dt.date
+    ds_raw = ds_raw.loc[(ref.r_date.start_date <= ds_raw['날짜']) & (ds_raw['날짜']<= ref.r_date.target_date )]
+
     # 인덱스 (다음달에 raw 추가하기)
-    merge_index = media_raw[['머징코드', '캠페인', '세트', '소재']].drop_duplicates(keep='last')
+    merge_index = media_raw[['머징코드', '캠페인', '세트', '소재']]
+    merge_index2 = pd.read_csv(dr.download_dir + f'media_raw/media_raw_{ref.r_date.index_date}.csv')
+    merge_index2 = merge_index2[['머징코드', '캠페인', '세트', '소재']]
+    merge_index = pd.concat([merge_index, merge_index2])
+
+    merge_index = merge_index[['머징코드', '캠페인', '세트', '소재']].drop_duplicates(keep='last')
     merge_index = merge_index.loc[merge_index['머징코드'] != 'None']
     merge_index = merge_index.drop_duplicates(subset='머징코드',keep='last')
 
@@ -90,6 +98,7 @@ def merge_indexing() :
     df = media_tracker()
 
     index = ref.index_df[['지면/상품', '매체', '캠페인 구분', 'KPI', '캠페인 라벨', 'OS', '파트(주체)', '파트 구분', '머징코드']]
+
     index = index.drop_duplicates(keep='last')
     index['중복'] = index.duplicated(['머징코드'], False)
     index = index.loc[index['머징코드'] != '']
@@ -120,10 +129,7 @@ def merge_indexing() :
     week_day = 7
     merge['주차'] = pd.to_datetime(merge['날짜']).apply(lambda x: (x + datetime.timedelta(week_day)).isocalendar()[1]) - 1
 
-    merge = merge[['머징코드','파트 구분','연도','월','주차','날짜','매체','지면/상품','캠페인 구분','KPI','캠페인','세트','소재','OS','노출','도달','클릭','조회','비용','SPEND_AGENCY',
-                   '구매(대시보드)','매출(대시보드)','세션(GA)','UA(GA)','구매(GA)','매출(GA)','브랜드구매(GA)','브랜드매출(GA)','가입(GA)','appopen(AF)','구매(AF)','매출(AF)','주문취소(AF)','주문취소매출(AF)','총주문건(AF)','총매출(AF)','브랜드구매(AF)',
-                   '브랜드매출(AF)','첫구매(AF)','첫구매매출(AF)','설치(AF)','재설치(AF)','가입(AF)','유입(AF)','UV(AF)','방문수(DS)','방문자수(DS)','구매금액(DS)','구매방문수(DS)','회원가입방문수(DS)',
-                   '캠페인(인덱스)','세트(인덱스)','프로모션','브랜드','카테고리','소재형태','소재이미지','소재카피']]
+    merge = merge[ref.columns.report_col]
 
     return merge
 
