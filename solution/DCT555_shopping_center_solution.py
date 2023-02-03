@@ -1,3 +1,6 @@
+import shutil
+import time
+
 from selenium.webdriver.common.by import By
 
 from utils.selenium_util import get_chromedriver, wait_for_element
@@ -160,11 +163,11 @@ class SpcDownload(Worker):
         else:
             print(msg)
 
-    def file_deliver(self):
+    def file_deliver(self, wait_sec = 10, max_retry = 10):
         dropbox_path = Key.upload_path + '/' + Key.file_name
 
         # 드롭박스 업로드로 대체
-        dropbox_util.upload_v2(file_path=Key.file_path, dropbox_path=dropbox_path)
+        dropbox_util.upload_v2(file_path=Key.file_path, dropbox_path=dropbox_path, token = "rEtlXqnPweAAAAAAAAAVtlY3vRHQ-LT6nsHXomwgDNZXNWXNDzJEb8N_C3NYb3W4")
 
         msg = '드롭박스 업로드 완료'
         if Key.USE_LOGGING == True:

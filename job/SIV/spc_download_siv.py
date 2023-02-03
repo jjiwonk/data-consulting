@@ -1,3 +1,5 @@
+import os
+
 from solution.DCT555_shopping_center_solution import SpcDownload
 from datetime import datetime
 from utils import dropbox_util
