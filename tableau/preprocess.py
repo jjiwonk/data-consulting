@@ -132,20 +132,6 @@ def data_exception(raw_merged, asset_data, doc):
 
     return raw_merged
 
-
-def asset_data_read(campaign_doc):
-    # 애셋 정보 불러오기
-    account_sheet = spreadsheet.spread_sheet(campaign_doc, 'Owner 정보')
-    account_sheet = account_sheet.rename(columns={'Owner ID': 'owner_id'})
-    account_sheet = account_sheet.drop_duplicates('owner_id')
-    asset_data = pd.read_csv(tableau_info.asset_dir + f'/total_asset_data_{rdate.yearmonth}.csv')
-    asset_data_merge = asset_data.merge(account_sheet, on='owner_id', how='left')
-    asset_data_merge = asset_data_merge.loc[asset_data_merge['광고주'] == tableau_info.account_name]
-    del asset_data_merge['owner_id'], asset_data_merge['광고주']
-
-    return asset_data_merge
-
-
 # 태블로 커스텀 정보 시트 불러오기
 sheet_data = tableau_custom_sheet(document.doc)
 
@@ -162,7 +148,7 @@ campaign_sheet = campaign_info_sheet(document.campaign_doc)
 raw_data = raw_data.merge(campaign_sheet, on=['매체', '캠페인', '광고그룹'], how='left')
 
 # 소재 데이터 정보 불러오기
-asset_data = asset_data_read(document.campaign_doc)
+asset_data = pd.read_csv(tableau_info.asset_dir + f'/total_asset_data_{rdate.yearmonth}.csv')
 
 # 리포트 RD <-> 소재 정보 merge
 raw_merged = raw_data.merge(asset_data, on=['매체', '캠페인', '광고그룹', '소재'], how='left')
