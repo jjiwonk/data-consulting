@@ -175,3 +175,9 @@ def get_구글SA_SA():
     df['소재'] = '-'
     return df
 
+def get_카카오BSA_SA():
+    df = ref.kakaobsa_df
+    df['날짜'] = pd.to_datetime(df['날짜'])
+    df['날짜'] = df['날짜'].dt.date
+    df = df.loc[(ref.r_date.start_date <= df['날짜']) & (df['날짜'] <= ref.r_date.target_date)]
+    return  df
