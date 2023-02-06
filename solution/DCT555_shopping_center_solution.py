@@ -30,7 +30,7 @@ class Key:
     file_path = None
     upload_path = None
 
-class SpcDownload(Worker, DOWNLOAD_SKIP = False):
+class SpcDownload(Worker):
     def Key_initiallize(self, owner_id, product_id, login_id, login_pw, schedule_time):
         Key.tmp_path = get_tmp_path() + "/spc_download/" + owner_id + "/" + product_id + "/"
         Key.login_id = login_id
@@ -184,10 +184,7 @@ class SpcDownload(Worker, DOWNLOAD_SKIP = False):
         login_pw = info['pw']
 
         self.Key_initiallize(owner_id, product_id, login_id, login_pw, schedule_time)
-        if self.DOWNLOAD_SKIP == True :
-            pass
-        else :
-            self.selenium_download()
+        #self.selenium_download()
         self.file_concat()
         self.file_deliver()
 
