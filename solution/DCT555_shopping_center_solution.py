@@ -1,6 +1,3 @@
-import shutil
-import time
-
 from selenium.webdriver.common.by import By
 
 from utils.selenium_util import get_chromedriver, wait_for_element
@@ -9,7 +6,6 @@ from utils import dropbox_util
 import utils.os_util as os_util
 from worker.abstract_worker import Worker
 
-from setting import directory as dr
 import os
 import pandas as pd
 import datetime
@@ -18,7 +14,7 @@ class Key:
     LOGIN_URL = "https://center.shopping.naver.com/login"
     USE_HEADLESS = True
     tmp_path = None
-    USE_LOGGING = False
+    USE_LOGGING = True
     login_id = None
     login_pw = None
     id_input_value = 'normal_login_username'
