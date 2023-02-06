@@ -26,6 +26,7 @@ def total_media_raw():
 
     df = ref.adcode_mediapps(df)
     df.loc[df['구분'] == 'NOSP', '소재'] = '-'
+    df = ref.date_dt(df)
     df = df.groupby(ref.columns.media_dimension)[ref.columns.media_mertic].sum().reset_index()
     df['sum'] = df[ref.columns.media_mertic].sum(axis=1)
     df = df.loc[df['sum'] >= 1].drop(columns = ['sum','구분'])
@@ -51,6 +52,7 @@ def media_tracker():
     #DS 예외처리
     ds_raw['구분'] ='-'
     ds_raw.loc[ds_raw['구분'] == '-', '머징코드'] = ds_raw['머징코드'].apply(lambda x: x.replace(x, ref.exc_code_dict[x]) if x in ref.exc_code_dict.keys() else x)
+    ds_raw = ref.date_dt(ds_raw)
     ds_raw = ds_raw.drop(columns =['구분'])
 
     ds_raw['날짜'] = pd.to_datetime(ds_raw['날짜'])
@@ -136,3 +138,11 @@ def merge_indexing() :
 merge = merge_indexing()
 
 merge.to_csv(dr.download_dir +f'daily_report/daily_report_{ref.r_date.yearmonth}.csv', index= False , encoding= 'utf-8-sig')
+
+
+d = media_raw[['날짜']]
+
+d.style.hide_index()
+
+
+print(d.style.hide_index())

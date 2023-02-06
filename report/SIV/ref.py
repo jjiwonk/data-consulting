@@ -233,3 +233,8 @@ def adcode_sa(df):
     df.loc[df['머징코드'] == 'None', '머징코드'] = df['키워드'].apply(lambda x: pat.findall(str(x))[-1] if pat.search(str(x)) else 'None')
 
     return df
+
+def date_dt(df):
+    df['날짜'] = pd.to_datetime(df['날짜'])
+    df['날짜'] = df['날짜'].dt.date
+    return df
