@@ -1,23 +1,16 @@
-import os
-
 from solution.DCT555_shopping_center_solution import SpcDownload
 from datetime import datetime
-from utils import dropbox_util
+
+from utils import s3
 
 if __name__ == "__main__":
     worker = SpcDownload(__file__)
-    def get_info():
-        token_dir = 'C:/Users/MADUP/Dropbox (주식회사매드업)/광고사업부/데이터컨설팅/데이터 솔루션/쇼핑파트너센터 다운 자동화'
-
-        f = open(token_dir + '/spc_download_info_siv.txt', 'r')
-        info = eval(f.read())
-        return info
 
     attr = dict(
         schedule_time=datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-        owner_id="SIV",
+        owner_id="siv",
         product_id= "spc_download"
     )
-    info = get_info()
 
+    info = s3.get_info_from_s3(attr['owner_id'], attr['product_id'])
     worker.work(attr=attr, info=info)
