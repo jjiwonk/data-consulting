@@ -4,7 +4,7 @@ from datetime import datetime
 from utils import s3
 
 if __name__ == "__main__":
-    worker = SpcDownload(__file__)
+    worker = SpcDownload(__file__, DOWLOAD_SKIP = True)
 
     attr = dict(
         schedule_time=datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
