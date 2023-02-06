@@ -12,7 +12,7 @@ import datetime
 
 class Key:
     LOGIN_URL = "https://center.shopping.naver.com/login"
-    USE_HEADLESS = True
+    USE_HEADLESS = False
     tmp_path = None
     USE_LOGGING = True
     login_id = None
@@ -56,6 +56,13 @@ class SpcDownload(Worker):
         driver.implicitly_wait(time_to_wait=5)
 
     def get_download_number(self, driver):
+        product_mng = driver.find_element(by=By.PARTIAL_LINK_TEXT, value='상품관리')
+        product_mng.click()
+
+        product_mng_sub_menu = driver.find_element(by=By.PARTIAL_LINK_TEXT, value='상품현황 및 관리')
+        product_mng_sub_menu.click()
+
+        driver.switch_to.frame(0)
         service_item = driver.find_element(by=By.CSS_SELECTOR, value=Key.service_item_value)
         service_item.click()
 
@@ -82,7 +89,8 @@ class SpcDownload(Worker):
             download_dir = Key.tmp_path
 
         driver = get_chromedriver(headless=Key.USE_HEADLESS, download_dir=download_dir)
-        driver.get(Key.LOGIN_URL)
+        #driver.get(Key.LOGIN_URL)
+        driver.get('https://center.shopping.naver.com/product/manage')
 
         # 로그인하기
         self.spc_login_action(driver)
