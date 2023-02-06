@@ -138,11 +138,3 @@ def merge_indexing() :
 merge = merge_indexing()
 
 merge.to_csv(dr.download_dir +f'daily_report/daily_report_{ref.r_date.yearmonth}.csv', index= False , encoding= 'utf-8-sig')
-
-
-d = media_raw[['날짜']]
-
-d.style.hide_index()
-
-
-print(d.style.hide_index())
