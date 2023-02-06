@@ -16,7 +16,7 @@ import datetime
 
 class Key:
     LOGIN_URL = "https://center.shopping.naver.com/login"
-    USE_HEADLESS = False
+    USE_HEADLESS = True
     tmp_path = None
     USE_LOGGING = False
     login_id = None
@@ -91,10 +91,10 @@ class SpcDownload(Worker):
         driver.get(Key.LOGIN_URL)
 
         # 로그인하기
-        self.spc_login_action(self, driver)
+        self.spc_login_action(driver)
 
         # 상품 탭 이동 후 다운로드 횟수 계산
-        down_num = self.get_download_number(self, driver)
+        down_num = self.get_download_number(driver)
 
         # 엑셀 다운받기
         excel_down_btn = driver.find_element(by=By.CSS_SELECTOR, value='#excelDown > a')
@@ -184,8 +184,8 @@ class SpcDownload(Worker):
         login_pw = info['pw']
 
         self.Key_initiallize(owner_id, product_id, login_id, login_pw, schedule_time)
-        #self.selenium_download(self)
-        #self.file_concat(self)
+        self.selenium_download()
+        self.file_concat()
         self.file_deliver()
 
         return "Shopping Partner Center EP Data Download Success"
