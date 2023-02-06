@@ -41,8 +41,6 @@ class SpcDownload(Worker):
         Key.file_name = f'{owner_id}_EP_item_list_{yearmonth}.csv'
         Key.file_path = Key.tmp_path + Key.file_name
 
-        Key.upload_path = '/광고사업부/데이터컨설팅/데이터 솔루션/쇼핑파트너센터 다운 자동화'
-
     def spc_login_action(self, driver):
         id_input = driver.find_element(by=By.ID, value=Key.id_input_value)
         id_input.send_keys(Key.login_id)
@@ -163,11 +161,11 @@ class SpcDownload(Worker):
         else:
             print(msg)
 
-    def file_deliver(self, wait_sec = 10, max_retry = 10):
-        dropbox_path = Key.upload_path + '/' + Key.file_name
+    def file_deliver(self, upload_path):
+        dropbox_path = upload_path + '/' + Key.file_name
 
         # 드롭박스 업로드로 대체
-        dropbox_util.upload_v2(file_path=Key.file_path, dropbox_path=dropbox_path, token = "rEtlXqnPweAAAAAAAAAVtlY3vRHQ-LT6nsHXomwgDNZXNWXNDzJEb8N_C3NYb3W4")
+        dropbox_util.upload_v2(file_path=Key.file_path, dropbox_path=dropbox_path)
 
         msg = '드롭박스 업로드 완료'
         if Key.USE_LOGGING == True:
@@ -182,11 +180,12 @@ class SpcDownload(Worker):
         schedule_time = attr['schedule_time']
         login_id = info['id']
         login_pw = info['pw']
+        upload_path = info['upload_path']
 
         self.Key_initiallize(owner_id, product_id, login_id, login_pw, schedule_time)
         self.selenium_download()
         self.file_concat()
-        self.file_deliver()
+        self.file_deliver(upload_path)
 
         return "Shopping Partner Center EP Data Download Success"
 
