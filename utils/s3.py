@@ -37,7 +37,7 @@ def get_info_from_s3(owner_id, product_id):
     s3_path = 'job_info/owner_id={}/{}.txt'.format(owner_id, product_id)
     local_path = get_tmp_path()
     info_dir = download_file(s3_path=s3_path, s3_bucket=DEFAULT_S3_PRIVATE_BUCKET, local_path=local_path)
-    f = open(info_dir, 'r')
+    f = open(info_dir, 'r', encoding='utf-8-sig')
     info = eval(f.read())
     f.close()
     os.remove(info_dir)
