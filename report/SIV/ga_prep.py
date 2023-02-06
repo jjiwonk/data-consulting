@@ -132,6 +132,7 @@ def ga_prep():
     df = ref.adcode_ga(df)
     df = df.rename(columns = ref.columns.ga1_rename)
     df[['브랜드구매(GA)', '브랜드매출(GA)']] = 0
+    df = ref.date_dt(df)
 
     df = df[['머징코드','날짜','﻿dataSource', 'browser', 'campaign', 'source', 'medium', 'keyword','adContent', '세션(GA)', 'UA(GA)', '구매(GA)','매출(GA)','브랜드구매(GA)', '브랜드매출(GA)','가입(GA)']]
 
