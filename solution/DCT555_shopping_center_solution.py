@@ -1,3 +1,5 @@
+import time
+
 from selenium.webdriver.common.by import By
 
 from utils.selenium_util import get_chromedriver, wait_for_element
@@ -12,7 +14,7 @@ import datetime
 
 class Key:
     LOGIN_URL = "https://center.shopping.naver.com/login"
-    USE_HEADLESS = False
+    USE_HEADLESS = True
     tmp_path = None
     USE_LOGGING = True
     login_id = None
@@ -62,6 +64,7 @@ class SpcDownload(Worker):
         product_mng_sub_menu = driver.find_element(by=By.PARTIAL_LINK_TEXT, value='상품현황 및 관리')
         product_mng_sub_menu.click()
 
+        time.sleep(5)
         driver.switch_to.frame(0)
         service_item = driver.find_element(by=By.CSS_SELECTOR, value=Key.service_item_value)
         service_item.click()
@@ -89,8 +92,7 @@ class SpcDownload(Worker):
             download_dir = Key.tmp_path
 
         driver = get_chromedriver(headless=Key.USE_HEADLESS, download_dir=download_dir)
-        #driver.get(Key.LOGIN_URL)
-        driver.get('https://center.shopping.naver.com/product/manage')
+        driver.get(Key.LOGIN_URL)
 
         # 로그인하기
         self.spc_login_action(driver)
