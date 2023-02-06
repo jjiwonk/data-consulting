@@ -81,7 +81,11 @@ def pivoting():
 
 df = pivoting()
 
+df['Cnt'] = 1
 
+piv = df.pivot_table(index=['월','날짜','event_name','time_gap','구분','is_retargeting'], values='Cnt', aggfunc='sum').reset_index()
+
+piv.to_csv(dr.dropbox_dir + '/광고사업부/데이터컨설팅/데이터 분석 프로젝트/핀다/DCT533/total_raw.csv',index = False, encoding = 'utf-8-sig')
 
 
 
