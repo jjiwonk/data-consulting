@@ -184,7 +184,7 @@ class SpcDownload(Worker):
         login_pw = info['pw']
 
         self.Key_initiallize(owner_id, product_id, login_id, login_pw, schedule_time)
-        #self.selenium_download()
+        self.selenium_download()
         self.file_concat()
         self.file_deliver()
 
