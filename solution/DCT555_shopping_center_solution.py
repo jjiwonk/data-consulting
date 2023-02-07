@@ -14,7 +14,7 @@ import datetime
 
 class Key:
     LOGIN_URL = "https://center.shopping.naver.com/login"
-    USE_HEADLESS = False
+    USE_HEADLESS = True
     tmp_path = None
     USE_LOGGING = True
     login_id = None
@@ -91,6 +91,9 @@ class SpcDownload(Worker):
         return down_num
 
     def selenium_download(self):
+        print('버전 체크용')
+        self.logger.info('셀레니움 다운로드를 시작합니다.')
+
         os.makedirs(Key.tmp_path, exist_ok=True)
 
         # 크롬 브라우저 생성
