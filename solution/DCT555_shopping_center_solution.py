@@ -14,7 +14,7 @@ import datetime
 
 class Key:
     LOGIN_URL = "https://center.shopping.naver.com/login"
-    USE_HEADLESS = True
+    USE_HEADLESS = False
     tmp_path = None
     USE_LOGGING = True
     login_id = None
@@ -69,7 +69,9 @@ class SpcDownload(Worker):
         iframe_list = driver.find_elements(by=By.TAG_NAME, value = 'iframe')
         if len(iframe_list) > 0 :
             driver.switch_to.frame(0)
+            self.logger.info('iframe을 확인하여 전환합니다.')
         else :
+            self.logger.info('iframe을 찾지 못하였습니다. 그대로 진행합니다.')
             pass
 
         service_item = driver.find_element(by=By.CSS_SELECTOR, value=Key.service_item_value)
