@@ -91,7 +91,6 @@ class SpcDownload(Worker):
         return down_num
 
     def selenium_download(self):
-        print('버전 체크용')
         self.logger.info('셀레니움 다운로드를 시작합니다.')
 
         os.makedirs(Key.tmp_path, exist_ok=True)
@@ -130,10 +129,12 @@ class SpcDownload(Worker):
             while n < max_download_try:
                 try:
                     download_btn.click()
+                    break
                 except:
                     alert_message = driver.find_element(by=By.CLASS_NAME, value='swal-button-container')
                     alert_message.click()
-                n += 1
+                    n += 1
+                    continue
 
             progress_bar = wait_for_element(driver=driver, by=By.CSS_SELECTOR,
                                             value=f'#downloadList > tr:nth-child({i + 1}) > td:nth-child(3) > span > span')
@@ -147,8 +148,8 @@ class SpcDownload(Worker):
                 else:
                     progress = progress_bar.get_attribute('style')
                     driver.implicitly_wait(time_to_wait=5)
+                    n += 1
                     continue
-                n += 1
 
         driver.quit()
 
