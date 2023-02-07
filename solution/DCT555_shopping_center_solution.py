@@ -5,6 +5,8 @@ from selenium.webdriver.common.by import By
 from utils.selenium_util import get_chromedriver, wait_for_element
 from utils.path_util import get_tmp_path
 from utils import dropbox_util
+from utils import s3
+from utils import const
 import utils.os_util as os_util
 from worker.abstract_worker import Worker
 
@@ -27,17 +29,23 @@ class Key:
     file_name = None
     file_path = None
     upload_path = None
+    screenshot_file_name = None
 
 class SpcDownload(Worker):
     def Key_initiallize(self, owner_id, product_id, login_id, login_pw, schedule_time):
+        Key.schedule_time = schedule_time
         Key.tmp_path = get_tmp_path() + "/spc_download/" + owner_id + "/" + product_id + "/"
         Key.login_id = login_id
         Key.login_pw = login_pw
 
-        yearmonth = datetime.datetime.strptime(schedule_time, '%Y-%m-%d %H:%M:%S').strftime('%Y%m')
+        schedule_date = datetime.datetime.strptime(schedule_time, '%Y-%m-%d %H:%M:%S')
+        yearmonth = schedule_date.strftime('%Y%m')
+        time_str = schedule_date.strftime('%Y%m%d%H%M%S')
 
         Key.file_name = f'{owner_id}_EP_item_list_{yearmonth}.csv'
         Key.file_path = Key.tmp_path + Key.file_name
+
+        Key.screenshot_file_name = f'Error Screenshot_{owner_id}_{product_id}_{time_str}.png'
 
     def spc_login_action(self, driver):
         id_input = driver.find_element(by=By.ID, value=Key.id_input_value)
@@ -104,60 +112,70 @@ class SpcDownload(Worker):
         driver = get_chromedriver(headless=Key.USE_HEADLESS, download_dir=download_dir)
         driver.get(Key.LOGIN_URL)
 
-        # 로그인하기
-        self.spc_login_action(driver)
+        try :
+            # 로그인하기
+            self.spc_login_action(driver)
 
-        # 상품 탭 이동 후 다운로드 횟수 계산
-        down_num = self.get_download_number(driver)
+            # 상품 탭 이동 후 다운로드 횟수 계산
+            down_num = self.get_download_number(driver)
 
-        # 엑셀 다운받기
-        excel_down_btn = driver.find_element(by=By.CSS_SELECTOR, value='#excelDown > a')
-        excel_down_btn.click()
+            # 엑셀 다운받기
+            excel_down_btn = driver.find_element(by=By.CSS_SELECTOR, value='#excelDown > a')
+            excel_down_btn.click()
 
-        total_excel_down = driver.find_element(by=By.CSS_SELECTOR, value='#excelDown > div > ul > li:nth-child(1) > a')
-        total_excel_down.click()
+            total_excel_down = driver.find_element(by=By.CSS_SELECTOR, value='#excelDown > div > ul > li:nth-child(1) > a')
+            total_excel_down.click()
 
-        # 팝업창으로 바꿔주기
+            # 팝업창으로 바꿔주기
 
-        driver.switch_to.window(driver.window_handles[1])
+            driver.switch_to.window(driver.window_handles[1])
 
-        for i in range(down_num):
-            download_btn = wait_for_element(driver=driver, by=By.CSS_SELECTOR,
-                                            value=f'#downloadList > tr:nth-child({i + 1}) > td.last > a')
-            n = 0
-            max_download_try = 3
-            while n < max_download_try:
-                try:
-                    download_btn.click()
-                    break
-                except:
-                    alert_message = driver.find_element(by=By.CLASS_NAME, value='swal-button-container')
-                    alert_message.click()
-                    n += 1
-                    continue
+            for i in range(down_num):
+                download_btn = wait_for_element(driver=driver, by=By.CSS_SELECTOR,
+                                                value=f'#downloadList > tr:nth-child({i + 1}) > td.last > a')
+                n = 0
+                max_download_try = 3
+                while n < max_download_try:
+                    try:
+                        download_btn.click()
+                        break
+                    except:
+                        alert_message = driver.find_element(by=By.CLASS_NAME, value='swal-button-container')
+                        alert_message.click()
+                        n += 1
+                        continue
 
-            progress_bar = wait_for_element(driver=driver, by=By.CSS_SELECTOR,
-                                            value=f'#downloadList > tr:nth-child({i + 1}) > td:nth-child(3) > span > span')
-            progress = progress_bar.get_attribute('style')
+                progress_bar = wait_for_element(driver=driver, by=By.CSS_SELECTOR,
+                                                value=f'#downloadList > tr:nth-child({i + 1}) > td:nth-child(3) > span > span')
+                progress = progress_bar.get_attribute('style')
 
-            n = 0
-            max_wait_try = 3
-            while n < max_wait_try:
-                if progress == 'width: 100%;':
-                    break
-                else:
-                    progress = progress_bar.get_attribute('style')
-                    driver.implicitly_wait(time_to_wait=5)
-                    n += 1
-                    continue
+                n = 0
+                max_wait_try = 3
+                while n < max_wait_try:
+                    if progress == 'width: 100%;':
+                        break
+                    else:
+                        progress = progress_bar.get_attribute('style')
+                        driver.implicitly_wait(time_to_wait=5)
+                        n += 1
+                        continue
 
-        driver.quit()
+            driver.quit()
 
-        msg = "다운로드 완료"
-        if Key.USE_LOGGING == True:
-            self.logger.info(msg)
-        else:
-            print(msg)
+            msg = "다운로드 완료"
+            if Key.USE_LOGGING == True:
+                self.logger.info(msg)
+            else:
+                print(msg)
+        except Exception as e :
+            print(e)
+            self.logger.info(e)
+
+            driver.get_screenshot_as_png()
+
+            driver.save_screenshot(download_dir + '/' + Key.screenshot_file_name)
+            s3.upload_file(local_path = download_dir + '/' + Key.screenshot_file_name,s3_path='screenshot/'+Key.screenshot_file_name, s3_bucket=const.DEFAULT_S3_PRIVATE_BUCKET)
+            raise e
 
     def file_concat(self):
         files = os.listdir(Key.tmp_path)
