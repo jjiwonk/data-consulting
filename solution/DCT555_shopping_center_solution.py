@@ -119,7 +119,7 @@ class SpcDownload(Worker):
 
         # 팝업창으로 바꿔주기
 
-        driver.switch_to.window(driver.window_handles[-1])
+        driver.switch_to.window(driver.window_handles[1])
 
         for i in range(down_num):
             download_btn = wait_for_element(driver=driver, by=By.CSS_SELECTOR,
