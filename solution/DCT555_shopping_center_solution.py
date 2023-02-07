@@ -65,7 +65,13 @@ class SpcDownload(Worker):
         product_mng_sub_menu.click()
 
         time.sleep(5)
-        driver.switch_to.frame(0)
+
+        iframe_list = driver.find_elements(by=By.TAG_NAME, value = 'iframe')
+        if len(iframe_list) > 0 :
+            driver.switch_to.frame(0)
+        else :
+            pass
+
         service_item = driver.find_element(by=By.CSS_SELECTOR, value=Key.service_item_value)
         service_item.click()
 
