@@ -30,6 +30,7 @@ class Key:
     file_path = None
     upload_path = None
     screenshot_file_name = None
+    page_source_file_name = None
 
 class SpcDownload(Worker):
     def Key_initiallize(self, owner_id, product_id, login_id, login_pw, schedule_time):
@@ -46,6 +47,7 @@ class SpcDownload(Worker):
         Key.file_path = Key.tmp_path + Key.file_name
 
         Key.screenshot_file_name = f'Error Screenshot_{owner_id}_{product_id}_{time_str}.png'
+        Key.page_source_file_name = f'Error PageSource_{owner_id}_{product_id}_{time_str}.txt'
 
     def spc_login_action(self, driver):
         id_input = driver.find_element(by=By.ID, value=Key.id_input_value)
@@ -171,10 +173,20 @@ class SpcDownload(Worker):
             print(e)
             self.logger.info(e)
 
+            local_screenshot_path = download_dir + '/' + Key.screenshot_file_name
             driver.get_screenshot_as_png()
-
             driver.save_screenshot(download_dir + '/' + Key.screenshot_file_name)
-            s3.upload_file(local_path = download_dir + '/' + Key.screenshot_file_name,s3_path='screenshot/'+Key.screenshot_file_name, s3_bucket=const.DEFAULT_S3_PRIVATE_BUCKET)
+            s3.upload_file(local_path = local_screenshot_path,s3_path='screenshot/'+Key.screenshot_file_name, s3_bucket=const.DEFAULT_S3_PRIVATE_BUCKET)
+            os.remove(local_screenshot_path)
+
+            page_source_path = download_dir + '/' + Key.page_source_file_name
+            page_source = driver.page_source
+            f = open(page_source_path, 'w')
+            f.write(page_source)
+            f.close()
+            s3.upload_file(local_path = page_source_path,s3_path='page_source/'+'page_source.txt', s3_bucket=const.DEFAULT_S3_PRIVATE_BUCKET)
+            os.remove(page_source_path)
+
             raise e
 
     def file_concat(self):
