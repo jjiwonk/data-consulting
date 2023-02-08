@@ -130,6 +130,9 @@ class OliveyoungCrawling(Worker):
                 review_tab_btn = wait_for_element(driver = driver, by=By.CSS_SELECTOR, value='#reviewInfo > a')
                 review_tab_btn.click()
 
+                # 리뷰 버튼 클릭 후 딜레이 넣어야 첫번째 페이지 정상적으로 불러옴
+                time.sleep(5)
+
                 # page_list = wait_for_element(driver=driver, by = By.CLASS_NAME, value = 'pageing')
                 # page_btn_list = list(page_list.find_elements(by = By.TAG_NAME, value = 'a'))
 
