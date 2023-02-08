@@ -4,6 +4,7 @@ import pyarrow.csv as pacsv
 import pyarrow as pa
 import datetime
 import pandas as pd
+import urllib
 
 def apps_read():
     dir = dr.report_dir + 'appsflyer_prism'
@@ -61,6 +62,16 @@ def apps_prep():
 
     df.loc[df['media_source'].isin(c_media), 'campaign'] = df['campaign'].apply(lambda x: x.replace(x, ref.exc_cdict[x]) if x in ref.exc_cdict.keys() else x)
     df.loc[df['media_source'].isin(g_media), 'adset'] = df['adset'].apply(lambda x: x.replace(x, ref.exc_gdict[x]) if x in ref.exc_gdict.keys() else x)
+
+    #키워드 구하기
+    df['original_url'] = df['original_url'].apply(lambda x: urllib.parse.unquote(x))
+
+    df['keyword'] = df['original_url'].apply(lambda x: x.split('&utm_term=')[-1] if x.find('&utm_term=') != -1 else '-')
+    df.loc[df['keyword'] == '-', 'keyword'] = df['original_url'].apply(lambda x: x.split('?utm_term=')[-1] if x.find('?utm_term=') != -1 else '-')
+    df['keyword'] = df['keyword'].apply(lambda x: x.split('&')[0] if x.find('&') != -1 else x )
+    df.loc[df['keyword'] == '','keyword'] = '-'
+    df.loc[(df['media_source'] == 'googleadwords_int') & (df['keyword'] == '-'), 'keyword'] = df['keywords']
+    df.loc[(df['media_source'] == 'googleadwords_int') & (df['keyword'] == 'sivillage'), 'keyword'] = 'SIVILLAGE'
 
     #uv 구하기
     uv_col = ['install', 're-attribution', 're-engagement']
@@ -126,6 +137,7 @@ agg = apps_agg_read()
 
 def apps_agg_prep():
     df = apps_agg_read()
+    df['keyword'] = '-'
     df = df.loc[(df['agencypmd_af_prt'] == 'None')|(df['agencypmd_af_prt'] == 'madup')]
     df = df.loc[df['media_source_pid'] == 'Facebook Ads']
 
@@ -163,7 +175,7 @@ def apps_concat():
 
     apps = ref.date_dt(apps)
 
-    apps = apps[['날짜', '매체', '캠페인', '세트', '소재', '유입(AF)','UV(AF)','appopen(AF)','구매(AF)','매출(AF)','주문취소(AF)','주문취소매출(AF)','총주문건(AF)','총매출(AF)','브랜드구매(AF)','브랜드매출(AF)','첫구매(AF)','첫구매매출(AF)','설치(AF)','재설치(AF)','가입(AF)']]
+    apps = apps[['날짜', '매체', '캠페인', '세트', '소재', '키워드','유입(AF)','UV(AF)','appopen(AF)','구매(AF)','매출(AF)','주문취소(AF)','주문취소매출(AF)','총주문건(AF)','총매출(AF)','브랜드구매(AF)','브랜드매출(AF)','첫구매(AF)','첫구매매출(AF)','설치(AF)','재설치(AF)','가입(AF)']]
     apps = ref.adcode_mediapps(apps)
 
     apps.to_csv(dr.download_dir + f'appsflyer_raw/appsflyer_raw_{ref.r_date.yearmonth}.csv', index=False, encoding='utf-8-sig')

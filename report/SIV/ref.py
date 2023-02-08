@@ -71,10 +71,11 @@ class columns:
         'keywords' : pa.string(),
         'partner' : pa.string(),
         'platform' : pa.string(),
-        'app_id' : pa.string()
+        'app_id' : pa.string(),
+        'original_url': pa.string(),
     }
 
-    apps_index =['date', 'media_source', 'campaign', 'adset', 'ad']
+    apps_index =['date', 'media_source', 'campaign', 'adset', 'ad','keyword']
 
     apps_agg_dtype = {
         'date': pa.string(),
@@ -99,6 +100,7 @@ class columns:
                    'campaign' : '캠페인',
                    'adset' : '세트',
                    'ad' : '소재' ,
+                   'keyword' : '키워드',
                    'completed_purchase' : '주문' ,
                    'revenue': '주문매출',
                    'first_purchase' : '첫구매(AF)',
@@ -115,6 +117,7 @@ class columns:
         'campaign_name': '캠페인',
         'adset_name': '세트',
         'adgroup_name': '소재',
+        'keyword' :'키워드',
         'installs': '설치(AF)',
         'af_complete_registration_event_counter': '가입(AF)',
         'completed_purchase_event_counter': '주문',
@@ -128,7 +131,7 @@ class columns:
 
 
     apps_agg_metric = ['re-attribution','re-engagement','installs','af_complete_registration_event_counter','completed_purchase_event_counter','completed_purchase_sales_in_krw','first_purchase_event_counter','first_purchase_sales_in_krw','cancel_purchase_event_counter','cancel_purchase_sales_in_krw']
-    apps_agg_index = ['date','media_source_pid','campaign_name', 'adset_name', 'adgroup_name']
+    apps_agg_index = ['date','media_source_pid','campaign_name', 'adset_name', 'adgroup_name','keyword']
     apps_metric =[ '유입(AF)', 'UV(AF)', 'appopen(AF)','구매(AF)', '매출(AF)', '주문취소(AF)', '주문취소매출(AF)', '총주문건(AF)', '총매출(AF)','브랜드구매(AF)', '브랜드매출(AF)', '첫구매(AF)', '첫구매매출(AF)', '설치(AF)', '재설치(AF)','가입(AF)']
 
     #ga 데이터 컬럼
@@ -180,6 +183,9 @@ class columns:
     ds_raw[ds_raw_metric] = ds_raw[ds_raw_metric].astype(float)
 
     report_col = ['파트 구분','연도','월','주차','날짜','매체','지면/상품','캠페인 구분','KPI','캠페인','세트','소재','머징코드','캠페인 라벨','OS','노출','도달','클릭','조회','구매(대시보드)','매출(대시보드)','설치(대시보드)', '대시보드(친구추가)', '대시보드(참여)','비용','SPEND_AGENCY','세션(GA)','UA(GA)','구매(GA)','매출(GA)','브랜드구매(GA)','브랜드매출(GA)','가입(GA)','유입(AF)','UV(AF)','appopen(AF)','구매(AF)','매출(AF)','주문취소(AF)','주문취소매출(AF)','총주문건(AF)','총매출(AF)','브랜드구매(AF)','브랜드매출(AF)','첫구매(AF)','첫구매매출(AF)','설치(AF)','재설치(AF)','가입(AF)','방문수(DS)','방문자수(DS)','구매방문수(DS)','구매금액(DS)','회원가입방문수(DS)','캠페인(인덱스)','세트(인덱스)','프로모션','브랜드','카테고리','소재형태','소재이미지','소재카피']
+    sa_reprt_col = ['파트 구분', '연도', '월', '주차', '매체', '지면/상품', '캠페인 구분', 'KPI', '캠페인', '세트', '키워드', '캠페인 라벨', 'OS', '노출', '도달', '클릭', '조회','비용', 'SPEND_AGENCY','세션(GA)', 'UA(GA)', '구매(GA)', '매출(GA)',
+       '브랜드구매(GA)', '브랜드매출(GA)', '가입(GA)','유입(AF)', 'UV(AF)', 'appopen(AF)','구매(AF)', '매출(AF)', '주문취소(AF)', '주문취소매출(AF)', '총주문건(AF)', '총매출(AF)', '첫구매(AF)', '첫구매매출(AF)', '설치(AF)', '재설치(AF)','가입(AF)']
+
 
 item_list = ['read', 'prep', 'temp', 'dimension', 'metric']
 
@@ -237,4 +243,13 @@ def adcode_sa(df):
 def date_dt(df):
     df['날짜'] = pd.to_datetime(df['날짜'])
     df['날짜'] = df['날짜'].dt.date
+    return df
+
+def week_day(df):
+    df['날짜'] = df['날짜'].apply(pd.to_datetime)
+    df['연도'] = df['날짜'].apply(lambda x: x.strftime('%Y'))
+    df['월'] = df['날짜'].apply(lambda x: x.strftime('%m'))
+    df['날짜'] = df['날짜'].dt.date
+    week_day = 7
+    df['주차'] = pd.to_datetime(df['날짜']).apply(lambda x: (x + datetime.timedelta(week_day)).isocalendar()[1]) -1
     return df

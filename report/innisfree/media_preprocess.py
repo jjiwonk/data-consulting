@@ -142,6 +142,14 @@ def gg_ac_prep() -> pd.DataFrame:
     return df
 
 
+def gg_discovery_prep() -> pd.DataFrame:
+    df = get_basic_data('Google_SA')
+    gg_ac_camp_list = ref.index_df.loc[ref.index_df['매체(표기)'] == 'Google_discovery', '캠페인'].unique().tolist()
+    df = df.loc[df['캠페인'].isin(gg_ac_camp_list)]
+    df['매체'] = 'Google_discovery'
+    return df
+
+
 def pmax_prep() -> pd.DataFrame:
     df = get_basic_data('Google_PMAX')
     pmax_camp_list = ref.index_df.loc[ref.index_df['매체(표기)'] == 'Google_PMAX', '캠페인'].unique().tolist()
@@ -217,6 +225,13 @@ def na_snow_prep() -> pd.DataFrame:
     return df
 
 
+def na_spda_prep() -> pd.DataFrame:
+    df = get_basic_data('Naver_NOSP')
+    except_camp_list = ref.index_df.loc[ref.index_df['매체(표기)'] == 'Naver_스페셜DA', '캠페인'].unique().tolist()
+    df = df.loc[~(df['캠페인'].isin(except_camp_list))]
+    return df
+
+
 def na_gfa_prep() -> pd.DataFrame:
     df = get_basic_data('Naver_GFA')
     camp_list = ref.index_df.loc[ref.index_df['매체(표기)'] == 'Naver_GFA', '캠페인'].unique().tolist()
@@ -256,6 +271,16 @@ def na_shoppingalarm_prep() -> pd.DataFrame:
     return df
 
 
+def na_timebanner_prep() -> pd.DataFrame:
+    df = get_basic_data('Naver_GFA')
+    camp_list = ref.index_df.loc[ref.index_df['매체(표기)'] == 'Naver_Timebanner', '캠페인'].unique().tolist()
+    df = df.loc[df['캠페인'].isin(camp_list)]
+    group_list = ref.index_df.loc[ref.index_df['매체(표기)'] == 'Naver_Timebanner', '광고그룹'].unique().tolist()
+    df = df.loc[df['광고그룹'].isin(group_list)]
+    df['매체'] = 'Naver_Timebanner'
+    return df
+
+
 def remerge_prep() -> pd.DataFrame:
     df = get_basic_data('Remerge')
     camp_list = ref.index_df.loc[ref.index_df['매체(표기)'] == 'Remerge', '캠페인'].unique().tolist()
@@ -271,7 +296,7 @@ def rtb_prep() -> pd.DataFrame:
 
 
 def tw_prep() -> pd.DataFrame:
-    df = get_basic_data('twitter')
-    camp_list = ref.index_df.loc[ref.index_df['매체(표기)'] == 'twitter', '캠페인'].unique().tolist()
+    df = get_basic_data('Twitter')
+    camp_list = ref.index_df.loc[ref.index_df['매체(표기)'] == 'Twitter', '캠페인'].unique().tolist()
     df = df.loc[df['캠페인'].isin(camp_list)]
     return df
