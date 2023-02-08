@@ -39,7 +39,7 @@ class GoogleDrive:
     ):
         scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
         self.__tmp_credential_file_path = get_tmp_path() + "/" + s3_credential_file_path.split("/")[-1]
-        credential_file = download_file(s3_credential_file_path, s3_bucket)
+        credential_file = download_file(s3_path=s3_credential_file_path, s3_bucket=s3_bucket)
         credentials = ServiceAccountCredentials.from_json_keyfile_name(credential_file, scope)
         self.google_drive = gspread.authorize(credentials)
 
