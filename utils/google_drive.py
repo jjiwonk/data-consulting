@@ -17,6 +17,8 @@ RETRY_CNT = 5
 WAITING_TIME = 15
 GSS_ROW = typing.Dict[str, gspread.Cell]
 
+# 구글 드라이브 사용 시 아래 계정 권한 부여 필요
+# dcteam@madup-355605.iam.gserviceaccount.com
 
 class WorkSheet(gspread.worksheet.Worksheet):
     def __init__(self, spreadsheet, properties):
@@ -107,6 +109,11 @@ class GoogleDrive:
                     dict_row[column_list[col_idx]] = gspread.Cell(row_idx, col_idx + 1, cell_value)
             result_data.append(dict_row)
         return result_data
+
+    def sheet_to_df(self, sheet: gspread.Worksheet, col_num=0, row_num=0):
+        data_read = sheet.get_all_values()
+        result = pd.DataFrame(data_read, columns=data_read[row_num]).iloc[row_num + 1:, col_num:]
+        return result
 
     def update_cell(self, sheet, cell: gspread.Cell, value: str, value_input_option: str=None, response_value_render_option: str=None):
         sheet.update(
