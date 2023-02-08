@@ -14,7 +14,7 @@ import os
 import pandas as pd
 import time
 class Key:
-    USE_HEADLESS = False
+    USE_HEADLESS = True
     tmp_path = None
     file_name = None
     file_path = None
