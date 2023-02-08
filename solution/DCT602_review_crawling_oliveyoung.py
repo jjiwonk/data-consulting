@@ -151,6 +151,7 @@ class OliveyoungCrawling(Worker):
 
                     df_concat = pd.concat([user_data_df, review_data_df], axis = 1)
                     df_concat['제품 URL'] = url
+                    df_concat['page_num'] = num
                     Key.review_df_list.append(df_concat)
 
                     if num != final_page_num :
