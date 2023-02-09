@@ -34,7 +34,6 @@ class Key:
 
 class SpcDownload(Worker):
     def Key_initiallize(self, owner_id, product_id, login_id, login_pw, schedule_time):
-        Key.schedule_time = schedule_time
         Key.tmp_path = get_tmp_path() + "/spc_download/" + owner_id + "/" + product_id + "/"
         Key.login_id = login_id
         Key.login_pw = login_pw
@@ -184,7 +183,7 @@ class SpcDownload(Worker):
             f = open(page_source_path, 'w')
             f.write(page_source)
             f.close()
-            s3.upload_file(local_path = page_source_path,s3_path='page_source/'+'page_source.txt', s3_bucket=const.DEFAULT_S3_PRIVATE_BUCKET)
+            s3.upload_file(local_path = page_source_path, s3_path='page_source/' + Key.page_source_file_name, s3_bucket = const.DEFAULT_S3_PRIVATE_BUCKET)
             os.remove(page_source_path)
 
             raise e
