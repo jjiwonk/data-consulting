@@ -1,9 +1,9 @@
 from utils.path_util import get_tmp_path
 import utils.os_util as os_util
-from utils.selenium_util import get_chromedriver, wait_for_element
+from utils.selenium_util import get_chromedriver, wait_for_element, selenium_error_logging
 from utils.google_drive import GoogleDrive
-from utils import s3
 from utils import dropbox_util
+from utils import s3
 from utils import const
 
 from worker.abstract_worker import Worker
@@ -13,9 +13,18 @@ import datetime
 import os
 import pandas as pd
 import time
+
+from urllib import parse
+import hashlib
+import hmac
+import re
+import math
+import numpy as np
+
 class Key:
     USE_HEADLESS = True
     tmp_path = None
+    table_name = None
     file_name = None
     file_path = None
     upload_path = None
@@ -23,6 +32,11 @@ class Key:
     page_source_file_name = None
     spread_url = None
     sheet_name = None
+    is_init = False
+    s3_path = None
+    file_upload_checker = True
+    target_date_trigger = False
+    target_date = None
     review_df_list = []
     site_category = '올리브영'
     user_data_columns = ['user_name', 'user_rank', 'user_tag']
@@ -87,7 +101,7 @@ class parse_data :
 
 
 class OliveyoungCrawling(Worker):
-    def Key_initiallize(self, owner_id, product_id, schedule_time, spread_url, sheet_name):
+    def Key_initiallize(self, owner_id, product_id, schedule_time, spread_url, sheet_name, target_date_range):
         Key.tmp_path = get_tmp_path() + "/" + owner_id + "/" + product_id + "/"
         Key.spread_url = spread_url
         Key.sheet_name = sheet_name
@@ -96,11 +110,18 @@ class OliveyoungCrawling(Worker):
         yearmonth = schedule_date.strftime('%Y%m')
         time_str = schedule_date.strftime('%Y%m%d%H%M%S')
 
+        Key.table_name = f'{owner_id}_Oliveyoung_Review_Data.csv'
         Key.file_name = f'{owner_id}_Oliveyoung_Review_Data_{yearmonth}.csv'
-        Key.file_path = Key.tmp_path + Key.file_name
+        Key.file_path = Key.tmp_path + Key.table_name
+
+        Key.s3_path = f'review_data/owner_id={owner_id}/category_id={Key.site_category}/{Key.table_name}'
 
         Key.screenshot_file_name = f'Error Screenshot_{owner_id}_{product_id}_{time_str}.png'
         Key.page_source_file_name = f'Error PageSource_{owner_id}_{product_id}_{time_str}.txt'
+
+        if target_date_range > 0 :
+            Key.target_date = (datetime.date.today() - datetime.timedelta(target_date_range)).strftime('%Y-%m-%d')
+            Key.target_date_trigger = True
 
     def get_download_sheet(self, site_category):
         sheet = GoogleDrive().get_work_sheet(url= Key.spread_url, sheet_name= Key.sheet_name)
@@ -108,6 +129,27 @@ class OliveyoungCrawling(Worker):
         data = data.loc[(data['사이트 구분']==site_category) & (data['수집 구분']=='TRUE')]
         data = data.loc[data['제품 URL'].str.len()>0]
         return data
+
+    def generate_review_df(self, driver, url, num):
+        review_list_wrap = wait_for_element(driver=driver, by=By.CLASS_NAME, value='review_list_wrap')
+        inner_list = review_list_wrap.find_element(by=By.CLASS_NAME, value='inner_list')
+
+        user_infos = inner_list.find_elements(by=By.CLASS_NAME, value='info')
+        user_data = parse_data().get_user_data(user_infos)
+        user_data_df = pd.DataFrame(user_data, columns=Key.user_data_columns)
+
+        review_contents = inner_list.find_elements(by=By.CLASS_NAME, value='review_cont')
+        review_data = parse_data().get_contents_data(review_contents)
+        review_data_df = pd.DataFrame(review_data, columns=Key.review_data_columns)
+
+        df_concat = pd.concat([user_data_df, review_data_df], axis=1)
+        df_concat['제품 URL'] = url
+        df_concat['product_id'] = parse.parse_qs(parse.urlparse(url).query)['goodsNo'][0]
+        df_concat['page_num'] = num
+        df_concat['platform'] = Key.site_category
+        df_concat['review_id'] = df_concat.apply(parse_data().generate_review_id, axis=1)
+        return df_concat
+
     def selenium_download(self):
         self.logger.info('셀레니움 다운로드를 시작합니다.')
 
@@ -116,11 +158,20 @@ class OliveyoungCrawling(Worker):
         # 크롬 브라우저 생성
         if os_util.is_windows_os():
             download_dir = Key.tmp_path.replace('/', '\\')
+            Key.file_upload_checker = False
         else:
             download_dir = Key.tmp_path
 
+        # 최초 실행이 아닌 경우에는 s3에서 원본 데이터 불러옴
+        # 각 제품별로 리뷰 데이터 탐색 시, 가져온 모든 리뷰 ID가 기존에 포함되어 있었다면 break, 그렇지 않다면 계속 진행
+        if Key.is_init == False:
+            table_csv = s3.download_file(s3_path = Key.s3_path, s3_bucket = const.DEFAULT_S3_PRIVATE_BUCKET, local_path= Key.tmp_path)
+            mother_table = pd.read_csv(table_csv)
+            mother_review_id_list = set(mother_table['review_id'])
+            os.remove(table_csv)
+
         download_sheet = self.get_download_sheet(Key.site_category)
-        driver = get_chromedriver(headless=Key.USE_HEADLESS, download_dir=download_dir)
+        driver = get_chromedriver(headless=Key.USE_HEADLESS, download_dir=Key.tmp_path)
 
         try :
             # 시트에서 URL 하나씩 가져오기
@@ -128,7 +179,14 @@ class OliveyoungCrawling(Worker):
                 driver.get(url)
 
                 review_tab_btn = wait_for_element(driver = driver, by=By.CSS_SELECTOR, value='#reviewInfo > a')
+                final_page_num = math.ceil(int(''.join(re.compile('\d').findall(review_tab_btn.text)))/10)
+                if final_page_num > 100 :
+                    final_page_num = 100
+
                 review_tab_btn.click()
+
+                recent_sort_btn = wait_for_element(driver = driver, by = By.CSS_SELECTOR, value = '#gdasSort > li:nth-child(3) > a')
+                recent_sort_btn.click()
 
                 # 리뷰 버튼 클릭 후 딜레이 넣어야 첫번째 페이지 정상적으로 불러옴
                 time.sleep(5)
@@ -136,30 +194,33 @@ class OliveyoungCrawling(Worker):
                 # page_list = wait_for_element(driver=driver, by = By.CLASS_NAME, value = 'pageing')
                 # page_btn_list = list(page_list.find_elements(by = By.TAG_NAME, value = 'a'))
 
-                #final_page_num = int(page_btn_list[-2].text)
-                final_page_num = 10
                 num = 1
+                page_cursor = 1
 
                 while num <= final_page_num :
-                    review_list_wrap = wait_for_element(driver=driver, by = By.CLASS_NAME, value = 'review_list_wrap')
-                    inner_list = review_list_wrap.find_element(by = By.CLASS_NAME, value = 'inner_list')
+                    df_concat = self.generate_review_df(driver, url, num)
 
-                    user_infos = inner_list.find_elements(by = By.CLASS_NAME, value = 'info')
-                    user_data = parse_data().get_user_data(user_infos)
-                    user_data_df = pd.DataFrame(user_data, columns = Key.user_data_columns)
+                    if Key.is_init == False :
+                        id_list = set(df_concat['review_id'])
+                        compare_id = id_list - mother_review_id_list
+                        if len(compare_id) == 0 :
+                            self.logger.info(f'{url}에서 더 이상 새로운 리뷰를 탐색하지 못하였습니다.')
+                            print(f'{url}에서 더 이상 새로운 리뷰를 탐색하지 못하였습니다.')
+                            break
 
-                    review_contents = inner_list.find_elements(by = By.CLASS_NAME, value = 'review_cont')
-                    review_data = parse_data().get_contents_data(review_contents)
-                    review_data_df = pd.DataFrame(review_data, columns = Key.review_data_columns)
+                    if Key.target_date_trigger == True :
+                        min_date = np.min(df_concat['review_date'])
+                        if min_date < Key.target_date :
+                            self.logger.info(f'{url}에서 목표 기간의 데이터까지 탐색하였습니다.')
+                            print(f'{url}에서 목표 기간의 데이터까지 탐색하였습니다.')
+                            break
 
-                    df_concat = pd.concat([user_data_df, review_data_df], axis = 1)
-                    df_concat['제품 URL'] = url
-                    df_concat['page_num'] = num
+                    #Key.review_df_list = []
                     Key.review_df_list.append(df_concat)
 
                     if num != final_page_num :
-                        next_page_btn = wait_for_element(driver=driver, by = By.CSS_SELECTOR, value = f'#gdasContentsArea > div > div.pageing > a:nth-child({num+1})')
-
+                        next_page_btn = wait_for_element(driver=driver, by = By.CSS_SELECTOR,
+                                                         value = f'#gdasContentsArea > div > div.pageing > a:nth-child({page_cursor+1})',max_retry_cnt=5)
                         # 다음 페이지 버튼 클릭이 잘 안되어서 3번까지 클릭 시도
                         n=0
                         while n < 3:
@@ -168,13 +229,32 @@ class OliveyoungCrawling(Worker):
                             except :
                                 n+=1
                                 continue
-                    num+=1
+
+                    if num < 10  :
+                        page_cursor += 1
+                    else :
+                        if num == 10 :
+                            page_cursor = 2
+                        elif page_cursor == 11 :
+                            page_cursor = 2
+                        else :
+                            page_cursor += 1
+
+                    num += 1
 
                     time.sleep(5)
 
-            final_df = pd.concat(Key.review_df_list, sort=False, ignore_index=True)
-            final_df_merge = download_sheet.merge(final_df, on = '제품 URL')
-            final_df_merge.to_csv(download_dir + '/' + Key.file_name, index = False, encoding = 'utf-8-sig')
+            if len(Key.review_df_list) > 0 :
+                final_df = pd.concat(Key.review_df_list, sort=False, ignore_index=True)
+                final_df_merge = download_sheet.merge(final_df, on = '제품 URL')
+
+                final_df_merge_concat = pd.concat([mother_table, final_df_merge], sort = False, ignore_index=True)
+                final_df_merge_concat = final_df_merge_concat.loc[final_df_merge_concat['제품 URL'].str.len()>0]
+                final_df_merge_concat = final_df_merge_concat.drop_duplicates('review_id')
+                final_df_merge_concat.to_csv(Key.file_path, index = False, encoding = 'utf-8-sig')
+                s3.upload_file(Key.file_path, Key.s3_path, const.DEFAULT_S3_PRIVATE_BUCKET)
+            else :
+                Key.file_upload_checker = False
 
             driver.quit()
             self.logger.info("크롤링 완료")
@@ -182,21 +262,14 @@ class OliveyoungCrawling(Worker):
         except Exception as e :
             print(e)
             self.logger.info(e)
+            final_df = pd.concat(Key.review_df_list, sort=False, ignore_index=True)
+            final_df_merge = download_sheet.merge(final_df, on='제품 URL')
 
-            local_screenshot_path = download_dir + '/' + Key.screenshot_file_name
-            driver.get_screenshot_as_png()
-            driver.save_screenshot(download_dir + '/' + Key.screenshot_file_name)
-            s3.upload_file(local_path = local_screenshot_path,s3_path='screenshot/'+Key.screenshot_file_name, s3_bucket=const.DEFAULT_S3_PRIVATE_BUCKET)
-            os.remove(local_screenshot_path)
-
-            page_source_path = download_dir + '/' + Key.page_source_file_name
-            page_source = driver.page_source
-            f = open(page_source_path, 'w')
-            f.write(page_source)
-            f.close()
-            s3.upload_file(local_path = page_source_path, s3_path='page_source/' + Key.page_source_file_name, s3_bucket = const.DEFAULT_S3_PRIVATE_BUCKET)
-            os.remove(page_source_path)
-
+            final_df_merge_concat = pd.concat([mother_table, final_df_merge], sort=False, ignore_index=True)
+            final_df_merge_concat = final_df_merge_concat.loc[final_df_merge_concat['제품 URL'].str.len() > 0]
+            final_df_merge_concat = final_df_merge_concat.drop_duplicates('review_id')
+            final_df_merge_concat.to_csv(download_dir + '/temp_df.csv', index=False, encoding='utf-8-sig')
+            selenium_error_logging(driver, download_dir, Key.screenshot_file_name, Key.page_source_file_name)
             raise e
 
     def file_deliver(self, upload_path):
@@ -217,9 +290,11 @@ class OliveyoungCrawling(Worker):
         spread_url = info['spread_url']
         sheet_name = info['sheet_name']
         upload_path = info['upload_path']
+        target_date_range = info['target_date_range']
 
-        self.Key_initiallize(owner_id, product_id, schedule_time, spread_url, sheet_name)
+        self.Key_initiallize(owner_id, product_id, schedule_time, spread_url, sheet_name, target_date_range)
         self.selenium_download()
-        self.file_deliver(upload_path)
+        if Key.file_upload_checker == True :
+            self.file_deliver(upload_path)
 
         return "Oliveyoung Review Data Crawling Success"
