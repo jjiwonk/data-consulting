@@ -43,15 +43,6 @@ class Key:
     review_data_columns = ['rating', 'review_date', 'is_offline', 'review_text', 'image_list', 'num_of_image', 'recommend_num']
 
 class parse_data :
-    def generate_review_id(self, row):
-        platform = row['platform']
-        product_id = row['product_id']
-        user_name = row['user_name']
-        review_date = row['review_date']
-        message = "{}.{}.{}".format(platform, user_name,review_date)
-        hash = hmac.new(bytes(product_id, "utf-8-"), bytes(message, "utf-8-"), hashlib.sha256)
-        result = hash.hexdigest()
-        return result
     def get_user_data(self, user_infos):
         result = []
         for info in user_infos :
@@ -213,14 +204,15 @@ class OliveyoungCrawling(Worker):
                         id_list = set(df_concat['review_id'])
                         compare_id = id_list - mother_review_id_list
                         if len(compare_id) == 0 :
-                            #self.logger.info(f'{url}에서 더 이상 새로운 리뷰를 탐색하지 못하였습니다.')
-                            print('trigger1')
+                            self.logger.info(f'{url}에서 더 이상 새로운 리뷰를 탐색하지 못하였습니다.')
+                            print(f'{url}에서 더 이상 새로운 리뷰를 탐색하지 못하였습니다.')
                             break
 
                     if Key.target_date_trigger == True :
                         min_date = np.min(df_concat['review_date'])
                         if min_date < Key.target_date :
-                            print('trigger2')
+                            self.logger.info(f'{url}에서 목표 기간의 데이터까지 탐색하였습니다.')
+                            print(f'{url}에서 목표 기간의 데이터까지 탐색하였습니다.')
                             break
 
                     #Key.review_df_list = []
