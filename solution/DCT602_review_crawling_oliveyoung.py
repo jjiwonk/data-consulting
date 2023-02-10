@@ -22,7 +22,7 @@ import math
 import numpy as np
 
 class Key:
-    USE_HEADLESS = False
+    USE_HEADLESS = True
     tmp_path = None
     table_name = None
     file_name = None
