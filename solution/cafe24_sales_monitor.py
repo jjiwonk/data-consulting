@@ -14,6 +14,7 @@ from utils.google_drive import (
 )
 # from madup_argo.core.job.job_result import ResultKey, ResultCode
 from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import NoAlertPresentException, ElementClickInterceptedException
 
 from utils.selenium_util import get_chromedriver, click_and_find_downloaded_filename
@@ -201,6 +202,9 @@ class Cafe24SalesMonitor(Worker):
                 except NoAlertPresentException:
                     pass
 
+                driver.find_elements(By.CSS_SELECTOR, ".center tr")[0].find_element(By.CSS_SELECTOR, ".btnNormal")
+                wait = WebDriverWait(driver, 10)
+                wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, ".btnNormal")))
                 driver.find_elements(By.CSS_SELECTOR, ".center tr")[0].find_element(By.CSS_SELECTOR, ".btnNormal").click()
                 driver.find_element(By.ID, "password").send_keys(cafe24_pw)
                 driver.find_element(By.ID, "reason_for_download").send_keys("다운로드")
