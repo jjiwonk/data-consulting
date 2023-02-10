@@ -202,10 +202,7 @@ class Cafe24SalesMonitor(Worker):
                 except NoAlertPresentException:
                     pass
 
-                driver.find_elements(By.CSS_SELECTOR, ".center tr")[0].find_element(By.CSS_SELECTOR, ".btnNormal")
-                wait = WebDriverWait(driver, 10)
-                wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, ".btnNormal")))
-                driver.find_elements(By.CSS_SELECTOR, ".center tr")[0].find_element(By.CSS_SELECTOR, ".btnNormal").click()
+                driver.find_elements(By.CSS_SELECTOR, ".center tr")[0].find_element(By.TAG_NAME, "a").click()
                 driver.find_element(By.ID, "password").send_keys(cafe24_pw)
                 driver.find_element(By.ID, "reason_for_download").send_keys("다운로드")
                 self.logger.info("리포트 다운로드 시작...")
