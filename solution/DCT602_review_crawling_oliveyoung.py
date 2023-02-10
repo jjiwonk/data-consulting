@@ -98,6 +98,15 @@ class parse_data :
             result.append(row)
         return result
 
+    def generate_review_id(self, row):
+        platform = row['platform']
+        product_id = row['product_id']
+        user_name = row['user_name']
+        review_date = row['review_date']
+        message = "{}.{}.{}".format(platform, user_name, review_date)
+        hash = hmac.new(bytes(product_id, "utf-8-"), bytes(message, "utf-8-"), hashlib.sha256)
+        result = hash.hexdigest()
+        return result
 
 
 class OliveyoungCrawling(Worker):
