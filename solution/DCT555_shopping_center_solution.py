@@ -2,7 +2,7 @@ import time
 
 from selenium.webdriver.common.by import By
 
-from utils.selenium_util import get_chromedriver, wait_for_element
+from utils.selenium_util import get_chromedriver, wait_for_element, selenium_error_logging
 from utils.path_util import get_tmp_path
 from utils import dropbox_util
 from utils import s3
@@ -133,7 +133,7 @@ class SpcDownload(Worker):
 
             for i in range(down_num):
                 download_btn = wait_for_element(driver=driver, by=By.CSS_SELECTOR,
-                                                value=f'#downloadList > tr:nth-child({i + 1}) > td.last > a')
+                                                value=f'#downloadList > tr:nth-child({i + 1}) > td.last > a', max_retry_cnt=5)
                 n = 0
                 max_download_try = 3
                 while n < max_download_try:
@@ -171,21 +171,7 @@ class SpcDownload(Worker):
         except Exception as e :
             print(e)
             self.logger.info(e)
-
-            local_screenshot_path = download_dir + '/' + Key.screenshot_file_name
-            driver.get_screenshot_as_png()
-            driver.save_screenshot(download_dir + '/' + Key.screenshot_file_name)
-            s3.upload_file(local_path = local_screenshot_path,s3_path='screenshot/'+Key.screenshot_file_name, s3_bucket=const.DEFAULT_S3_PRIVATE_BUCKET)
-            os.remove(local_screenshot_path)
-
-            page_source_path = download_dir + '/' + Key.page_source_file_name
-            page_source = driver.page_source
-            f = open(page_source_path, 'w')
-            f.write(page_source)
-            f.close()
-            s3.upload_file(local_path = page_source_path, s3_path='page_source/' + Key.page_source_file_name, s3_bucket = const.DEFAULT_S3_PRIVATE_BUCKET)
-            os.remove(page_source_path)
-
+            selenium_error_logging(driver, download_dir, Key.screenshot_file_name, Key.page_source_file_name)
             raise e
 
     def file_concat(self):
