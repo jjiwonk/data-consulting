@@ -210,7 +210,7 @@ class Cafe24SalesMonitor(Worker):
                     clickable_btn=driver.find_element(By.ID, "excel_download"),
                     download_dir=Key.tmp_path,
                     download_file_ext="zip",
-                    wait_sec=180,
+                    wait_sec=300,
                 )
                 self.logger.info("리포트 다운로드 완료")
 
