@@ -8,6 +8,8 @@ from selenium.webdriver.remote.webelement import WebElement
 
 from utils.os_util import is_mac_os, is_windows_os
 from utils.path_util import get_resource
+from utils import s3
+from utils import const
 
 from selenium.common.exceptions import (
     StaleElementReferenceException,
@@ -110,3 +112,20 @@ def wait_for_element(driver, value, by=By.CSS_SELECTOR, max_retry_cnt = 3):
                 time.sleep(1)
             else:
                 raise e
+
+def selenium_error_logging(driver, download_dir, screenshot_file_name, page_source_file_name) :
+    local_screenshot_path = download_dir + '/' + screenshot_file_name
+    driver.get_screenshot_as_png()
+    driver.save_screenshot(download_dir + '/' + screenshot_file_name)
+    s3.upload_file(local_path=local_screenshot_path, s3_path='screenshot/' + screenshot_file_name,
+                   s3_bucket=const.DEFAULT_S3_PRIVATE_BUCKET)
+    os.remove(local_screenshot_path)
+
+    page_source_path = download_dir + '/' + page_source_file_name
+    page_source = driver.page_source
+    f = open(page_source_path, 'w')
+    f.write(page_source)
+    f.close()
+    s3.upload_file(local_path=page_source_path, s3_path='page_source/' + page_source_file_name,
+                   s3_bucket=const.DEFAULT_S3_PRIVATE_BUCKET)
+    os.remove(page_source_path)
