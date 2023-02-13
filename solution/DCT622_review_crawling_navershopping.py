@@ -144,7 +144,7 @@ class NaverShoppingCrawling(Worker):
                 html = driver.page_source
                 bs = BeautifulSoup(html, "html.parser")
 
-                bs.find()
+                #bs.find()
                 ul_list = driver.find_elements(by=By.TAG_NAME, value = 'ul')
                 target_idx = 0
                 for idx, ul in enumerate(ul_list) :
