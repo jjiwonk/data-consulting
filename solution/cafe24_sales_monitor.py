@@ -13,7 +13,7 @@ from utils.google_drive import (
     GSS_ROW,
 )
 from selenium.webdriver.common.keys import Keys
-from selenium.webdriver import ActionChains
+from selenium.webdriver.remote.webelement import WebElement
 from selenium.common.exceptions import NoAlertPresentException, ElementClickInterceptedException
 
 from utils.selenium_util import get_chromedriver, click_and_find_downloaded_filename, selenium_error_logging
@@ -62,6 +62,15 @@ def wait_for_element(driver, css_selector, by=By.CSS_SELECTOR):
                 time.sleep(1)
             else:
                 raise e
+
+
+def wait_for_element_to_vanish(self, element: WebElement) -> bool:
+    is_displayed = element.is_displayed()
+    start_time = 0
+    while is_displayed and not start_time > 5:
+        is_displayed = element.is_displayed()
+
+    return not is_displayed
 
 
 class Cafe24SalesMonitor(Worker):
@@ -206,7 +215,8 @@ class Cafe24SalesMonitor(Worker):
 
                 # footer 대기 테스트
                 button = driver.find_elements(By.CSS_SELECTOR, ".center tr")[0].find_element(By.TAG_NAME, "a")
-                wait_for_element(driver, "footer", By.ID)
+                footer = driver.find_elements(By.ID, "footer")
+                wait_for_element_to_vanish(footer)
                 button.click()
                 # 테스트
                 driver.find_element(By.ID, "password").send_keys(cafe24_pw)
