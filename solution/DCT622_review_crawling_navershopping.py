@@ -134,14 +134,14 @@ class NaverShoppingCrawling(Worker):
         driver = get_chromedriver(headless=Key.USE_HEADLESS, download_dir=Key.tmp_path)
 
         # test용
-
+        #url = list(download_sheet['제품 URL'])[0]
         try :
             # 시트에서 URL 하나씩 가져오기
             for url in download_sheet['제품 URL']:
                 driver.get(url)
                 pid = parse.urlparse(url).path.split('/')[-1]
 
-                review_tab_btn = wait_for_element(driver = driver, by=By.CSS_SELECTOR, value='#snb > ul > li:nth-child(4) > a')[0]
+                review_tab_btn = wait_for_element(driver = driver, by = By.PARTIAL_LINK_TEXT, value = '쇼핑몰리뷰')
                 final_page_num = math.ceil(int(''.join(re.compile('\d').findall(review_tab_btn.text)))/20)
                 # if final_page_num > 100 :
                 #     final_page_num = 100
