@@ -132,8 +132,16 @@ class SpcDownload(Worker):
             driver.switch_to.window(driver.window_handles[1])
 
             for i in range(down_num):
-                download_btn = wait_for_element(driver=driver, by=By.CSS_SELECTOR,
-                                                value=f'#downloadList > tr:nth-child({i + 1}) > td.last > a', max_retry_cnt=5)
+                try :
+                    download_btn = wait_for_element(driver=driver, by=By.CSS_SELECTOR,
+                                                    value=f'#downloadList > tr:nth-child({i + 1}) > td.last > a', max_retry_cnt=5)
+                except Exception as e :
+                    if i == down_num - 1 :
+                        break
+                    else :
+                        self.logger.info(e)
+                        raise(e)
+
                 n = 0
                 max_download_try = 3
                 while n < max_download_try:
