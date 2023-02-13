@@ -64,7 +64,7 @@ def wait_for_element(driver, css_selector, by=By.CSS_SELECTOR):
                 raise e
 
 
-def wait_for_element_to_vanish(self, element: WebElement) -> bool:
+def wait_for_element_to_vanish(element: WebElement) -> bool:
     is_displayed = element.is_displayed()
     start_time = 0
     while is_displayed and not start_time > 5:
