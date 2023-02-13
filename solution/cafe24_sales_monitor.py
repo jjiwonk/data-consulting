@@ -12,9 +12,8 @@ from utils.google_drive import (
     GoogleDrive,
     GSS_ROW,
 )
-# from madup_argo.core.job.job_result import ResultKey, ResultCode
 from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver import ActionChains
 from selenium.common.exceptions import NoAlertPresentException, ElementClickInterceptedException
 
 from utils.selenium_util import get_chromedriver, click_and_find_downloaded_filename, selenium_error_logging
@@ -205,6 +204,12 @@ class Cafe24SalesMonitor(Worker):
                 except NoAlertPresentException:
                     pass
 
+                # 스크롤 테스트
+                button = driver.find_elements(By.CSS_SELECTOR, ".center tr")[0].find_element(By.TAG_NAME, "a")
+                time.sleep(1)
+                action = ActionChains(driver)
+                action.move_to_element(button).perform()
+                # 테스트
                 driver.find_elements(By.CSS_SELECTOR, ".center tr")[0].find_element(By.TAG_NAME, "a").click()
                 driver.find_element(By.ID, "password").send_keys(cafe24_pw)
                 driver.find_element(By.ID, "reason_for_download").send_keys("다운로드")
