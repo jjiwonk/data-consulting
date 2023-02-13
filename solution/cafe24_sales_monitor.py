@@ -204,13 +204,11 @@ class Cafe24SalesMonitor(Worker):
                 except NoAlertPresentException:
                     pass
 
-                # 스크롤 테스트
+                # footer 대기 테스트
                 button = driver.find_elements(By.CSS_SELECTOR, ".center tr")[0].find_element(By.TAG_NAME, "a")
-                time.sleep(1)
-                action = ActionChains(driver)
-                action.move_to_element(button).perform()
+                wait_for_element(driver, "footer", By.ID)
+                button.click()
                 # 테스트
-                driver.find_elements(By.CSS_SELECTOR, ".center tr")[0].find_element(By.TAG_NAME, "a").click()
                 driver.find_element(By.ID, "password").send_keys(cafe24_pw)
                 driver.find_element(By.ID, "reason_for_download").send_keys("다운로드")
                 self.logger.info("리포트 다운로드 시작...")
