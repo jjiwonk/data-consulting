@@ -41,7 +41,7 @@ def get_chromedriver(headless: bool = True, mobile: bool = False, download_dir: 
     chrome_options.add_argument("--ignore-certificate-errors")
     chrome_options.add_argument(
         "user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_6) AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/61.0.3163.100 Safari/537.36"
+        "Chrome/110.0.5481.78 Safari/537.36"
     )
 
     if headless is True:
