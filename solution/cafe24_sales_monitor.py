@@ -69,6 +69,7 @@ def wait_for_element_to_vanish(element: WebElement) -> bool:
     start_time = 0
     while is_displayed and not start_time > 5:
         is_displayed = element.is_displayed()
+        start_time += 1
 
     return not is_displayed
 
@@ -214,9 +215,12 @@ class Cafe24SalesMonitor(Worker):
                     pass
 
                 # footer 대기 테스트
+                # footer = driver.find_element(By.ID, "footer")
+                # wait_for_element_to_vanish(footer)
                 button = driver.find_elements(By.CSS_SELECTOR, ".center tr")[0].find_element(By.TAG_NAME, "a")
-                footer = driver.find_element(By.ID, "footer")
-                wait_for_element_to_vanish(footer)
+                for c in range(0, 5):
+                    driver.find_element(By.TAG_NAME, 'body').send_keys(Keys.PAGE_DOWN)
+                    time.sleep(1)
                 button.click()
                 # 테스트
                 driver.find_element(By.ID, "password").send_keys(cafe24_pw)
