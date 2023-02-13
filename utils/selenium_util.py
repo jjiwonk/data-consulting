@@ -35,7 +35,9 @@ def get_chromedriver(headless: bool = True, mobile: bool = False, download_dir: 
         else get_resource(LINUX_CHROMEDRIVER)
     )
     chrome_options = webdriver.ChromeOptions()
-    chrome_options.add_argument("window-size=1920x1080")
+    chrome_options.add_argument("--window-size=1920x1080")
+    chrome_options.add_argument("--width=1920")
+    chrome_options.add_argument("--height=1080")
     chrome_options.add_argument("disable-gpu") # 가속 사용 x
     chrome_options.add_argument("lang=ko_KR")  # 가짜 플러그인 탑재
     chrome_options.add_argument("--ignore-certificate-errors")
