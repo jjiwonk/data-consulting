@@ -143,7 +143,9 @@ def sa_merging():
 
     df = df[ref.columns.sa_reprt_col]
 
-    df.to_csv(dr.download_dir + f'keyword_report/keyword_report_{ref.r_date.yearmonth}_test.csv', index=False,encoding='utf-8-sig')
+    df[['브랜드구매(GA)', '브랜드매출(GA)','브랜드구매(AF)','브랜드매출(AF)']] = 0
+
+    df.to_csv(dr.download_dir + f'keyword_report/keyword_report_{ref.r_date.yearmonth}.csv', index=False,encoding='utf-8-sig')
 
     print('SA/BSA 리포트 추출 완료')
 
