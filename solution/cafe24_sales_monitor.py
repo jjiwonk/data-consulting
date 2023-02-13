@@ -12,12 +12,11 @@ from utils.google_drive import (
     GoogleDrive,
     GSS_ROW,
 )
-# from madup_argo.core.job.job_result import ResultKey, ResultCode
 from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver import ActionChains
 from selenium.common.exceptions import NoAlertPresentException, ElementClickInterceptedException
 
-from utils.selenium_util import get_chromedriver, click_and_find_downloaded_filename
+from utils.selenium_util import get_chromedriver, click_and_find_downloaded_filename, selenium_error_logging
 from utils.path_util import get_tmp_path
 import utils.os_util as os_util
 from worker.abstract_worker import Worker
@@ -84,11 +83,14 @@ class Cafe24SalesMonitor(Worker):
         spreadsheet_url = info.get("spreadsheet_url")
         raw_sheet_name = info.get("raw_sheet_name")
         sales_sheet_name = info.get("sales_sheet_name")
+        screenshot_file_name = f'Error Screenshot_{owner_id}_{product_id}_{schedule_time}.png'
+        page_source_file_name = f'Error PageSource_{owner_id}_{product_id}_{schedule_time}.txt'
         n_products = info.get("n_products")
 
         # tmp 폴더에 소스 폴더 생성 -> 리포트 임시저장
         Key.tmp_path = get_tmp_path() + "/cafe24/" + owner_id + "/" + product_id + "/" + store_name + "/"
         os.makedirs(Key.tmp_path, exist_ok=True)
+
 
         # 크롬 브라우저 생성
         if os_util.is_windows_os():
@@ -202,6 +204,12 @@ class Cafe24SalesMonitor(Worker):
                 except NoAlertPresentException:
                     pass
 
+                # 스크롤 테스트
+                button = driver.find_elements(By.CSS_SELECTOR, ".center tr")[0].find_element(By.TAG_NAME, "a")
+                time.sleep(1)
+                action = ActionChains(driver)
+                action.move_to_element(button).perform()
+                # 테스트
                 driver.find_elements(By.CSS_SELECTOR, ".center tr")[0].find_element(By.TAG_NAME, "a").click()
                 driver.find_element(By.ID, "password").send_keys(cafe24_pw)
                 driver.find_element(By.ID, "reason_for_download").send_keys("다운로드")
@@ -343,6 +351,7 @@ class Cafe24SalesMonitor(Worker):
 
         except Exception as e:
             self.logger.warning(str(e))
+            selenium_error_logging(driver, download_dir, screenshot_file_name, page_source_file_name)
             raise e
 
         finally:

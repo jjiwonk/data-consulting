@@ -35,13 +35,15 @@ def get_chromedriver(headless: bool = True, mobile: bool = False, download_dir: 
         else get_resource(LINUX_CHROMEDRIVER)
     )
     chrome_options = webdriver.ChromeOptions()
-    chrome_options.add_argument("window-size=1920x1080")
+    chrome_options.add_argument("--window-size=1920x1080")
+    chrome_options.add_argument("--width=1920")
+    chrome_options.add_argument("--height=1080")
     chrome_options.add_argument("disable-gpu") # 가속 사용 x
     chrome_options.add_argument("lang=ko_KR")  # 가짜 플러그인 탑재
     chrome_options.add_argument("--ignore-certificate-errors")
     chrome_options.add_argument(
         "user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_6) AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/61.0.3163.100 Safari/537.36"
+        "Chrome/110.0.5481.78 Safari/537.36"
     )
 
     if headless is True:
