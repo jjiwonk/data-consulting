@@ -134,7 +134,7 @@ class NaverShoppingCrawling(Worker):
         driver = get_chromedriver(headless=Key.USE_HEADLESS, download_dir=Key.tmp_path)
 
         # test용
-        url = list(download_sheet['제품 URL'])[1]
+        #url = list(download_sheet['제품 URL'])[1]
         try :
             # 시트에서 URL 하나씩 가져오기
             for url in download_sheet['제품 URL']:
