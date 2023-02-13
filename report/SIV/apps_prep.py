@@ -5,6 +5,7 @@ import pyarrow as pa
 import datetime
 import pandas as pd
 import urllib
+import numpy
 
 def apps_read():
     dir = dr.report_dir + 'appsflyer_prism'
@@ -32,8 +33,6 @@ def apps_read():
     raw_data = raw_data.loc[raw_data['media_source'].isin(ref.columns.apps_media)]
 
     return raw_data
-
-df = apps_read()
 
 def apps_prep():
     df = apps_read()
@@ -73,6 +72,11 @@ def apps_prep():
     df.loc[(df['media_source'] == 'googleadwords_int') & (df['keyword'] == '-'), 'keyword'] = df['keywords']
     df.loc[(df['media_source'] == 'googleadwords_int') & (df['keyword'] == 'sivillage'), 'keyword'] = 'SIVILLAGE'
 
+    return df
+
+def apps_pivoting():
+    df = apps_prep()
+
     #uv 구하기
     uv_col = ['install', 're-attribution', 're-engagement']
     df3 = df.loc[df['event_name'].isin(uv_col)]
@@ -82,7 +86,7 @@ def apps_prep():
     df3['cnt'] = int(1)
     df3[ref.columns.apps_index] = df3[ref.columns.apps_index].astype(str).fillna('-')
     df3 = pd.pivot_table(df3 , index= ref.columns.apps_index , columns= 'event_name', values= 'cnt',aggfunc= 'count').reset_index().fillna(0)
-    apps_metric =[ 'install','re-attribution','re-engagement']
+    apps_metric =['install','re-attribution','re-engagement']
     df3[apps_metric] = df3[apps_metric].astype(int)
     df3['UV(AF)'] = df3['re-attribution'] + df3['install'] + df3['re-engagement']
     df3 = df3.drop(columns= apps_metric)
@@ -102,6 +106,7 @@ def apps_prep():
 
     return df
 
+# 집약형 데이터 처리
 
 def apps_agg_read():
 
@@ -133,10 +138,9 @@ def apps_agg_read():
 
     return apps_agg_raw
 
-agg = apps_agg_read()
-
 def apps_agg_prep():
     df = apps_agg_read()
+
     df['keyword'] = '-'
     df = df.loc[(df['agencypmd_af_prt'] == 'None')|(df['agencypmd_af_prt'] == 'madup')]
     df = df.loc[df['media_source_pid'] == 'Facebook Ads']
@@ -146,17 +150,79 @@ def apps_agg_prep():
     df.loc[df['conversion_type'] == 're-engagement', 're-engagement'] = df['conversions']
 
     df[ref.columns.apps_agg_metric] = df[ref.columns.apps_agg_metric].fillna(0)
-    df = df.groupby(ref.columns.apps_agg_index)[ref.columns.apps_agg_metric].sum().reset_index().fillna(0).rename(columns=ref.columns.apps_agg_rename)
-
+    df = df.groupby(ref.columns.apps_agg_index)[ref.columns.apps_agg_metric].sum().reset_index().fillna(0)
+    df = df.rename(columns=ref.columns.apps_agg_rename)
     df['UV(AF)'] = 0
 
     return df
 
-def apps_concat():
+# 브랜드 구매 매출 코드
+
+def brand_order():
     df = apps_prep()
+
+    df = df.loc[df['event_name'].isin(['completed_purchase', 'first_purchase'])]
+    df['브랜드구분'] = df['event_value'].apply(lambda x: eval(x))
+    df['구매브랜드'] = df['브랜드구분'].apply(lambda x: x.get('af_brand'))
+    df['구매금액'] = df['브랜드구분'].apply(lambda x: x.get('af_price'))
+
+    # 머징코드 적용
+    df = ref.adcode(df, 'campaign', 'adset', 'ad')
+
+    index = ref.br_ind.drop_duplicates(keep= 'last')
+    index = index.loc[index['브랜드'] != '-'].drop_duplicates('머징코드')
+
+    merge = pd.merge(df, index, on='머징코드', how='left').fillna('-')
+    merge = merge.loc[merge['브랜드'] != '-']
+
+    merge[['브랜드구매(AF)', '브랜드매출(AF)']] = 0
+    merge['인덱스'] = '-'
+    merge.index = range(len(merge))
+
+    for i in range(len(merge)):
+        orbr = merge['구매브랜드'][i]
+        result =[]
+
+        for x in orbr:
+            temp = x.replace('GAP Kids','GAP Adults')
+            result.append(temp)
+
+        orbr = numpy.array(result)
+        br = merge['브랜드'][i]
+        index = numpy.where(orbr == br)
+        merge['인덱스'][i] = index[0].tolist()
+
+        reve = 0
+        reve_index = merge['인덱스'][i]
+        i_reve_index = merge['구매금액'][i]
+
+        for n in reve_index:
+            i_reve = i_reve_index[n]
+            i_reve = float(i_reve[2])
+            reve = reve + i_reve
+
+        merge['브랜드매출(AF)'][i] = reve
+
+    merge['브랜드구매(AF)'] = merge['인덱스'].apply(lambda x: 0 if not x else 1)
+    merge = merge.rename(columns = ref.columns.apps_rename)
+    merge[['가입(AF)', '주문취소(AF)', '주문','첫구매(AF)', '설치(AF)', '재설치(AF)', '리인게이지먼트', '주문취소매출(AF)', '주문매출','첫구매매출(AF)', 'UV(AF)']] = 0
+    merge = merge[['날짜', '매체', '캠페인', '세트', '소재', '키워드', '가입(AF)', '주문취소(AF)', '주문','첫구매(AF)', '설치(AF)', '재설치(AF)', '리인게이지먼트', '주문취소매출(AF)', '주문매출','첫구매매출(AF)', 'UV(AF)', '브랜드구매(AF)', '브랜드매출(AF)']]
+
+    merge.to_csv(dr.download_dir + f'appsflyer_raw/appsflyer_raw_{ref.r_date.yearmonth}_브랜드구매.csv', index=False, encoding='utf-8-sig')
+
+    return merge
+
+# 최종 합치기
+
+def apps_concat():
+
+    df = apps_pivoting()
     df_agg = apps_agg_prep()
+    brand_df = brand_order()
 
     apps = pd.concat([df,df_agg])
+    apps[['브랜드구매(AF)','브랜드매출(AF)']] = 0
+    apps = pd.concat([apps, brand_df])
 
     apps['구매(AF)'] = apps['주문'] + apps['첫구매(AF)']
     apps['매출(AF)'] = apps['주문매출'] + apps['첫구매매출(AF)']
@@ -165,7 +231,6 @@ def apps_concat():
     apps['유입(AF)'] = apps['설치(AF)'] + apps['재설치(AF)'] + apps['리인게이지먼트']
     apps['appopen(AF)'] = apps['리인게이지먼트']
 
-    apps[['브랜드구매(AF)', '브랜드매출(AF)']] = 0
     apps['구매(AF)'] = apps['주문'] + apps['첫구매(AF)']
     apps['매출(AF)'] = apps['주문매출'] + apps['첫구매매출(AF)']
     apps['총주문건(AF)'] = apps['구매(AF)'] - apps['주문취소(AF)']
@@ -174,18 +239,10 @@ def apps_concat():
     apps['appopen(AF)'] = apps['리인게이지먼트']
 
     apps = ref.date_dt(apps)
+    apps = apps[['날짜', '매체', '캠페인', '세트', '소재', '키워드', '유입(AF)', 'UV(AF)', 'appopen(AF)', '구매(AF)', '매출(AF)', '주문취소(AF)','주문취소매출(AF)', '총주문건(AF)', '총매출(AF)', '첫구매(AF)', '첫구매매출(AF)', '설치(AF)', '재설치(AF)','가입(AF)','브랜드구매(AF)','브랜드매출(AF)']]
 
-    apps = apps[['날짜', '매체', '캠페인', '세트', '소재', '키워드','유입(AF)','UV(AF)','appopen(AF)','구매(AF)','매출(AF)','주문취소(AF)','주문취소매출(AF)','총주문건(AF)','총매출(AF)','브랜드구매(AF)','브랜드매출(AF)','첫구매(AF)','첫구매매출(AF)','설치(AF)','재설치(AF)','가입(AF)']]
-    apps = ref.adcode_mediapps(apps)
+    apps = ref.adcode(apps, '캠페인', '세트', '소재')
 
     apps.to_csv(dr.download_dir + f'appsflyer_raw/appsflyer_raw_{ref.r_date.yearmonth}.csv', index=False, encoding='utf-8-sig')
 
     return apps
-
-apps = apps_concat()
-
-apps.to_csv(dr.download_dir + f'appsflyer_raw/appsflyer_raw_{ref.r_date.yearmonth}.csv', index=False, encoding='utf-8-sig')
-
-
-
-

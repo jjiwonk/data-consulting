@@ -1,10 +1,11 @@
 import pandas as pd
-from setting import directory
 from spreadsheet import spreadsheet
 import pyarrow as pa
 import re
 import datetime
+from report.SIV import directory as dr
 
+# 시트  raw
 doc = spreadsheet.spread_document_read(
     'https://docs.google.com/spreadsheets/d/1dGT5KHlB6r0spjwU8xFPbL30WjgKARi3d6uwB9eTw0s/edit#gid=871682176')
 
@@ -17,6 +18,15 @@ kakaobsa_df = spreadsheet.spread_sheet(doc, '카카오BSA_raw', 0, 0).reset_inde
 media_index = index_df[['캠페인', '지면/상품']].drop_duplicates()
 ds_df = spreadsheet.spread_sheet(doc, 'DS데이터', 0, 0 ).reset_index(drop=True)
 ds_raw = ds_df[['날짜', '머징코드', '방문수(DS)', '방문자수(DS)', '구매방문수(DS)', '구매금액(DS)', '회원가입방문수(DS)']]
+sib_bsa = spreadsheet.spread_sheet(doc, '뷰티_BSA_RD', 0, 0 ).reset_index(drop=True)
+brand_index = spreadsheet.spread_sheet(doc, '브랜드매출_인덱싱', 0, 3).reset_index(drop=True)
+
+# 브랜드 구매용 별도 인덱스
+ind = index_df[['머징코드','브랜드']].drop_duplicates(keep = 'last').rename(columns = {'브랜드':'브랜드_인덱스'})
+ind = ind.drop_duplicates('머징코드')
+br_ind = brand_index[['브랜드(index)', '실제 브랜드명 (productBrand, af_brand)']].drop_duplicates(keep = 'last')
+br_ind = br_ind.rename(columns = {'브랜드(index)':'브랜드_인덱스','실제 브랜드명 (productBrand, af_brand)':'브랜드'})
+br_ind = pd.merge(ind, br_ind, on = '브랜드_인덱스', how = 'left').fillna('-').drop(columns='브랜드_인덱스')
 
 class r_date :
     target_date = datetime.datetime.strptime(setting_df['리포트 기준 날짜'][0], '%Y-%m-%d').date()
@@ -171,6 +181,19 @@ class columns:
         'transactions': pa.float64(),
         'transactionRevenue': pa.float64()}
 
+    ga2_dtype = {
+        '﻿dataSource': pa.string(),
+        'browser': pa.string(),
+        'campaign': pa.string(),
+        'sourceMedium': pa.string(),
+        'keyword': pa.string(),
+        'adContent': pa.string(),
+        'productName' : pa.string(),
+        'productBrand': pa.string(),
+        'uniquePurchases': pa.float64(),
+        'itemQuantity': pa.float64(),
+        'itemRevenue': pa.float64()}
+
     def merge_index(df):
         merge_index = df[['머징코드', '캠페인', '세트', '소재']].drop_duplicates(keep='first')
         merge_index = merge_index.loc[merge_index['머징코드'] != 'None']
@@ -184,8 +207,8 @@ class columns:
 
     report_col = ['파트 구분','연도','월','주차','날짜','매체','지면/상품','캠페인 구분','KPI','캠페인','세트','소재','머징코드','캠페인 라벨','OS','노출','도달','클릭','조회','구매(대시보드)','매출(대시보드)','설치(대시보드)', '대시보드(친구추가)', '대시보드(참여)','비용','SPEND_AGENCY','세션(GA)','UA(GA)','구매(GA)','매출(GA)','브랜드구매(GA)','브랜드매출(GA)','가입(GA)','유입(AF)','UV(AF)','appopen(AF)','구매(AF)','매출(AF)','주문취소(AF)','주문취소매출(AF)','총주문건(AF)','총매출(AF)','브랜드구매(AF)','브랜드매출(AF)','첫구매(AF)','첫구매매출(AF)','설치(AF)','재설치(AF)','가입(AF)','방문수(DS)','방문자수(DS)','구매방문수(DS)','구매금액(DS)','회원가입방문수(DS)','캠페인(인덱스)','세트(인덱스)','프로모션','브랜드','카테고리','소재형태','소재이미지','소재카피']
     sa_reprt_col = ['파트 구분', '연도', '월', '주차', '매체', '지면/상품', '캠페인 구분', 'KPI', '캠페인', '세트', '키워드', '캠페인 라벨', 'OS', '노출', '도달', '클릭', '조회','비용', 'SPEND_AGENCY','세션(GA)', 'UA(GA)', '구매(GA)', '매출(GA)',
-       '브랜드구매(GA)', '브랜드매출(GA)', '가입(GA)','유입(AF)', 'UV(AF)', 'appopen(AF)','구매(AF)', '매출(AF)', '주문취소(AF)', '주문취소매출(AF)', '총주문건(AF)', '총매출(AF)', '첫구매(AF)', '첫구매매출(AF)', '설치(AF)', '재설치(AF)','가입(AF)']
-
+       '브랜드구매(GA)', '브랜드매출(GA)', '가입(GA)','유입(AF)', 'UV(AF)', 'appopen(AF)','구매(AF)', '매출(AF)', '주문취소(AF)', '주문취소매출(AF)', '총주문건(AF)', '총매출(AF)', '첫구매(AF)', '첫구매매출(AF)', '설치(AF)', '재설치(AF)','가입(AF)','브랜드구매(AF)','브랜드매출(AF)']
+    media_report_col = ['파트 구분', '날짜', '매체', '지면/상품', '캠페인 구분', 'KPI', '캠페인', '세트', '소재', '머징코드', '캠페인 라벨', 'OS', '노출', '도달', '클릭','조회', '구매(대시보드)', '매출(대시보드)', '설치(대시보드)', '대시보드(친구추가)', '대시보드(참여)', '비용', 'SPEND_AGENCY']
 
 item_list = ['read', 'prep', 'temp', 'dimension', 'metric']
 
@@ -209,14 +232,14 @@ exc_adict = dict(zip(exc_df['소재'],exc_df['소재(변경)']))
 exc_ga_adict = dict(zip(exc_df['GA소재'],exc_df['GA소재(변경)']))
 exc_code_dict = dict(zip(exc_df['코드'],exc_df['코드(변경)']))
 
-def adcode_mediapps(df):
+def adcode(df,depth1,depth2,depth3):
     pat = re.compile('[A-Z]{4,4}\d{4,4}')
 
-    df['머징코드'] = df['캠페인'].apply(lambda x: pat.findall(str(x))[-1] if pat.search(str(x)) else 'None')
+    df['머징코드'] = df[depth1].apply(lambda x: pat.findall(str(x))[-1] if pat.search(str(x)) else 'None')
 
     df.index = range(len(df))
-    df.loc[df['머징코드'] == 'None', '머징코드'] = df['세트'].apply(lambda x: pat.findall(str(x))[-1] if pat.search(str(x)) else 'None')
-    df.loc[df['머징코드'] == 'None', '머징코드'] = df['소재'].apply(lambda x: pat.findall(str(x))[-1] if pat.search(str(x)) else 'None')
+    df.loc[df['머징코드'] == 'None', '머징코드'] = df[depth2].apply(lambda x: pat.findall(str(x))[-1] if pat.search(str(x)) else 'None')
+    df.loc[df['머징코드'] == 'None', '머징코드'] = df[depth3].apply(lambda x: pat.findall(str(x))[-1] if pat.search(str(x)) else 'None')
 
     return df
 
@@ -253,3 +276,13 @@ def week_day(df):
     week_day = 7
     df['주차'] = pd.to_datetime(df['날짜']).apply(lambda x: (x + datetime.timedelta(week_day)).isocalendar()[1]) -1
     return df
+
+def index_dup_drop(index,depth):
+    index = index.drop_duplicates(keep='last')
+    index['중복'] = index.duplicated([depth], False)
+    index_dup = index.loc[index['중복'] != False].drop(columns=['중복'])
+    index_dup.to_csv(dr.download_dir + f'/index_dup_{depth}.csv', index=False, encoding='utf-8-sig')
+    index = index.loc[index[depth] != '']
+    index = index.loc[index['중복'] == False].drop(columns = '중복')
+    return index
+
