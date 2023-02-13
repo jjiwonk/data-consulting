@@ -134,21 +134,35 @@ class NaverShoppingCrawling(Worker):
         driver = get_chromedriver(headless=Key.USE_HEADLESS, download_dir=Key.tmp_path)
 
         # test용
-        #url = list(download_sheet['제품 URL'])[0]
+        url = list(download_sheet['제품 URL'])[1]
         try :
             # 시트에서 URL 하나씩 가져오기
             for url in download_sheet['제품 URL']:
                 driver.get(url)
                 pid = parse.urlparse(url).path.split('/')[-1]
 
-                review_tab_btn = wait_for_element(driver = driver, by = By.PARTIAL_LINK_TEXT, value = '쇼핑몰리뷰')
-                final_page_num = math.ceil(int(''.join(re.compile('\d').findall(review_tab_btn.text)))/20)
-                # if final_page_num > 100 :
-                #     final_page_num = 100
+                html = driver.page_source
+                bs = BeautifulSoup(html, "html.parser")
 
-                review_tab_btn.click()
+                bs.find()
+                ul_list = driver.find_elements(by=By.TAG_NAME, value = 'ul')
+                target_idx = 0
+                for idx, ul in enumerate(ul_list) :
+                    if '쇼핑몰리뷰' in ul.text :
+                        target_idx = idx
+                        break
 
-                recent_sort_btn = wait_for_element(driver = driver, by=By.PARTIAL_LINK_TEXT, value = '최신순')
+                floating_btn_list = ul_list[target_idx].find_elements(by = By.TAG_NAME, value = 'li')
+                for btn in enumerate(floating_btn_list) :
+                    if '쇼핑몰리뷰' in btn.text :
+                        btn.click()
+                        btn_text = btn.text
+                        break
+
+                final_page_num = math.ceil(int(''.join(re.compile('\d').findall(btn_text)))/20)
+
+                sort_btn_class = bs.find('a', {'role' : 'button', 'class' : re.compile('filter_sort'), 'data-nclick' : 'N=a:rev.rec'}).get('class')[0]
+                recent_sort_btn = driver.find_elements(by = By.CLASS_NAME, value = sort_btn_class)[1]
                 recent_sort_btn.click()
 
                 # 리뷰 버튼 클릭 후 딜레이 넣어야 첫번째 페이지 정상적으로 불러옴
@@ -160,8 +174,6 @@ class NaverShoppingCrawling(Worker):
                 num = 1
                 page_cursor = 1
 
-                html = driver.page_source
-                bs = BeautifulSoup(html, "html.parser")
                 btn_class_name = bs.find('div', {'class': re.compile('pagination_pagination')}).get('class')[0]
 
                 while num <= final_page_num :
