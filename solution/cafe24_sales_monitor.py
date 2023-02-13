@@ -215,7 +215,7 @@ class Cafe24SalesMonitor(Worker):
 
                 # footer 대기 테스트
                 button = driver.find_elements(By.CSS_SELECTOR, ".center tr")[0].find_element(By.TAG_NAME, "a")
-                footer = driver.find_elements(By.ID, "footer")
+                footer = driver.find_element(By.ID, "footer")
                 wait_for_element_to_vanish(footer)
                 button.click()
                 # 테스트
