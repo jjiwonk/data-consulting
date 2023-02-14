@@ -22,6 +22,7 @@ def media_read() :
     df = df.loc[df['sum'] >= 1].drop(columns = ['sum','소재'])
 
     df = ref.week_day(df)
+    df['키워드'] = df['키워드'].apply(lambda x : x.lower())
 
     dimension = ['연도', '월', '주차','머징코드','캠페인', '세트', '키워드']
     metric = ['노출', '도달', '클릭', '조회','비용', 'SPEND_AGENCY']
@@ -48,6 +49,7 @@ def ga_read():
     df = df.loc[df['campaign']!='[2023.01]Pmax_Pmax_SVGG0001']
 
     df = ref.week_day(df)
+    df['keyword'] = df['keyword'].apply(lambda x: x.lower())
 
     dimension = ['머징코드','﻿dataSource', 'browser', 'campaign', 'source', 'medium','keyword', 'adContent', '연도', '월', '주차']
     metric = ['세션(GA)', 'UA(GA)', '구매(GA)', '매출(GA)','브랜드구매(GA)', '브랜드매출(GA)', '가입(GA)']
@@ -61,6 +63,7 @@ def apps_read():
 
     df = aprep.apps_concat()
     df = ref.week_day(df)
+    df['키워드'] = df['키워드'].apply(lambda x: x.lower())
 
     dimension = ['연도', '월', '주차','머징코드','키워드']
     metric = ['유입(AF)', 'UV(AF)', 'appopen(AF)','구매(AF)', '매출(AF)', '주문취소(AF)', '주문취소매출(AF)', '총주문건(AF)', '총매출(AF)','브랜드구매(AF)', '브랜드매출(AF)', '첫구매(AF)', '첫구매매출(AF)', '설치(AF)', '재설치(AF)','가입(AF)']

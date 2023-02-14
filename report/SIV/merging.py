@@ -113,7 +113,7 @@ def merge_indexing() :
 
     merge = ref.week_day(merge)
     merge = merge[ref.columns.report_col]
-
+    # 삭제 필요
     merge[['브랜드구매(GA)', '브랜드매출(GA)','브랜드구매(AF)','브랜드매출(AF)']] = 0
 
     print('데일리 리포트 추출 완료')
@@ -122,4 +122,4 @@ def merge_indexing() :
 
 merge = merge_indexing()
 
-merge.to_csv(dr.download_dir +f'daily_report/daily_report_{ref.r_date.yearmonth}_test.csv', index= False , encoding= 'utf-8-sig')
+merge.to_csv(dr.download_dir +f'daily_report/daily_report_{ref.r_date.yearmonth}.csv', index= False , encoding= 'utf-8-sig')

@@ -96,7 +96,7 @@ def get_네이버SA():
     df['세트'] = '-'
     df['소재'] = '-'
     df = df.drop(columns=['지면/상품'])
-
+    df = cost_calc('네이버SA', df)
     #df = df.groupby(['날짜', '캠페인', '세트', '소재','지면/상품'])[['노출', '클릭', '비용', '구매(대시보드)', '매출(대시보드)']].sum().reset_index()
     #sib_df = ref.sib_bsa.drop_duplicates()
     #merge = pd.merge(df,sib_df,on =['날짜','캠페인'], how = 'left').fillna(0)
