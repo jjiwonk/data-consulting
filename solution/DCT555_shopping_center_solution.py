@@ -147,12 +147,12 @@ class SpcDownload(Worker):
                 while n < max_download_try:
                     try:
                         download_btn.click()
-                        break
                     except:
                         alert_message = driver.find_element(by=By.CLASS_NAME, value='swal-button-container')
                         alert_message.click()
                         n += 1
                         continue
+                    break
 
                 progress_bar = wait_for_element(driver=driver, by=By.CSS_SELECTOR,
                                                 value=f'#downloadList > tr:nth-child({i + 1}) > td:nth-child(3) > span > span')
