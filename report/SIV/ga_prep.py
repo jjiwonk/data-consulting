@@ -55,7 +55,7 @@ def ga_exception(df):
     idx = idx.append(df[(df['campaign'] == 'jaju')&(df['medium'] == 'da_mf')&(df['browser'] == 'Edge')].index)
 
     # 브라우저 필터링 더하기
-    idx = idx.append(df[(df['source'] == 'criteo') & (df['medium'] == 'catalog') & (df['browser'].isin(['Android Webview','Safari (in-app)']))].index)
+    idx = idx.append(df[(df['source'] == 'criteo') & (df['medium'] == 'catalog') & (df['adContent'] == '2301_sales_catalog_SVCT0001') & (df['browser'].isin(['Android Webview','Safari (in-app)']))].index)
     idx = idx.append(df[(df['source'] == 'adisonofferwall_int') & (df['medium'] == 'display') & (df['browser'].isin(['Android Webview', 'Safari (in-app)']))].index)
     idx = idx.append(df[(df['source'] == 'buzzad_int') & (df['medium'] == 'display') & (df['campaign'] == 'siv_cpa_network') & (df['browser'].isin(['Android Webview', 'Safari (in-app)']))].index)
     df.drop(idx, inplace = True)
@@ -104,6 +104,9 @@ def ga_exception(df):
     df.loc[(df['source'] == 'google') & (df['campaign'] == 'jj_all_br_sitelink-sale_JJFK0003') & (df['adContent'] == '2301_pc-main_jjgs0036'), 'campaign'] = 'jj_all_br_sitelink-sale_JJFK0004'
     df.loc[(df['source'] == 'google') & (df['campaign'] == 'jj_all_br_underwear_JJFK0003') & (df['adContent'] == '2301_pc-main_JJGS0021'), 'campaign'] = 'jj_all_br_underwear_JJFK0004'
 
+    df.loc[(df['source'] == 'google') & (df['medium'] == 'cpc') & (df['keyword'] == 'jaju'), 'keyword'] = 'JAJU'
+    df.loc[(df['source'] == 'google') & (df['medium'] == 'cpc') & (df['keyword'] == 'jaju'), 'keyword'] = 'JAJU'
+
     return df
 
 def brand_order():
@@ -142,6 +145,7 @@ def ga_report():
 
     df = ga_exception(df)
     df = ref.adcode_ga(df)
+    #삭제 필요
     df[['브랜드구매(GA)','브랜드매출(GA)']] = 0
 
     br_df = brand_order()
