@@ -38,8 +38,7 @@ def media_prep(media):
     df2 = cost_calc(media,df)
     return df2
 
-#머징 함수를 위해서 함수명은 무조건 구분명과 일치하게 지정
-#구분 별로 ! 예외 처리는 요기다가
+# 머징 함수를 위해서 함수명은 무조건 구분명과 일치하게 지정
 
 def get_FBIG():
     df = media_prep('FBIG')
@@ -91,11 +90,21 @@ def get_구글SA():
     return df
 
 def get_네이버SA():
-    df = media_prep('네이버SA')
+    df = media_raw_read('네이버SA')
     df = pd.merge(df, ref.media_index, on='캠페인', how='left').fillna('no_index')
-    df = df.loc[df['지면/상품'].isin(['검색_P', '검색_M', '쇼검브랜드형_P', '쇼검브랜드형_M','네이버BSA_P','네이버BSA_M'])].drop(columns=['지면/상품'])
+    df = df.loc[df['지면/상품'].isin(['검색_P', '검색_M', '쇼검브랜드형_P', '쇼검브랜드형_M','네이버BSA_P','네이버BSA_M'])]
     df['세트'] = '-'
     df['소재'] = '-'
+    df = df.drop(columns=['지면/상품'])
+    df = cost_calc('네이버SA', df)
+    #df = df.groupby(['날짜', '캠페인', '세트', '소재','지면/상품'])[['노출', '클릭', '비용', '구매(대시보드)', '매출(대시보드)']].sum().reset_index()
+    #sib_df = ref.sib_bsa.drop_duplicates()
+    #merge = pd.merge(df,sib_df,on =['날짜','캠페인'], how = 'left').fillna(0)
+    #merge.loc[merge['지면/상품'].isin(['네이버BSA_P','네이버BSA_M']),'비용'] = merge['시뷰티 비용']
+    #merge['비용'] = merge['비용'].astype(float)
+    #merge = cost_calc('네이버SA', merge)
+    #merge.drop(columns = ['지면/상품','시뷰티 비용'])
+    #merge['구분'] = '네이버SA'
     return df
 
 def get_네이버SS():

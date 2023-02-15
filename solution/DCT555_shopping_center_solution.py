@@ -110,6 +110,8 @@ class SpcDownload(Worker):
         else:
             download_dir = Key.tmp_path
 
+        os_util.clear_folder(download_dir)
+
         driver = get_chromedriver(headless=Key.USE_HEADLESS, download_dir=download_dir)
         driver.get(Key.LOGIN_URL)
 
@@ -142,24 +144,27 @@ class SpcDownload(Worker):
                         self.logger.info(e)
                         raise(e)
 
-                n = 0
-                max_download_try = 3
-                while n < max_download_try:
-                    try:
-                        download_btn.click()
-                        break
-                    except:
-                        alert_message = driver.find_element(by=By.CLASS_NAME, value='swal-button-container')
-                        alert_message.click()
-                        n += 1
-                        continue
+                time.sleep(3)
+                download_btn.click()
+
+                # n = 0
+                # max_download_try = 3
+                # while n < max_download_try:
+                #     try:
+                #         download_btn.click()
+                #     except:
+                #         alert_message = driver.find_element(by=By.CLASS_NAME, value='swal-button-container')
+                #         alert_message.click()
+                #         n += 1
+                #         continue
+                #     break
 
                 progress_bar = wait_for_element(driver=driver, by=By.CSS_SELECTOR,
                                                 value=f'#downloadList > tr:nth-child({i + 1}) > td:nth-child(3) > span > span')
                 progress = progress_bar.get_attribute('style')
 
                 n = 0
-                max_wait_try = 3
+                max_wait_try = 5
                 while n < max_wait_try:
                     if progress == 'width: 100%;':
                         break

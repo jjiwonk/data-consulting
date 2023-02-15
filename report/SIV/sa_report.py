@@ -4,9 +4,9 @@ from report.SIV import directory as dr
 import report.SIV.ga_prep as gprep
 import report.SIV.media_prep as mprep
 import report.SIV.apps_prep as aprep
-import datetime
 
 def media_read() :
+
     kakaosa_df = mprep.get_카카오SA_SA()
     kakaobsa_df = mprep.get_카카오BSA_SA()
     googlesa_df = mprep.get_구글SA_SA()
@@ -14,23 +14,15 @@ def media_read() :
     naverbsa_df = mprep.get_NOSP_SA()
 
     df = pd.concat([kakaosa_df,kakaobsa_df,googlesa_df,naversa_df,naverbsa_df]).fillna(0)
-    df = ref.adcode_mediapps(df)
+    df = ref.adcode(df,'캠페인','세트','소재')
 
     metric = ['노출','도달','클릭','비용','조회','SPEND_AGENCY','구매(대시보드)','매출(대시보드)','설치(대시보드)']
     df[metric] = df[metric].astype(float)
     df['sum'] = df[metric].sum(axis=1)
     df = df.loc[df['sum'] >= 1].drop(columns = ['sum','소재'])
 
-    #날짜 구하기
-    df['날짜'] = df['날짜'].apply(pd.to_datetime)
-    df['연도'] = df['날짜'].apply(lambda x: x.strftime('%Y'))
-    df['월'] = df['날짜'].apply(lambda x: x.strftime('%m'))
-    df['날짜'] = df['날짜'].dt.date
-    week_day = 7
-    df['주차'] = pd.to_datetime(df['날짜']).apply(lambda x: (x + datetime.timedelta(week_day)).isocalendar()[1]) -1
-
-    df2 = df.loc[df['날짜'] < datetime.date(2023,1,11)].drop(columns = ['연도','월','주차'])
-    df2.to_csv(dr.download_dir + 'sa_media_raw_인덱스x.csv', index=False, encoding='utf-8-sig')
+    df = ref.week_day(df)
+    df['키워드'] = df['키워드'].apply(lambda x : x.lower())
 
     dimension = ['연도', '월', '주차','머징코드','캠페인', '세트', '키워드']
     metric = ['노출', '도달', '클릭', '조회','비용', 'SPEND_AGENCY']
@@ -38,6 +30,7 @@ def media_read() :
 
     return df
 
+# 인덱싱
 df = media_read()
 
 index = ref.index_df[['지면/상품','매체','캠페인 구분','KPI','캠페인 라벨','OS','파트(주체)','파트 구분','머징코드']].drop_duplicates()
@@ -49,19 +42,14 @@ df = df[['파트 구분', '연도', '월', '주차', '매체', '지면/상품', 
 
 df.to_csv(dr.download_dir + f'keyword_raw/keyword_media_raw_{ref.r_date.yearmonth}.csv', index=False, encoding='utf-8-sig')
 
-#ga 가공
-
 def ga_read():
-    df = gprep.ga_prep()
+
+    df = gprep.ga_report()
     df =df.loc[(df['medium'] == 'cpc')|(df['medium'] == 'bsa')]
     df = df.loc[df['campaign']!='[2023.01]Pmax_Pmax_SVGG0001']
 
-    df['날짜'] = df['날짜'].apply(pd.to_datetime)
-    df['연도'] = df['날짜'].apply(lambda x: x.strftime('%Y'))
-    df['월'] = df['날짜'].apply(lambda x: x.strftime('%m'))
-    df['날짜'] = df['날짜'].dt.date
-    week_day = 7
-    df['주차'] = pd.to_datetime(df['날짜']).apply(lambda x: (x + datetime.timedelta(week_day)).isocalendar()[1]) -1
+    df = ref.week_day(df)
+    df['keyword'] = df['keyword'].apply(lambda x: x.lower())
 
     dimension = ['머징코드','﻿dataSource', 'browser', 'campaign', 'source', 'medium','keyword', 'adContent', '연도', '월', '주차']
     metric = ['세션(GA)', 'UA(GA)', '구매(GA)', '매출(GA)','브랜드구매(GA)', '브랜드매출(GA)', '가입(GA)']
@@ -71,17 +59,22 @@ def ga_read():
 
     return df
 
-
 def apps_read():
+
     df = aprep.apps_concat()
     df = ref.week_day(df)
+    df['키워드'] = df['키워드'].apply(lambda x: x.lower())
+
     dimension = ['연도', '월', '주차','머징코드','키워드']
     metric = ['유입(AF)', 'UV(AF)', 'appopen(AF)','구매(AF)', '매출(AF)', '주문취소(AF)', '주문취소매출(AF)', '총주문건(AF)', '총매출(AF)','브랜드구매(AF)', '브랜드매출(AF)', '첫구매(AF)', '첫구매매출(AF)', '설치(AF)', '재설치(AF)','가입(AF)']
     df = df.groupby(dimension)[metric].sum().reset_index()
+
     df.to_csv(dr.download_dir + f'keyword_raw/keyword_apps_raw_{ref.r_date.yearmonth}.csv', index=False, encoding='utf-8-sig')
+
     return df
 
 def sa_merging():
+
     media_df = media_read()
     ga_df = ga_read()
     apps = apps_read()
@@ -152,6 +145,8 @@ def sa_merging():
     df = pd.merge(merge_df, index, on='머징코드', how='left').fillna('no_index')
 
     df = df[ref.columns.sa_reprt_col]
+
+    df[['브랜드구매(GA)', '브랜드매출(GA)','브랜드구매(AF)','브랜드매출(AF)']] = 0
 
     df.to_csv(dr.download_dir + f'keyword_report/keyword_report_{ref.r_date.yearmonth}.csv', index=False,encoding='utf-8-sig')
 
