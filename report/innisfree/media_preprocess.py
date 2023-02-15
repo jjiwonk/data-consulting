@@ -210,16 +210,17 @@ def nabs_prep() -> pd.DataFrame:
 
 def nosp_prep() -> pd.DataFrame:
     df = get_basic_data('Naver_NOSP')
-    except_camp_list = ref.index_df.loc[ref.index_df['매체(표기)'] == 'Naver_BSA', '캠페인'].unique().tolist()
-    df = df.loc[~(df['캠페인'].isin(except_camp_list))]
+    camp_list = ref.index_df.loc[ref.index_df['매체(표기)'] == 'Naver_NOSP', '캠페인'].unique().tolist()
+    df = df.loc[df['캠페인'].isin(camp_list)]
     return df
 
 
 def na_snow_prep() -> pd.DataFrame:
     df = get_basic_data('Naver_NOSP')
-    camp_list = ref.index_df.loc[ref.index_df['매체(표기)'] == 'Snow', '캠페인'].unique().tolist()
+    camp_list = ref.index_df.loc[ref.index_df['매체(표기)'] == 'SNOW', '캠페인'].unique().tolist()
     df = df.loc[df['캠페인'].isin(camp_list)]
-    handi_df = get_handi_data('Snow')
+    df['ad'] = df['ad'].apply(lambda x: str(x)[9:])
+    handi_df = get_handi_data('SNOW')
     df = pd.concat([df, handi_df], sort=False, ignore_index=True)
     df['매체'] = 'SNOW'
     return df
@@ -227,8 +228,10 @@ def na_snow_prep() -> pd.DataFrame:
 
 def na_spda_prep() -> pd.DataFrame:
     df = get_basic_data('Naver_NOSP')
-    except_camp_list = ref.index_df.loc[ref.index_df['매체(표기)'] == 'Naver_스페셜DA', '캠페인'].unique().tolist()
-    df = df.loc[~(df['캠페인'].isin(except_camp_list))]
+    camp_list = ref.index_df.loc[ref.index_df['매체(표기)'] == 'Naver_스페셜DA', '캠페인'].unique().tolist()
+    df = df.loc[df['캠페인'].isin(camp_list)]
+    df['ad'] = df['ad'].apply(lambda x: str(x)[9:])
+    df['매체'] = 'Naver_스페셜DA'
     return df
 
 
