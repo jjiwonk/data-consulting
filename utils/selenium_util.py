@@ -26,7 +26,7 @@ MAC_CHROMEDRIVER = "chromedriver-mac"
 WINDOWS_CHROMEDRIVER = "chromedriver.exe"
 
 
-def get_chromedriver(headless: bool = True, mobile: bool = False, download_dir: str = "/tmp") -> webdriver.Chrome:
+def get_chromedriver(headless: bool = True, mobile: bool = False, download_dir: str = "/tmp", user_agent: str = None) -> webdriver.Chrome:
     driver_path = (
         get_resource(WINDOWS_CHROMEDRIVER)
         if is_windows_os()
@@ -38,13 +38,17 @@ def get_chromedriver(headless: bool = True, mobile: bool = False, download_dir: 
     chrome_options.add_argument("--window-size=1920x1080")
     chrome_options.add_argument("--width=1920")
     chrome_options.add_argument("--height=1080")
-    chrome_options.add_argument("disable-gpu") # 가속 사용 x
+    chrome_options.add_argument("disable-gpu")  # 가속 사용 x
     chrome_options.add_argument("lang=ko_KR")  # 가짜 플러그인 탑재
     chrome_options.add_argument("--ignore-certificate-errors")
-    chrome_options.add_argument(
-        "user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_6) AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/110.0.5481.78 Safari/537.36"
-    )
+    if user_agent is None:
+        chrome_options.add_argument(
+            "user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_6) AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/110.0.5481.78 Safari/537.36")
+    else:
+        chrome_options.add_argument(
+            f"user-agnet={user_agent}"
+        )
 
     if headless is True:
         chrome_options.add_argument("--headless=new")
