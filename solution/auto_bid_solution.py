@@ -305,7 +305,7 @@ class AutoBidSolution(Worker):
             upload_file(local_path=result_path, s3_path=self.s3_path, s3_bucket=DEFAULT_S3_PRIVATE_BUCKET)
             os.remove(result_path)
 
-        return result_df
+        return "Auto_bid solution Worked Successfully."
 
 #
 # if __name__ == "__main__":
