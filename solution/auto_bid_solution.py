@@ -2,7 +2,6 @@ import os
 import pandas as pd
 import random
 from ast import literal_eval
-import logging
 import time
 from datetime import datetime
 from pytz import timezone
@@ -189,7 +188,7 @@ class AutoBidSolution(Worker):
                         break
                 return
             except Exception as e:
-                logging.warning(f"크롤링 {i + 1}/{Key.CRAWLING_RETRY_CNT}번 시도 중 오류 발생 - {e}")
+                self.logger.warning(f"크롤링 {i + 1}/{Key.CRAWLING_RETRY_CNT}번 시도 중 오류 발생 - {e}")
                 crawling_exception = e
                 time.sleep(self.searching_waiting_time)
         raise crawling_exception
@@ -268,13 +267,13 @@ class AutoBidSolution(Worker):
 
                 except Exception as e:
                     error_msg = f"{device.device_type} - {keyword}: 오류 발생. error_msg: {e}"
-                    logging.warning(error_msg)
+                    self.logger.warning(error_msg)
                     self.driver.quit()
                 # 키워드마다 대기 시간을 줌.
                 time.sleep(self.searching_waiting_time)
             self.driver.quit()
-            logging.info(f"{device.device_type} 키워드 검색 완료.")
-        logging.info(f"{media_info} 모니터링 완료")
+            self.logger.info(f"{device.device_type} 키워드 검색 완료.")
+        self.logger.info(f"{media_info} 모니터링 완료")
 
         previous_file_path = None
         try:
