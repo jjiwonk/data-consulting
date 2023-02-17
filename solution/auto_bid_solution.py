@@ -117,7 +117,7 @@ class AutoBidSolution(Worker):
         self.year = self.now_time.year
         self.month = self.now_time.month
         self.day = self.now_time.day
-        self.date = self.now_time.strftime('%Y-%m-%d %H:%M:%S')
+        self.date = self.now_time.strftime('%Y-%m-%d')
         self.row = {
             'collected_at': self.date,
             'pc_mobile_type': "",
