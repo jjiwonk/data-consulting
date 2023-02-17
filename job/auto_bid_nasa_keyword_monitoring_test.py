@@ -1,4 +1,4 @@
-from solution.auto_bid_solution import AutoBidSolution
+from solution.DCT649_keyword_monitoring_solution import AutoBidSolution
 
 if __name__ == "__main__":
     worker = AutoBidSolution(__file__)
