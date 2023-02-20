@@ -221,7 +221,7 @@ class AutoBidSolution(Worker):
         )
         devices = [pc, mo]
 
-        result_msg = [f"{now_time}실행 {media_info} 키워드 검색 순위 모니터링 결과"]
+        result_msg = [f"{media_info} 키워드 검색 순위 모니터링 결과"]
         try:
             gd = GoogleDrive()
             sheet = gd.get_work_sheet(spread_sheet_url, keyword_sheet)
