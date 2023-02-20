@@ -9,7 +9,7 @@ from worker.log_handler import get_logger
 
 
 class Worker(metaclass=ABCMeta):
-    def __init__(self, job_name):
+    def __init__(self, job_name: str = ''):
         self.job_name = os.path.basename(job_name)
         self.logger = get_logger(os.path.basename(self.job_name))
         self.start_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")

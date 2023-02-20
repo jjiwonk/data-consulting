@@ -26,6 +26,8 @@ def send_result_slack_msg(job_result: dict, job_name, start_time, alert_channel)
     slack = WebClient(slack_token)
 
     result_code: ResultCode = job_result.pop("result_code")
+    if 'result_df' in job_result.keys():
+        job_result.pop("result_df")
     result, color = (
         ("ERROR", COLOR_RED) if result_code.value >= ResultCode.ERROR.value else ("SUCCESS", COLOR_GREEN)
     )

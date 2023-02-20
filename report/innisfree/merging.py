@@ -131,7 +131,6 @@ def index_mapping(df, data_type, source, medium, right_on, index_source, index_d
     if 'campaign_id' in right_on :
         df_pivot['campaign_id'] = df_pivot['캠페인']
         df_pivot = df_pivot.drop('캠페인', axis = 1)
-    if 'group_id' in right_on :
         df_pivot['group_id'] = df_pivot['광고그룹']
         df_pivot = df_pivot.drop('광고그룹', axis=1)
 
@@ -157,15 +156,18 @@ def data_merge(merging_info, media_df, apps_df, ga_df, index_df, for_checking, r
     source = list(merging_info['ga_source'].drop_duplicates().values)
     medium = list(merging_info['ga_medium'].drop_duplicates().values)
     mapped_ga = index_mapping(ga_df, data_type, source, medium, right_on_ga, media_index, index_df, for_checking)
+    mapped_ga['merging_on'] = ','.join(right_on_ga)
 
     data_type = 'media'
     source = list(merging_info['index'].drop_duplicates().values)
     mapped_media = index_mapping(media_df, data_type, source, None, right_on_media, media_index, index_df, for_checking)
+    mapped_media['merging_on'] = ','.join(right_on_media)
 
     data_type = 'apps'
     source = list(merging_info['apps_source'].drop_duplicates().values)
     medium = list(merging_info['apps_medium'].drop_duplicates().values)
     mapped_apps = index_mapping(apps_df, data_type, source, medium, right_on_apps, media_index, index_df, for_checking)
+    mapped_apps['merging_on'] = ','.join(right_on_apps)
 
     if media_index in ['FBIG', 'FBIG_DPA']:
         df = tracker_preprocess.get_apps_agg_data()
@@ -177,16 +179,18 @@ def data_merge(merging_info, media_df, apps_df, ga_df, index_df, for_checking, r
         if media_index == 'FBIG':
             camp_list = ref.index_df.loc[ref.index_df['매체(표기)'] == 'FBIG_DPA', '캠페인'].unique().tolist()
             df = df.loc[~(df['campaign'].isin(camp_list))]
+            df.loc[df['ad'] == '0209_pm_bigsale_na_da_prd_mix_slide - 사본', 'ad'] = '0209_pm_bigsale_na_da_prd_mix_slide'
         elif media_index == 'FBIG_DPA':
             camp_list = ref.index_df.loc[ref.index_df['매체(표기)'] == 'FBIG', '캠페인'].unique().tolist()
             df = df.loc[~(df['campaign'].isin(camp_list))]
         apps_agg = index_mapping(df, data_type, source, medium, right_on, media_index, index_df, for_checking)
         mapped_apps = pd.concat([mapped_apps, apps_agg], sort=False, ignore_index=True)
+        mapped_apps['merging_on'] = ','.join(right_on)
 
     concat_data = pd.concat([mapped_ga, mapped_media, mapped_apps], sort=False, ignore_index=True)
 
     if for_checking is True:
-        concat_pivot_index = ['정합성 점검용 데이터 소스'] + ref.columns.dimension_cols + ['campaign_id', 'group_id', 'raw_source', 'raw_medium'] + ref.columns.index_columns
+        concat_pivot_index = ['정합성 점검용 데이터 소스', 'merging_on'] + ref.columns.dimension_cols + ['campaign_id', 'group_id', 'raw_source', 'raw_medium'] + ref.columns.index_columns
     else:
         concat_pivot_index = ref.columns.dimension_cols + ['campaign_id', 'group_id'] + ref.columns.index_columns
     concat_data[concat_pivot_index] = concat_data[concat_pivot_index].fillna('')
@@ -212,6 +216,8 @@ def integrate_data():
         ga_df = ga_pivot_df.copy()
         if media == 'FBIG':
             df = load.fb_prep()
+            # 예외처리
+            df.loc[df['ad'] == '0209_pm_bigsale_na_da_prd_mix_slide - 사본', 'ad'] = '0209_pm_bigsale_na_da_prd_mix_slide'
             df = data_merge(merging_info, df, apps_df, ga_df, index_df, False)
         elif media == 'FBIG_DPA':
             df = load.fb_dpa_prep()
@@ -222,6 +228,11 @@ def integrate_data():
             apps_df = apps_df.loc[apps_df['campaign'].isin(apps_camp_list)]
             ga_camp_list = ref.index_df.loc[ref.index_df['매체(표기)'] == media, 'campaign_id'].unique().tolist()
             ga_df = ga_df.loc[ga_df['캠페인'].isin(ga_camp_list)]
+            # GA 예외처리
+            ga_df['광고콘텐츠'] = ''
+            ga_df.loc[ga_df['utm_trg'] == '', 'utm_trg'] = 'brand'
+            ga_df.loc[ga_df['캠페인'] == 'madit_conversion_a_brdl', '캠페인'] = 'madit_conversion_al_brd'
+            ga_df.loc[ga_df['캠페인'] == 'madit_conversion_a_brd_testl', '캠페인'] = 'madit_conversion_al_brd_test'
             apps_empty_df = pd.DataFrame(columns=apps_df.columns)
             right_on_apps = ['campaign_id']
             right_on_ga = ['campaign_id']
@@ -236,6 +247,7 @@ def integrate_data():
             df_mo = df.loc[df['캠페인'].isin(mo_camp_list)]
             df_mo = data_merge(merging_info, df_mo, apps_df, ga_df_mo, index_df_mo, False, right_on_ga=right_on_ga, right_on_apps=right_on_apps)
             df = pd.concat([df_pc, df_mo], sort=False, ignore_index=True).drop_duplicates(ignore_index=True)
+            df['광고그룹'] = df['group_id']
         elif media == 'AC_Install':
             df = load.gg_ac_prep()
             right_on_media = ['캠페인', '광고그룹']
@@ -401,26 +413,24 @@ def get_no_index_data():
         source = row['매체']
         media = row['매체(표기)']
         print(f"{media} merging")
-        merging_info = ref.merging_df.loc[ref.merging_df['매체'] == source].reset_index(drop=True)
+        merging_info = ref.merging_df.loc[ref.merging_df['index'] == media].reset_index(drop=True)
         index_df = ref.index_df.loc[ref.index_df['매체'] == source][['매체(표기)'] + key_columns + ref.columns.index_columns]
         apps_df = apps_pivot_df.copy()
         ga_df = ga_pivot_df.copy()
-        ga_df['source'] = ga_df['소스/매체'].apply(lambda x: x.split(' / ')[0])
-        ga_df['medium'] = ga_df['소스/매체'].apply(lambda x: x.split(' / ')[-1])
         if media == 'FBIG':
             df = load.get_basic_data(source)
             camp_list = index_df.loc[index_df['매체(표기)'] != media, '캠페인'].unique().tolist()
             df = df.loc[~(df['캠페인'].isin(camp_list))]
-            merging_info = merging_info.loc[merging_info['index'] == media].reset_index(drop=True)
-            index_df = ref.index_df.loc[ref.index_df['매체(표기)'] == media].reset_index(drop=True)
+            # 예외처리
+            df.loc[df['ad'] == '0209_pm_bigsale_na_da_prd_mix_slide - 사본', 'ad'] = '0209_pm_bigsale_na_da_prd_mix_slide'
+            index_df = index_df.loc[index_df['매체(표기)'] == media].reset_index(drop=True)
             df['매체'] = media
             df = data_merge(merging_info, df, apps_df, ga_df, index_df, True)
         elif media == 'FBIG_DPA':
             df = load.get_basic_data(source)
             camp_list = index_df.loc[index_df['매체(표기)'] != media, '캠페인'].unique().tolist()
             df = df.loc[~(df['캠페인'].isin(camp_list))]
-            merging_info = merging_info.loc[merging_info['index'] == media].reset_index(drop=True)
-            index_df = ref.index_df.loc[ref.index_df['매체(표기)'] == media].reset_index(drop=True)
+            index_df = index_df.loc[index_df['매체(표기)'] == media].reset_index(drop=True)
             df['매체'] = media
             df = data_merge(merging_info, df, apps_df, ga_df, index_df, True)
         elif media == 'Google_SA':
@@ -435,6 +445,11 @@ def get_no_index_data():
             apps_df = apps_df.loc[~(apps_df['campaign'].isin(except_camp_list))]
             except_camp_list = ref.index_df.loc[ref.index_df['매체(표기)'] == 'Google_PMAX', 'campaign_id'].unique().tolist()
             ga_df = ga_df.loc[~(ga_df['캠페인'].isin(except_camp_list))]
+            # 예외처리
+            ga_df['광고콘텐츠'] = ''
+            ga_df.loc[ga_df['utm_trg'] == '', 'utm_trg'] = 'brand'
+            ga_df.loc[ga_df['캠페인'] == 'madit_conversion_a_brdl', '캠페인'] = 'madit_conversion_al_brd'
+            ga_df.loc[ga_df['캠페인'] == 'madit_conversion_a_brd_testl', '캠페인'] = 'madit_conversion_al_brd_test'
             except_camp_list = index_df.loc[index_df['매체(표기)'] != media, '캠페인'].unique().tolist()
             apps_df = apps_df.loc[~(apps_df['campaign'].isin(except_camp_list))]
             except_camp_list = index_df.loc[index_df['매체(표기)'] != media, 'campaign_id'].unique().tolist()
@@ -442,7 +457,7 @@ def get_no_index_data():
             apps_empty_df = pd.DataFrame(columns=apps_df.columns)
             right_on_apps = ['campaign_id']
             right_on_ga = ['campaign_id']
-            index_df = ref.index_df.loc[ref.index_df['매체(표기)'] == media].reset_index(drop=True)
+            index_df = index_df.loc[index_df['매체(표기)'] == media].reset_index(drop=True)
             index_df_pc = index_df.loc[index_df['디바이스'] == 'pc']
             ga_df_pc = ga_df.loc[ga_df['기기 카테고리'] == 'PC']
             pc_camp_list = index_df_pc.캠페인.unique().tolist()
@@ -474,7 +489,7 @@ def get_no_index_data():
             ga_df = ga_df.loc[~(ga_df['캠페인'].isin(except_camp_list))]
             right_on_media = ['캠페인', '광고그룹']
             right_on_apps = ['campaign_id', 'group_id']
-            index_df = ref.index_df.loc[ref.index_df['매체(표기)'] == media].reset_index(drop=True)
+            index_df = index_df.loc[index_df['매체(표기)'] == media].reset_index(drop=True)
             df = data_merge(merging_info, df, apps_df, ga_df, index_df, True, right_on_media=right_on_media, right_on_apps=right_on_apps)
         elif media == 'Google_PMAX':
             df = load.get_basic_data(source)
@@ -491,7 +506,7 @@ def get_no_index_data():
             right_on_media = ['캠페인']
             right_on_apps = ['campaign_id']
             right_on_ga = ['campaign_id', 'group_id']
-            index_df = ref.index_df.loc[ref.index_df['매체(표기)'] == media].reset_index(drop=True)
+            index_df = index_df.loc[index_df['매체(표기)'] == media].reset_index(drop=True)
             df = data_merge(merging_info, df, apps_df, ga_df, index_df, True,
                             right_on_media=right_on_media, right_on_apps=right_on_apps, right_on_ga=right_on_ga)
         elif media == 'Google_discovery':
@@ -508,7 +523,7 @@ def get_no_index_data():
             apps_df = apps_df.loc[~(apps_df['campaign'].isin(except_camp_list))]
             right_on_media = ['캠페인', '광고그룹']
             right_on_apps = ['campaign_id', 'group_id']
-            index_df = ref.index_df.loc[ref.index_df['매체(표기)'] == media].reset_index(drop=True)
+            index_df = index_df.loc[index_df['매체(표기)'] == media].reset_index(drop=True)
             df = data_merge(merging_info, df, apps_df, ga_df, index_df, True, right_on_media=right_on_media,
                             right_on_apps=right_on_apps)
         elif media == 'Kakao_Moment':
@@ -516,8 +531,7 @@ def get_no_index_data():
             camp_list = index_df.loc[index_df['매체(표기)'] != media, '캠페인'].unique().tolist()
             df = df.loc[~(df['캠페인'].isin(camp_list))]
             df['매체'] = media
-            merging_info = merging_info.loc[merging_info['index'] == media].reset_index(drop=True)
-            index_df = ref.index_df.loc[ref.index_df['매체(표기)'] == media].reset_index(drop=True)
+            index_df = index_df.loc[index_df['매체(표기)'] == media].reset_index(drop=True)
             df = data_merge(merging_info, df, apps_df, ga_df, index_df, True)
         elif media == 'Kakao_Bizboard':
             df = load.get_basic_data(source)
@@ -526,8 +540,7 @@ def get_no_index_data():
             # 비즈보드 예외처리
             df.loc[df['ad'] == '0201_al_na_biz_da_prd_suncream_winterfac', 'ad'] = '0201_al_na_biz_da_prd_suncream_winterface'
             df['매체'] = media
-            merging_info = merging_info.loc[merging_info['index'] == media].reset_index(drop=True)
-            index_df = ref.index_df.loc[ref.index_df['매체(표기)'] == media].reset_index(drop=True)
+            index_df = index_df.loc[index_df['매체(표기)'] == media].reset_index(drop=True)
             df = data_merge(merging_info, df, apps_df, ga_df, index_df, True)
         elif media == 'Naver_SA':
             # 사용X 보류
@@ -535,16 +548,14 @@ def get_no_index_data():
             camp_list = index_df.loc[index_df['매체(표기)'] != media, '캠페인'].unique().tolist()
             df = df.loc[~(df['캠페인'].isin(camp_list))]
             df['매체'] = media
-            merging_info = merging_info.loc[merging_info['index'] == media].reset_index(drop=True)
-            index_df = ref.index_df.loc[ref.index_df['매체(표기)'] == media].reset_index(drop=True)
+            index_df = index_df.loc[index_df['매체(표기)'] == media].reset_index(drop=True)
             df = data_merge(merging_info, df, apps_df, ga_df, index_df, True)
         elif media == 'Naver_BSA':
             df = load.get_basic_data(source)
             camp_list = index_df.loc[index_df['매체(표기)'] != media, '캠페인'].unique().tolist()
             df = df.loc[~(df['캠페인'].isin(camp_list))]
             df['매체'] = media
-            merging_info = merging_info.loc[merging_info['index'] == media].reset_index(drop=True)
-            index_df = ref.index_df.loc[ref.index_df['매체(표기)'] == media].reset_index(drop=True)
+            index_df = index_df.loc[index_df['매체(표기)'] == media].reset_index(drop=True)
             ga_df['medium'] = ga_df['소스/매체'].apply(lambda x : x.split(' / ')[-1])
             index_df_pc = index_df.loc[index_df['디바이스'] == 'pc']
             medium_pc = ['sabrdweb']
@@ -566,16 +577,14 @@ def get_no_index_data():
             camp_list = index_df.loc[index_df['매체(표기)'] != media, '캠페인'].unique().tolist()
             df = df.loc[~(df['캠페인'].isin(camp_list))]
             df['매체'] = media
-            merging_info = merging_info.loc[merging_info['index'] == media].reset_index(drop=True)
-            index_df = ref.index_df.loc[ref.index_df['매체(표기)'] == media].reset_index(drop=True)
+            index_df = index_df.loc[index_df['매체(표기)'] == media].reset_index(drop=True)
             df = data_merge(merging_info, df, apps_df, ga_df, index_df, True)
         elif media == 'Criteo':
             df = load.get_basic_data(source)
             camp_list = index_df.loc[index_df['매체(표기)'] != media, '캠페인'].unique().tolist()
             df = df.loc[~(df['캠페인'].isin(camp_list))]
             df['매체'] = media
-            merging_info = merging_info.loc[merging_info['index'] == media].reset_index(drop=True)
-            index_df = ref.index_df.loc[ref.index_df['매체(표기)'] == media].reset_index(drop=True)
+            index_df = index_df.loc[index_df['매체(표기)'] == media].reset_index(drop=True)
             right_on_media = ['캠페인', '광고그룹']
             right_on_apps = ['campaign_id', 'group_id']
             # 매체 데이터에 ad 추출 안됨, ga 매핑X
@@ -588,8 +597,7 @@ def get_no_index_data():
             camp_list = index_df.loc[index_df['매체(표기)'] != media, '캠페인'].unique().tolist()
             df = df.loc[~(df['캠페인'].isin(camp_list))]
             df['매체'] = media
-            merging_info = merging_info.loc[merging_info['index'] == media].reset_index(drop=True)
-            index_df = ref.index_df.loc[ref.index_df['매체(표기)'] == media].reset_index(drop=True)
+            index_df = index_df.loc[index_df['매체(표기)'] == media].reset_index(drop=True)
             df = data_merge(merging_info, df, apps_df, ga_df, index_df, True)
         elif media == 'Naver_NOSP':
             # Naver_BAS로 데이터 모두 들어가는 중
@@ -597,64 +605,58 @@ def get_no_index_data():
             camp_list = index_df.loc[index_df['매체(표기)'] != media, '캠페인'].unique().tolist()
             df = df.loc[~(df['캠페인'].isin(camp_list))]
             df['매체'] = media
-            merging_info = merging_info.loc[merging_info['index'] == media].reset_index(drop=True)
-            index_df = ref.index_df.loc[ref.index_df['매체(표기)'] == media].reset_index(drop=True)
+            index_df = index_df.loc[index_df['매체(표기)'] == media].reset_index(drop=True)
             df = data_merge(merging_info, df, apps_df, ga_df, index_df, True)
         elif media == 'SNOW':
             df = load.get_basic_data(source)
             camp_list = index_df.loc[index_df['매체(표기)'] != media, '캠페인'].unique().tolist()
             df = df.loc[~(df['캠페인'].isin(camp_list))]
+            df['ad'] = df['ad'].apply(lambda x: str(x)[9:])
             df['매체'] = media
-            merging_info = merging_info.loc[merging_info['index'] == media].reset_index(drop=True)
-            index_df = ref.index_df.loc[ref.index_df['매체(표기)'] == media].reset_index(drop=True)
+            index_df = index_df.loc[index_df['매체(표기)'] == media].reset_index(drop=True)
             df = data_merge(merging_info, df, apps_df, ga_df, index_df, True)
         elif media == 'Naver_스페셜DA':
             df = load.get_basic_data(source)
             camp_list = index_df.loc[index_df['매체(표기)'] != media, '캠페인'].unique().tolist()
             df = df.loc[~(df['캠페인'].isin(camp_list))]
+            df['ad'] = df['ad'].apply(lambda x: str(x)[9:])
             df['매체'] = media
-            merging_info = merging_info.loc[merging_info['index'] == media].reset_index(drop=True)
-            index_df = ref.index_df.loc[ref.index_df['매체(표기)'] == media].reset_index(drop=True)
+            index_df = index_df.loc[index_df['매체(표기)'] == media].reset_index(drop=True)
             df = data_merge(merging_info, df, apps_df, ga_df, index_df, True)
         elif media == 'Naver_GFA':
             df = load.get_basic_data(source)
             camp_list = index_df.loc[index_df['매체(표기)'] != media, '캠페인'].unique().tolist()
             df = df.loc[~(df['캠페인'].isin(camp_list))]
             df['매체'] = media
-            merging_info = merging_info.loc[merging_info['index'] == media].reset_index(drop=True)
-            index_df = ref.index_df.loc[ref.index_df['매체(표기)'] == media].reset_index(drop=True)
+            index_df = index_df.loc[index_df['매체(표기)'] == media].reset_index(drop=True)
             df = data_merge(merging_info, df, apps_df, ga_df, index_df, True)
         elif media == 'Naver_스마트채널':
             df = load.get_basic_data(source)
             camp_list = index_df.loc[index_df['매체(표기)'] != media, '캠페인'].unique().tolist()
             df = df.loc[~(df['캠페인'].isin(camp_list))]
             df['매체'] = media
-            merging_info = merging_info.loc[merging_info['index'] == media].reset_index(drop=True)
-            index_df = ref.index_df.loc[ref.index_df['매체(표기)'] == media].reset_index(drop=True)
+            index_df = index_df.loc[index_df['매체(표기)'] == media].reset_index(drop=True)
             df = data_merge(merging_info, df, apps_df, ga_df, index_df, True)
         elif media == 'Naver_DPA':
             df = load.get_basic_data(source)
             camp_list = index_df.loc[index_df['매체(표기)'] != media, '캠페인'].unique().tolist()
             df = df.loc[~(df['캠페인'].isin(camp_list))]
             df['매체'] = media
-            merging_info = merging_info.loc[merging_info['index'] == media].reset_index(drop=True)
-            index_df = ref.index_df.loc[ref.index_df['매체(표기)'] == media].reset_index(drop=True)
+            index_df = index_df.loc[index_df['매체(표기)'] == media].reset_index(drop=True)
             df = data_merge(merging_info, df, apps_df, ga_df, index_df, True)
         elif media == 'Naver_쇼핑알람':
             df = load.get_basic_data(source)
             camp_list = index_df.loc[index_df['매체(표기)'] != media, '캠페인'].unique().tolist()
             df = df.loc[~(df['캠페인'].isin(camp_list))]
             df['매체'] = media
-            merging_info = merging_info.loc[merging_info['index'] == media].reset_index(drop=True)
-            index_df = ref.index_df.loc[ref.index_df['매체(표기)'] == media].reset_index(drop=True)
+            index_df = index_df.loc[index_df['매체(표기)'] == media].reset_index(drop=True)
             df = data_merge(merging_info, df, apps_df, ga_df, index_df, True)
         elif media == 'Remerge':
             df = load.get_basic_data(source)
             camp_list = index_df.loc[index_df['매체(표기)'] != media, '캠페인'].unique().tolist()
             df = df.loc[~(df['캠페인'].isin(camp_list))]
             df['매체'] = media
-            merging_info = merging_info.loc[merging_info['index'] == media].reset_index(drop=True)
-            index_df = ref.index_df.loc[ref.index_df['매체(표기)'] == media].reset_index(drop=True)
+            index_df = index_df.loc[index_df['매체(표기)'] == media].reset_index(drop=True)
             right_on_media = ['캠페인', 'ad']
             right_on_apps = ['캠페인', 'ad']
             apps_df['ad'] = apps_df['adset']
@@ -664,8 +666,7 @@ def get_no_index_data():
             camp_list = index_df.loc[index_df['매체(표기)'] != media, '캠페인'].unique().tolist()
             df = df.loc[~(df['캠페인'].isin(camp_list))]
             df['매체'] = media
-            merging_info = merging_info.loc[merging_info['index'] == media].reset_index(drop=True)
-            index_df = ref.index_df.loc[ref.index_df['매체(표기)'] == media].reset_index(drop=True)
+            index_df = index_df.loc[index_df['매체(표기)'] == media].reset_index(drop=True)
             right_on_media = ['캠페인', '광고그룹']
             right_on_apps = ['campaign_id', 'group_id']
             # 매체 데이터에 ad 추출 안됨, ga 매핑X
