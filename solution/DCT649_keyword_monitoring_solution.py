@@ -12,6 +12,7 @@ from utils.google_drive import (
 from utils.selenium_util import get_chromedriver
 from bs4 import BeautifulSoup
 from utils.s3 import download_file, upload_file, delete_file
+from worker.const import ResultCode
 from utils.const import DEFAULT_S3_PRIVATE_BUCKET
 from utils.path_util import get_tmp_path
 from worker.abstract_worker import Worker
@@ -220,93 +221,105 @@ class AutoBidSolution(Worker):
         )
         devices = [pc, mo]
 
-        gd = GoogleDrive()
-        sheet = gd.get_work_sheet(spread_sheet_url, keyword_sheet)
-        setting_df = gd.sheet_to_df(sheet)
-        keywords_df = setting_df.drop(setting_df.loc[setting_df.iloc[:, 0] == ''].index) # 빈행 제거
-        column_names = setting_df.columns.values
-
-        for device in devices:
-            # 키워드 컬럼을 잡 인포로 받지 않았거나 입력 받은 값이 존재하지 않는 경우, 첫 번째 컬럼을 공통 키워드로 사용.
-            if device.keyword_column not in column_names:
-                device.keyword_column = column_names[0]
-            # device 별로 키워드를 입력.
-            keywords = keywords_df.loc[setting_df['디바이스'] == device.device_type, device.keyword_column].unique().tolist()
-            if keywords:
-                device.keywords = keywords
-
-        # 결과가 저장될 df
-        result_df = pd.DataFrame(columns=['collected_at', 'pc_mobile_type', 'weekday', 'ad_keyword', 'ad_rank',
-                                          'year', 'month', 'day', 'hour', 'minute', 'date'])
-        for device in devices:
-            # user-agent 5종류 랜덤 배정
-            num = random.randrange(0, 5)
-            if device.device_type == 'MO':
-                user_agent = Key.USER_AGENTS[num]['MO']
-                self.driver = get_chromedriver(headless=Key.USE_HEADLESS, mobile=True, user_agent=user_agent)
-            else:
-                user_agent = Key.USER_AGENTS[num]['PC']
-                self.driver = get_chromedriver(headless=Key.USE_HEADLESS, mobile=False, user_agent=user_agent)
-            # 키워드 별로 검색 후에 순위를 확인함.
-            for keyword in device.keywords:
-                # 키워드 별로 랭킹 초기화. 랭킹이 없는 경우 "-"를 반환.
-                self.row['pc_mobile_type'] = device.device_type
-                self.row['ad_rank'] = "-"
-                self.row['ad_keyword'] = keyword
-                try:
-                    time_stamp = datetime.now()
-                    self.crawling_ads(device, keyword, ad_names, time_stamp)
-                    self.row['date'] = f"{time_stamp.strftime('%Y-%m-%d %H:%M:%S')}"
-                    self.row['year'] = time_stamp.year
-                    self.row['month'] = time_stamp.month
-                    self.row['day'] = time_stamp.day
-                    self.row['hour'] = time_stamp.hour
-                    self.row['minute'] = time_stamp.minute
-                    # 해당 키워드에 해당하는 등수를 찾은 후에, 결과 데이터프레임에 행 추가
-                    temp = pd.DataFrame([self.row])
-                    result_df = pd.concat([result_df, temp], axis=0)
-
-                except Exception as e:
-                    error_msg = f"{device.device_type} - {keyword}: 오류 발생. error_msg: {e}"
-                    self.logger.warning(error_msg)
-                    self.driver.quit()
-                # 키워드마다 대기 시간을 줌.
-                time.sleep(self.searching_waiting_time)
-            self.driver.quit()
-            self.logger.info(f"{device.device_type} 키워드 검색 완료.")
-        self.logger.info(f"{media_info} 모니터링 완료")
-
-        previous_file_path = None
+        result_msg = [f"{now_time}실행 {media_info} 키워드 검색 순위 모니터링 결과"]
         try:
-            previous_file_path = download_file(s3_path=self.s3_path, local_path=self.tmp_path, s3_bucket=DEFAULT_S3_PRIVATE_BUCKET)
-        except:
-            self.logger.info(f"no previous file on {self.s3_path}")
-            pass
+            gd = GoogleDrive()
+            sheet = gd.get_work_sheet(spread_sheet_url, keyword_sheet)
+            setting_df = gd.sheet_to_df(sheet)
+            keywords_df = setting_df.drop(setting_df.loc[setting_df.iloc[:, 0] == ''].index) # 빈행 제거
+            column_names = setting_df.columns.values
 
-        if previous_file_path:
-            # 백업 저장
-            backup_path = self.tmp_path + f'/day={self.day}_backup.csv'
-            result_df.to_csv(backup_path, encoding='utf-8-sig', index=False)
-            upload_file(local_path=backup_path, s3_path=self.s3_backup_path, s3_bucket=DEFAULT_S3_PRIVATE_BUCKET)
-            os.remove(backup_path)
-            # s3 저장
-            previous_df = pd.read_csv(previous_file_path, encoding='utf-8-sig')
-            previous_df = previous_df.astype(str)
-            result_df = pd.concat([previous_df, result_df], axis=0, ignore_index=True)
-            result_df = result_df.drop_duplicates(keep='last')
-            result_df.to_csv(previous_file_path, encoding='utf-8-sig', index=False)
-            upload_file(local_path=previous_file_path, s3_path=self.s3_path, s3_bucket=DEFAULT_S3_PRIVATE_BUCKET)
-            os.remove(previous_file_path)
-        else:
-            result_path = self.tmp_path + f'/day={self.day}.csv'
-            result_df.to_csv(result_path, encoding='utf-8-sig', index=False)
-            # 백업 저장
-            upload_file(local_path=result_path, s3_path=self.s3_backup_path, s3_bucket=DEFAULT_S3_PRIVATE_BUCKET)
-            # s3 저장
-            upload_file(local_path=result_path, s3_path=self.s3_path, s3_bucket=DEFAULT_S3_PRIVATE_BUCKET)
-            os.remove(result_path)
+            for device in devices:
+                # 키워드 컬럼을 잡 인포로 받지 않았거나 입력 받은 값이 존재하지 않는 경우, 첫 번째 컬럼을 공통 키워드로 사용.
+                if device.keyword_column not in column_names:
+                    device.keyword_column = column_names[0]
+                # device 별로 키워드를 입력.
+                keywords = keywords_df.loc[setting_df['디바이스'] == device.device_type, device.keyword_column].unique().tolist()
+                if keywords:
+                    device.keywords = keywords
 
-        return "Auto_bid solution Worked Successfully."
+            # 결과가 저장될 df
+            result_df = pd.DataFrame(columns=['collected_at', 'pc_mobile_type', 'weekday', 'ad_keyword', 'ad_rank',
+                                              'year', 'month', 'day', 'hour', 'minute', 'date'])
+            for device in devices:
+                # user-agent 5종류 랜덤 배정
+                num = random.randrange(0, 5)
+                if device.device_type == 'MO':
+                    user_agent = Key.USER_AGENTS[num]['MO']
+                    self.driver = get_chromedriver(headless=Key.USE_HEADLESS, mobile=True, user_agent=user_agent)
+                else:
+                    user_agent = Key.USER_AGENTS[num]['PC']
+                    self.driver = get_chromedriver(headless=Key.USE_HEADLESS, mobile=False, user_agent=user_agent)
+                # 키워드 별로 검색 후에 순위를 확인함.
+                for keyword in device.keywords:
+                    # 키워드 별로 랭킹 초기화. 랭킹이 없는 경우 "-"를 반환.
+                    self.row['pc_mobile_type'] = device.device_type
+                    self.row['ad_rank'] = "-"
+                    self.row['ad_keyword'] = keyword
+                    try:
+                        time_stamp = datetime.now()
+                        self.crawling_ads(device, keyword, ad_names, time_stamp)
+                        self.row['date'] = f"{time_stamp.strftime('%Y-%m-%d %H:%M:%S')}"
+                        self.row['year'] = time_stamp.year
+                        self.row['month'] = time_stamp.month
+                        self.row['day'] = time_stamp.day
+                        self.row['hour'] = time_stamp.hour
+                        self.row['minute'] = time_stamp.minute
+                        result_msg.append(
+                            f"{device.device_type} - {keyword}: " f"{self.row['ad_rank']}"
+                        )
+                        # 해당 키워드에 해당하는 등수를 찾은 후에, 결과 데이터프레임에 행 추가
+                        temp = pd.DataFrame([self.row])
+                        result_df = pd.concat([result_df, temp], axis=0)
+
+                    except Exception as e:
+                        error_msg = f"{device.device_type} - {keyword}: 오류 발생. error_msg: {e}"
+                        self.logger.warning(error_msg)
+                        result_msg.append(error_msg)
+                    # 키워드마다 대기 시간을 줌.
+                    time.sleep(self.searching_waiting_time)
+                self.driver.quit()
+                self.logger.info(f"{device.device_type} 키워드 검색 완료.")
+            self.logger.info(f"{media_info} 모니터링 완료")
+
+            previous_file_path = None
+            try:
+                previous_file_path = download_file(s3_path=self.s3_path, local_path=self.tmp_path, s3_bucket=DEFAULT_S3_PRIVATE_BUCKET)
+            except:
+                self.logger.info(f"no previous file on {self.s3_path}")
+                pass
+
+            if previous_file_path:
+                # 백업 저장
+                backup_path = self.tmp_path + f'/day={self.day}_backup.csv'
+                result_df.to_csv(backup_path, encoding='utf-8-sig', index=False)
+                upload_file(local_path=backup_path, s3_path=self.s3_backup_path, s3_bucket=DEFAULT_S3_PRIVATE_BUCKET)
+                os.remove(backup_path)
+                # s3 저장
+                previous_df = pd.read_csv(previous_file_path, encoding='utf-8-sig')
+                previous_df = previous_df.astype(str)
+                result_df = pd.concat([previous_df, result_df], axis=0, ignore_index=True)
+                result_df = result_df.drop_duplicates(keep='last')
+                result_df.to_csv(previous_file_path, encoding='utf-8-sig', index=False)
+                upload_file(local_path=previous_file_path, s3_path=self.s3_path, s3_bucket=DEFAULT_S3_PRIVATE_BUCKET)
+                os.remove(previous_file_path)
+            else:
+                result_path = self.tmp_path + f'/day={self.day}.csv'
+                result_df.to_csv(result_path, encoding='utf-8-sig', index=False)
+                # 백업 저장
+                upload_file(local_path=result_path, s3_path=self.s3_backup_path, s3_bucket=DEFAULT_S3_PRIVATE_BUCKET)
+                # s3 저장
+                upload_file(local_path=result_path, s3_path=self.s3_path, s3_bucket=DEFAULT_S3_PRIVATE_BUCKET)
+                os.remove(result_path)
+        except Exception as e:
+            self.logger.error(e)
+            raise e
+
+        return {
+            "result_code": ResultCode.SUCCESS,
+            "msg": "\n".join(result_msg),
+            "result_df": result_df
+        }
 
 #
 # if __name__ == "__main__":
