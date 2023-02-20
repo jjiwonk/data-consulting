@@ -109,7 +109,7 @@ class Device:
         self.keywords: list = []
 
 
-class AutoBidSolution(Worker):
+class KeywordMonitoring(Worker):
     def __init__(self, job_name):
         super().__init__(job_name=job_name)
         self.searching_waiting_time = 1

@@ -1,7 +1,7 @@
-from solution.DCT649_keyword_monitoring_solution import AutoBidSolution
+from solution.DCT649_keyword_monitoring_solution import KeywordMonitoring
 
 if __name__ == "__main__":
-    worker = AutoBidSolution(__file__)
+    worker = KeywordMonitoring(__file__)
     attr = dict(
         owner_id="finda", channel="네이버SA"
     )
