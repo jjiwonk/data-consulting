@@ -117,10 +117,12 @@ class Cafe24SalesMonitor(Worker):
                 try:
                     sales_manage_tab = driver.find_element(By.CLASS_NAME, "link.order")
                     sales_manage_tab.click()
+                    break
                 except ElementClickInterceptedException:
                     driver.find_element(By.CSS_SELECTOR, ".btnClose.eClose").click()
                     sales_manage_tab = driver.find_element(By.CLASS_NAME, "link.order")
                     sales_manage_tab.click()
+                    break
                 except TimeoutException as e:
                     if max_retry_cnt > 0:
                         max_retry_cnt -= 1
