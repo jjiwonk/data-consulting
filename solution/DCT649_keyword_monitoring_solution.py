@@ -72,7 +72,6 @@ class Key:
     UTC = timezone("UTC")
     USE_HEADLESS = False
     S3_FOLDER = 'keyword_monitoring'
-    TEMP_PATH = get_tmp_path() + "/" + S3_FOLDER
     S3_BUCKET = DEFAULT_S3_PRIVATE_BUCKET
 
 
@@ -134,6 +133,7 @@ class KeywordMonitoring(Worker):
         }
         self.s3_path = ''
         self.s3_backup_path = ''
+        self.s3_folder = ''
         self.tmp_path = ''
         self.result_df = pd.DataFrame(columns=['collected_at', 'pc_mobile_type', 'weekday', 'ad_keyword', 'ad_rank',
                                           'year', 'month', 'day', 'hour', 'minute', 'date'])
@@ -202,11 +202,13 @@ class KeywordMonitoring(Worker):
         owner_id = attr.get("owner_id")
         channel = attr.get("channel")
         Key.USE_HEADLESS = info.get("use_headless")
-        self.tmp_path = Key.TEMP_PATH + "/" + owner_id + "/" + channel
         now_time = self.now_time.strftime('%Y-%m-%d %H:%M:%S')
-        os.makedirs(self.tmp_path, exist_ok=True)
         if info.get("s3_folder"):
-            Key.S3_FOLDER = info.get("s3_folder")
+            self.s3_folder = info.get("s3_folder")
+        else:
+            self.s3_folder = Key.S3_FOLDER
+        self.tmp_path = get_tmp_path() + "/" + self.s3_folder + "/" + owner_id + "/" + channel
+        os.makedirs(self.tmp_path, exist_ok=True)
         self.s3_path = Key.S3_FOLDER + "/" + f"owner_id={owner_id}/channel={channel}/year={self.year}/month={self.month}/day={self.day}.csv"
         self.s3_backup_path = Key.S3_FOLDER + '/backup_files/' + f"owner_id={owner_id}/channel={channel}/{now_time}.csv"
         spread_sheet_url = info.get("spread_sheet_url")
