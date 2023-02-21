@@ -113,11 +113,11 @@ class Cafe24SalesMonitor(Worker):
             self.logger.info("로그인 완료")
 
             try:
-                sales_manage_tab = wait_for_element(driver, "link.order", By.CLASS_NAME)
+                sales_manage_tab = wait_for_element(driver, "a.link.order")
                 sales_manage_tab.click()
             except ElementClickInterceptedException:
                 driver.find_element(By.CSS_SELECTOR, ".btnClose.eClose").click()
-                sales_manage_tab = wait_for_element(driver, "link.order", By.CLASS_NAME)
+                sales_manage_tab = wait_for_element(driver, "a.link.order")
                 sales_manage_tab.click()
 
             side_menu_found = False
