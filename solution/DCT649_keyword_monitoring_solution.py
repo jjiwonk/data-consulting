@@ -135,6 +135,10 @@ class KeywordMonitoring(Worker):
         self.s3_path = ''
         self.s3_backup_path = ''
         self.tmp_path = ''
+        self.result_df = pd.DataFrame(columns=['collected_at', 'pc_mobile_type', 'weekday', 'ad_keyword', 'ad_rank',
+                                          'year', 'month', 'day', 'hour', 'minute', 'date'])
+        self.total_df = pd.DataFrame(columns=['collected_at', 'pc_mobile_type', 'weekday', 'ad_keyword', 'ad_rank',
+                                          'year', 'month', 'day', 'hour', 'minute', 'date'])
 
     def get_search_infos(self, media_info) -> dict:
         if media_info == '네이버SA':
@@ -201,6 +205,8 @@ class KeywordMonitoring(Worker):
         self.tmp_path = Key.TEMP_PATH + "/" + owner_id + "/" + channel
         now_time = self.now_time.strftime('%Y-%m-%d %H:%M:%S')
         os.makedirs(self.tmp_path, exist_ok=True)
+        if info.get("s3_folder"):
+            Key.S3_FOLDER = info.get("s3_folder")
         self.s3_path = Key.S3_FOLDER + "/" + f"owner_id={owner_id}/channel={channel}/year={self.year}/month={self.month}/day={self.day}.csv"
         self.s3_backup_path = Key.S3_FOLDER + '/backup_files/' + f"owner_id={owner_id}/channel={channel}/{now_time}.csv"
         spread_sheet_url = info.get("spread_sheet_url")
@@ -238,9 +244,6 @@ class KeywordMonitoring(Worker):
                 if keywords:
                     device.keywords = keywords
 
-            # 결과가 저장될 df
-            result_df = pd.DataFrame(columns=['collected_at', 'pc_mobile_type', 'weekday', 'ad_keyword', 'ad_rank',
-                                              'year', 'month', 'day', 'hour', 'minute', 'date'])
             for device in devices:
                 # user-agent 5종류 랜덤 배정
                 num = random.randrange(0, 5)
@@ -270,7 +273,7 @@ class KeywordMonitoring(Worker):
                         )
                         # 해당 키워드에 해당하는 등수를 찾은 후에, 결과 데이터프레임에 행 추가
                         temp = pd.DataFrame([self.row])
-                        result_df = pd.concat([result_df, temp], axis=0)
+                        self.result_df = pd.concat([self.result_df, temp], axis=0)
 
                     except Exception as e:
                         error_msg = f"{device.device_type} - {keyword}: 오류 발생. error_msg: {e}"
@@ -292,20 +295,21 @@ class KeywordMonitoring(Worker):
             if previous_file_path:
                 # 백업 저장
                 backup_path = self.tmp_path + f'/day={self.day}_backup.csv'
-                result_df.to_csv(backup_path, encoding='utf-8-sig', index=False)
+                self.result_df.to_csv(backup_path, encoding='utf-8-sig', index=False)
                 upload_file(local_path=backup_path, s3_path=self.s3_backup_path, s3_bucket=DEFAULT_S3_PRIVATE_BUCKET)
                 os.remove(backup_path)
                 # s3 저장
                 previous_df = pd.read_csv(previous_file_path, encoding='utf-8-sig')
                 previous_df = previous_df.astype(str)
-                result_df = pd.concat([previous_df, result_df], axis=0, ignore_index=True)
-                result_df = result_df.drop_duplicates(keep='last')
-                result_df.to_csv(previous_file_path, encoding='utf-8-sig', index=False)
+                self.total_df = pd.concat([previous_df, self.result_df], axis=0, ignore_index=True)
+                self.total_df = self.total_df.drop_duplicates(keep='last')
+                self.total_df.to_csv(previous_file_path, encoding='utf-8-sig', index=False)
                 upload_file(local_path=previous_file_path, s3_path=self.s3_path, s3_bucket=DEFAULT_S3_PRIVATE_BUCKET)
                 os.remove(previous_file_path)
             else:
+                self.total_df = self.result_df
                 result_path = self.tmp_path + f'/day={self.day}.csv'
-                result_df.to_csv(result_path, encoding='utf-8-sig', index=False)
+                self.total_df.to_csv(result_path, encoding='utf-8-sig', index=False)
                 # 백업 저장
                 upload_file(local_path=result_path, s3_path=self.s3_backup_path, s3_bucket=DEFAULT_S3_PRIVATE_BUCKET)
                 # s3 저장
@@ -318,7 +322,7 @@ class KeywordMonitoring(Worker):
         return {
             "result_code": ResultCode.SUCCESS,
             "msg": "\n".join(result_msg),
-            "result_df": result_df
+            "result_df": self.total_df
         }
 
 #
