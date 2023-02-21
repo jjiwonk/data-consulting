@@ -73,7 +73,7 @@ class Key:
     USE_HEADLESS = False
     TEMP_PATH = get_tmp_path() + "/auto_bid"
     S3_BUCKET = DEFAULT_S3_PRIVATE_BUCKET
-    S3_FOLDER = 'auto_bid'
+    S3_FOLDER = 'keyword_monitoring'
 
 
 def is_ad(tag_element, ad_names):
