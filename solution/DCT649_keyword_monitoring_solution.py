@@ -209,8 +209,8 @@ class KeywordMonitoring(Worker):
             self.s3_folder = Key.S3_FOLDER
         self.tmp_path = get_tmp_path() + "/" + self.s3_folder + "/" + owner_id + "/" + channel
         os.makedirs(self.tmp_path, exist_ok=True)
-        self.s3_path = Key.S3_FOLDER + "/" + f"owner_id={owner_id}/channel={channel}/year={self.year}/month={self.month}/day={self.day}.csv"
-        self.s3_backup_path = Key.S3_FOLDER + '/backup_files/' + f"owner_id={owner_id}/channel={channel}/{now_time}.csv"
+        self.s3_path = Key.S3_FOLDER + "/" + f"owner_id={owner_id}/channel={channel}/year={self.year}/month={self.month}/day={self.day}_keyword_monitoring.csv"
+        self.s3_backup_path = Key.S3_FOLDER + '/backup_files/' + f"owner_id={owner_id}/channel={channel}/{now_time}_keyword_monitoring.csv"
         spread_sheet_url = info.get("spread_sheet_url")
         keyword_sheet = info.get("keyword_sheet")
         ad_names = literal_eval(info.get("ad_names", "[]"))
