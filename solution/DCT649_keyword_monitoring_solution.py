@@ -71,7 +71,7 @@ class Key:
     KST = timezone("Asia/Seoul")
     UTC = timezone("UTC")
     USE_HEADLESS = False
-    TEMP_PATH = get_tmp_path() + "/auto_bid"
+    TEMP_PATH = get_tmp_path() + "/keyword_monitoring"
     S3_BUCKET = DEFAULT_S3_PRIVATE_BUCKET
     S3_FOLDER = 'keyword_monitoring'
 
