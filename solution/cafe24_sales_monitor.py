@@ -112,13 +112,22 @@ class Cafe24SalesMonitor(Worker):
             driver.implicitly_wait(3)
             self.logger.info("로그인 완료")
 
-            try:
-                sales_manage_tab = wait_for_element(driver, "a.link.order")
-                sales_manage_tab.click()
-            except ElementClickInterceptedException:
-                driver.find_element(By.CSS_SELECTOR, ".btnClose.eClose").click()
-                sales_manage_tab = wait_for_element(driver, "a.link.order")
-                sales_manage_tab.click()
+            max_retry_cnt = 5
+            while max_retry_cnt >= 0:
+                try:
+                    sales_manage_tab = driver.find_element(By.CLASS_NAME, "link.order")
+                    sales_manage_tab.click()
+                except ElementClickInterceptedException:
+                    driver.find_element(By.CSS_SELECTOR, ".btnClose.eClose").click()
+                    sales_manage_tab = driver.find_element(By.CLASS_NAME, "link.order")
+                    sales_manage_tab.click()
+                except TimeoutException as e:
+                    if max_retry_cnt > 0:
+                        max_retry_cnt -= 1
+                        driver.refresh()
+                        time.sleep(1)
+                    else:
+                        raise e
 
             side_menu_found = False
             side_menus = '-'
