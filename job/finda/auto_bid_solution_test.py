@@ -13,7 +13,6 @@ if __name__ == "__main__":
         keyword_column="키워드",
         ad_names='["finda", "핀다"]',
         customer_id=2503399,
-        s3_folder='test'
     )
 
     worker.work(attr=attr, info=info)
