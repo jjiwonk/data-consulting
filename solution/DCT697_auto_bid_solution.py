@@ -1,4 +1,5 @@
 import os
+import sys
 import json
 import time
 import requests
@@ -17,7 +18,10 @@ class Signature:
     @staticmethod
     def generate(timestamp, method, uri, secret_key):
         message = "{}.{}.{}".format(timestamp, method, uri)
-        hash = hmac.new(bytes(secret_key, "utf-8"), bytes(message, "utf-8"), hashlib.sha256)
+        if sys.version_info.major == 3:
+            hash = hmac.new(bytes(secret_key, "utf-8"), bytes(message, "utf-8"), hashlib.sha256)
+        else:
+            hash = hmac.new(bytes(secret_key, "Latin - 1"), bytes(message, "Latin - 1"), hashlib.sha256)
 
         hash.hexdigest()
         return base64.b64encode(hash.digest())
