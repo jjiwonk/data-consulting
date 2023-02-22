@@ -5,7 +5,7 @@ import report.SIV.ga_prep as gprep
 import report.SIV.media_prep as mprep
 import report.SIV.apps_prep as aprep
 
-def media_read() :
+def media_read(day) :
 
     kakaosa_df = mprep.get_카카오SA_SA()
     kakaobsa_df = mprep.get_카카오BSA_SA()
@@ -24,25 +24,15 @@ def media_read() :
     df = ref.week_day(df)
     df['키워드'] = df['키워드'].apply(lambda x : x.lower())
 
-    dimension = ['연도', '월', '주차','머징코드','캠페인', '세트', '키워드']
+    dimension = ['머징코드','캠페인', '세트', '키워드','연도','월'] + day
     metric = ['노출', '도달', '클릭', '조회','비용', 'SPEND_AGENCY']
     df = df.groupby(dimension)[metric].sum().reset_index()
 
+    df.to_csv(dr.download_dir + f'keyword_raw/keyword_media_raw_{ref.r_date.yearmonth}_{day}.csv', index=False,encoding='utf-8-sig')
+
     return df
 
-# 인덱싱
-df = media_read()
-
-index = ref.index_df[['지면/상품','매체','캠페인 구분','KPI','캠페인 라벨','OS','파트(주체)','파트 구분','머징코드']].drop_duplicates()
-index['중복'] = index.duplicated(['머징코드'])
-index = index.loc[index['중복'] == False]
-df = pd.merge(df, index, on='머징코드', how='left').fillna('no_index')
-
-df = df[['파트 구분', '연도', '월', '주차', '매체', '지면/상품', '캠페인 구분', 'KPI', '캠페인', '세트', '키워드', '캠페인 라벨', 'OS', '노출', '도달', '클릭', '조회','비용', 'SPEND_AGENCY','머징코드']]
-
-df.to_csv(dr.download_dir + f'keyword_raw/keyword_media_raw_{ref.r_date.yearmonth}.csv', index=False, encoding='utf-8-sig')
-
-def ga_read():
+def ga_read(day):
 
     df = gprep.ga_report()
     df =df.loc[(df['medium'] == 'cpc')|(df['medium'] == 'bsa')]
@@ -51,35 +41,35 @@ def ga_read():
     df = ref.week_day(df)
     df['keyword'] = df['keyword'].apply(lambda x: x.lower())
 
-    dimension = ['머징코드','﻿dataSource', 'browser', 'campaign', 'source', 'medium','keyword', 'adContent', '연도', '월', '주차']
+    dimension = ['머징코드','﻿dataSource', 'browser', 'campaign', 'source', 'medium','keyword', 'adContent', '연도', '월'] + day
     metric = ['세션(GA)', 'UA(GA)', '구매(GA)', '매출(GA)','브랜드구매(GA)', '브랜드매출(GA)', '가입(GA)']
 
     df = df.groupby(dimension)[metric].sum().reset_index().rename(columns ={'keyword' : '키워드'})
-    df.to_csv(dr.download_dir + f'keyword_raw/keyword_ga_raw_{ref.r_date.yearmonth}.csv', index=False, encoding='utf-8-sig')
+    df.to_csv(dr.download_dir + f'keyword_raw/keyword_ga_raw_{ref.r_date.yearmonth}_{day}.csv', index=False, encoding='utf-8-sig')
 
     return df
 
-def apps_read():
+def apps_read(day):
 
     df = aprep.apps_concat()
     df = ref.week_day(df)
     df['키워드'] = df['키워드'].apply(lambda x: x.lower())
 
-    dimension = ['연도', '월', '주차','머징코드','키워드']
+    dimension = ['연도', '월','머징코드','키워드'] + day
     metric = ['유입(AF)', 'UV(AF)', 'appopen(AF)','구매(AF)', '매출(AF)', '주문취소(AF)', '주문취소매출(AF)', '총주문건(AF)', '총매출(AF)','브랜드구매(AF)', '브랜드매출(AF)', '첫구매(AF)', '첫구매매출(AF)', '설치(AF)', '재설치(AF)','가입(AF)']
     df = df.groupby(dimension)[metric].sum().reset_index()
 
-    df.to_csv(dr.download_dir + f'keyword_raw/keyword_apps_raw_{ref.r_date.yearmonth}.csv', index=False, encoding='utf-8-sig')
+    df.to_csv(dr.download_dir + f'keyword_raw/keyword_apps_raw_{ref.r_date.yearmonth}_{day}.csv', index=False, encoding='utf-8-sig')
 
     return df
 
-def sa_merging():
+def sa_merging(day):
 
-    media_df = media_read()
-    ga_df = ga_read()
-    apps = apps_read()
+    media_df = media_read(day)
+    ga_df = ga_read(day)
+    apps = apps_read(day)
 
-    ga_dimension = ['머징코드','키워드','연도', '월', '주차']
+    ga_dimension = ['머징코드','키워드','연도', '월'] + day
     ga_metric = ['세션(GA)', 'UA(GA)', '구매(GA)', '매출(GA)','브랜드구매(GA)', '브랜드매출(GA)', '가입(GA)']
 
     ga_df.loc[ga_df['키워드'].isin(['{keyword}', '{query}']), '키워드'] = '(not set)'
@@ -144,14 +134,18 @@ def sa_merging():
     index = index.loc[index['중복'] == False]
     df = pd.merge(merge_df, index, on='머징코드', how='left').fillna('no_index')
 
-    df = df[ref.columns.sa_reprt_col]
+    report_col = ['파트 구분', '연도', '월'] + day +[ '매체', '지면/상품', '캠페인 구분', 'KPI', '캠페인', '세트', '키워드', '캠페인 라벨', 'OS', '노출', '도달', '클릭', '조회','비용', 'SPEND_AGENCY','세션(GA)', 'UA(GA)', '구매(GA)', '매출(GA)',
+       '브랜드구매(GA)', '브랜드매출(GA)', '가입(GA)','유입(AF)', 'UV(AF)', 'appopen(AF)','구매(AF)', '매출(AF)', '주문취소(AF)', '주문취소매출(AF)', '총주문건(AF)', '총매출(AF)', '첫구매(AF)', '첫구매매출(AF)', '설치(AF)', '재설치(AF)','가입(AF)','브랜드구매(AF)','브랜드매출(AF)']
+
+    df = df[report_col]
 
     df[['브랜드구매(GA)', '브랜드매출(GA)','브랜드구매(AF)','브랜드매출(AF)']] = 0
 
-    df.to_csv(dr.download_dir + f'keyword_report/keyword_report_{ref.r_date.yearmonth}.csv', index=False,encoding='utf-8-sig')
+    df.to_csv(dr.download_dir + f'keyword_report/keyword_report_{ref.r_date.yearmonth}_{day}.csv', index=False,encoding='utf-8-sig')
 
     print('SA/BSA 리포트 추출 완료')
 
     return df
 
-df = sa_merging()
+df = sa_merging(['주차','날짜'])
+df = sa_merging(['주차'])

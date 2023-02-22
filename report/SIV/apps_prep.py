@@ -114,6 +114,10 @@ def apps_agg_read():
 
     from_date = ref.r_date.start_date
     to_date = ref.r_date.agg_date
+    # 당월 돌릴땐 이거로
+    to_month = ref.r_date.agg_date.month
+    # 전월것 돌릴땐 이거 활성화 필요!
+    #to_month = ref.r_date.agg_date.month - 1
 
     apps_agg_list =[]
 
@@ -134,7 +138,7 @@ def apps_agg_read():
         print(file_name + ' Read 완료')
 
     apps_agg_raw = pd.concat(apps_agg_list, sort=False, ignore_index=True)
-    apps_agg_raw = apps_agg_raw.loc[pd.to_datetime(apps_agg_raw['date']).dt.month == to_date.month]
+    apps_agg_raw = apps_agg_raw.loc[pd.to_datetime(apps_agg_raw['date']).dt.month == to_month]
 
     return apps_agg_raw
 
@@ -198,7 +202,7 @@ def brand_order():
 
         for n in reve_index:
             i_reve = i_reve_index[n]
-            i_reve = float(i_reve[2])
+            i_reve = float(i_reve[0])
             reve = reve + i_reve
 
         merge['브랜드매출(AF)'][i] = reve
@@ -246,3 +250,5 @@ def apps_concat():
     apps.to_csv(dr.download_dir + f'appsflyer_raw/appsflyer_raw_{ref.r_date.yearmonth}.csv', index=False, encoding='utf-8-sig')
 
     return apps
+
+apps = apps_concat()
