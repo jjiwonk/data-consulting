@@ -1,9 +1,10 @@
+from solution.DCT609_review_data_report import ReviewDataReport
 from datetime import datetime
 
 from utils import s3
 
 if __name__ == "__main__":
-    #worker = NaverShoppingCrawling(__file__)
+    worker = ReviewDataReport(__file__)
 
     attr = dict(
         schedule_time=datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
@@ -12,4 +13,4 @@ if __name__ == "__main__":
     )
 
     info = s3.get_info_from_s3(attr['owner_id'], attr['product_id'])
-    #worker.work(attr=attr, info=info)
+    worker.work(attr=attr, info=info)
