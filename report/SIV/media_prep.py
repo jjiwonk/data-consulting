@@ -95,17 +95,17 @@ def get_네이버SA():
     df = df.loc[df['지면/상품'].isin(['검색_P', '검색_M', '쇼검브랜드형_P', '쇼검브랜드형_M','네이버BSA_P','네이버BSA_M'])]
     df['세트'] = '-'
     df['소재'] = '-'
-    df = df.drop(columns=['지면/상품'])
-    df = cost_calc('네이버SA', df)
-    #df = df.groupby(['날짜', '캠페인', '세트', '소재','지면/상품'])[['노출', '클릭', '비용', '구매(대시보드)', '매출(대시보드)']].sum().reset_index()
-    #sib_df = ref.sib_bsa.drop_duplicates()
-    #merge = pd.merge(df,sib_df,on =['날짜','캠페인'], how = 'left').fillna(0)
-    #merge.loc[merge['지면/상품'].isin(['네이버BSA_P','네이버BSA_M']),'비용'] = merge['시뷰티 비용']
-    #merge['비용'] = merge['비용'].astype(float)
-    #merge = cost_calc('네이버SA', merge)
-    #merge.drop(columns = ['지면/상품','시뷰티 비용'])
-    #merge['구분'] = '네이버SA'
-    return df
+    #df = df.drop(columns=['지면/상품'])
+    #df = cost_calc('네이버SA', df)
+    df = df.groupby(['날짜', '캠페인', '세트', '소재','지면/상품'])[['노출', '클릭', '비용', '구매(대시보드)', '매출(대시보드)']].sum().reset_index()
+    sib_df = ref.sib_bsa.drop_duplicates()
+    merge = pd.merge(df,sib_df,on =['날짜','캠페인'], how = 'left').fillna(0)
+    merge.loc[merge['지면/상품'].isin(['네이버BSA_P','네이버BSA_M']),'비용'] = merge['시뷰티 비용']
+    merge['비용'] = merge['비용'].astype(float)
+    merge = cost_calc('네이버SA', merge)
+    merge = merge.drop(columns = ['지면/상품','시뷰티 비용'])
+    merge['구분'] = '네이버SA'
+    return merge
 
 def get_네이버SS():
     df = media_prep('네이버SS')
