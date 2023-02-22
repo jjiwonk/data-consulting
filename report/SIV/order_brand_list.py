@@ -57,7 +57,7 @@ def apps_prep():
             order_brand = df['구매브랜드'][i][n]
             order_cnt = df['구매건수'][i][n]
             order_item = df['구매상품'][i][n]
-            order_reve = df['구매금액'][i][n][2]
+            order_reve = df['구매금액'][i][n][0]
             append_df = pd.DataFrame({'날짜': date ,'머징코드': merge_code,'구매상품': order_item , '구매브랜드': order_brand , '구매건수(AF)' : order_cnt,'매출(AF)': order_reve}, index=[0])
             brand_df = brand_df.append(append_df, ignore_index= True)
 
@@ -96,16 +96,18 @@ def df_merge():
     campaign_index = campaign_index.drop_duplicates(subset='머징코드', keep='last')
 
     # 소재 라벨 인덱싱
-    ad_index = ref.index_df[['소재','캠페인(인덱스)', '세트(인덱스)', '프로모션', '브랜드', '카테고리', '소재형태', '소재이미지', '소재카피']]
-    ad_index = ad_index.drop_duplicates(subset='소재', keep='last')
+    ad_index = ref.index_df[['머징코드','캠페인(인덱스)', '세트(인덱스)', '프로모션', '브랜드', '카테고리', '소재형태', '소재이미지', '소재카피']]
+    ad_index = ref.index_dup_drop(ad_index,'머징코드')
+    ad_index = ad_index.loc[ad_index['캠페인(인덱스)'] != ''].fillna('-')
 
     df = pd.merge(df,campaign_index, on = '머징코드',how = 'left').fillna('-')
-    df = pd.merge(df, ad_index, on='소재', how='left').fillna('-')
+    df = pd.merge(df, ad_index, on='머징코드', how='left').fillna('-')
 
     df = ref.week_day(df)
     df = df[['파트 구분','연도','월','주차','날짜','매체','지면/상품','캠페인 구분','KPI','캠페인','세트','소재','머징코드','캠페인 라벨','OS','구매브랜드','구매상품','구매건수(GA)','매출(GA)','구매건수(AF)','매출(AF)','캠페인(인덱스)','세트(인덱스)','프로모션','브랜드','카테고리','소재형태','소재이미지','소재카피']].replace('','-')
 
     df.to_csv(dr.download_dir + f'/brand_order_report/brand_order_report_{ref.r_date.yearmonth}.csv',index = False, encoding = 'utf-8-sig')
+    print('브랜드 구매/매출 리스트 추출 완료')
 
     return df
 

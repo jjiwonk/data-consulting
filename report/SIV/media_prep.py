@@ -50,7 +50,7 @@ def get_FBIG():
 def get_카카오모먼트():
     df = media_prep('카카오모먼트')
     df = pd.merge(df, ref.media_index, on='캠페인', how='left').fillna('no_index')
-    df = df.loc[df['지면/상품'].isin(['비즈보드','디스플레이'])].drop(columns=['지면/상품'])
+    df = df.loc[df['지면/상품'].isin(['비즈보드','디스플레이','스폰서드보드'])].drop(columns=['지면/상품'])
     return df
 
 def get_채널메시지():

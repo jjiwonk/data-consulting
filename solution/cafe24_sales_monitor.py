@@ -13,7 +13,6 @@ from utils.google_drive import (
     GSS_ROW,
 )
 from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.remote.webelement import WebElement
 from selenium.common.exceptions import NoAlertPresentException, ElementClickInterceptedException
 
 from utils.selenium_util import get_chromedriver, click_and_find_downloaded_filename, selenium_error_logging
@@ -62,16 +61,6 @@ def wait_for_element(driver, css_selector, by=By.CSS_SELECTOR):
                 time.sleep(1)
             else:
                 raise e
-
-
-def wait_for_element_to_vanish(element: WebElement) -> bool:
-    is_displayed = element.is_displayed()
-    start_time = 0
-    while is_displayed and not start_time > 5:
-        is_displayed = element.is_displayed()
-        start_time += 1
-
-    return not is_displayed
 
 
 class Cafe24SalesMonitor(Worker):
@@ -123,13 +112,24 @@ class Cafe24SalesMonitor(Worker):
             driver.implicitly_wait(3)
             self.logger.info("로그인 완료")
 
-            try:
-                sales_manage_tab = wait_for_element(driver, ".link.order")
-                sales_manage_tab.click()
-            except ElementClickInterceptedException:
-                driver.find_element(By.CSS_SELECTOR, ".btnClose.eClose").click()
-                sales_manage_tab = wait_for_element(driver, ".link.order")
-                sales_manage_tab.click()
+            max_retry_cnt = 5
+            while max_retry_cnt >= 0:
+                try:
+                    sales_manage_tab = driver.find_element(By.CLASS_NAME, "link.order")
+                    sales_manage_tab.click()
+                    break
+                except ElementClickInterceptedException:
+                    driver.find_element(By.CSS_SELECTOR, ".btnClose.eClose").click()
+                    sales_manage_tab = driver.find_element(By.CLASS_NAME, "link.order")
+                    sales_manage_tab.click()
+                    break
+                except TimeoutException as e:
+                    if max_retry_cnt > 0:
+                        max_retry_cnt -= 1
+                        driver.refresh()
+                        time.sleep(1)
+                    else:
+                        raise e
 
             side_menu_found = False
             side_menus = '-'
@@ -214,15 +214,11 @@ class Cafe24SalesMonitor(Worker):
                 except NoAlertPresentException:
                     pass
 
-                # footer 대기 테스트
-                # footer = driver.find_element(By.ID, "footer")
-                # wait_for_element_to_vanish(footer)
                 button = driver.find_elements(By.CSS_SELECTOR, ".center tr")[0].find_element(By.TAG_NAME, "a")
                 for c in range(0, 5):
                     driver.find_element(By.TAG_NAME, 'body').send_keys(Keys.PAGE_DOWN)
                     time.sleep(1)
                 button.click()
-                # 테스트
                 driver.find_element(By.ID, "password").send_keys(cafe24_pw)
                 driver.find_element(By.ID, "reason_for_download").send_keys("다운로드")
                 self.logger.info("리포트 다운로드 시작...")
@@ -377,13 +373,6 @@ class Cafe24SalesMonitor(Worker):
 
         if response.status_code == 200:
             return "Cafe24SalesMonitor Job complete."
-            # return {
-            #     ResultKey.CODE.value: ResultCode.SUCCESS,
-            #     ResultKey.MSG.value: "Cafe24SalesMonitor Job complete.",
-            # }
+
         else:
             return "Cafe24SalesMonitor Job FAILED."
-            # return {
-            #     ResultKey.CODE.value: ResultCode.ERROR,
-            #     ResultKey.MSG.value: "Cafe24SalesMonitor Job FAILED.",
-            # }

@@ -124,10 +124,17 @@ def brand_order():
 
     merge = pd.merge(df,index, on = '머징코드', how = 'left').fillna('-')
 
-    merge[['브랜드구매(GA)','브랜드매출(GA)']] = 0
-
     merge.loc[merge['productBrand'] == 'GAP Kids', 'productBrand'] = 'GAP Adults'
-    merge.loc[merge['productBrand'] == merge['브랜드'],'브랜드구매(GA)'] = merge['uniquePurchases']
+
+    # 값 수정하기
+    order = merge.loc[merge['productBrand'] == merge['브랜드']]
+    order = order.sort_values('transactionId')
+    order = order.drop_duplicates('transactionId',keep ='first')
+    order['브랜드구매(GA)'] = 1
+
+    merge = pd.merge(merge,order, on = ['﻿dataSource', 'browser', 'campaign', 'sourceMedium', 'keyword','adContent', 'transactionId', 'productName', 'productBrand','itemQuantity', 'uniquePurchases', 'itemRevenue', '날짜', 'source','medium', '머징코드', '브랜드'],how = 'left').fillna(0)
+
+    merge['브랜드매출(GA)'] = 0
     merge.loc[merge['productBrand'] == merge['브랜드'],'브랜드매출(GA)'] = merge['itemRevenue']
 
     merge.to_csv(dr.download_dir + f'GA_raw/ga_raw_{ref.r_date.yearmonth}_브랜드 구매.csv',index = False, encoding = 'utf-8-sig')
@@ -145,7 +152,6 @@ def ga_report():
 
     df = ga_exception(df)
     df = ref.adcode_ga(df)
-    #삭제 필요
     df[['브랜드구매(GA)','브랜드매출(GA)']] = 0
 
     br_df = brand_order()

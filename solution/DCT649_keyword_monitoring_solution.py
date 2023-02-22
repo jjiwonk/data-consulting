@@ -71,9 +71,7 @@ class Key:
     KST = timezone("Asia/Seoul")
     UTC = timezone("UTC")
     USE_HEADLESS = False
-    TEMP_PATH = get_tmp_path() + "/auto_bid"
     S3_BUCKET = DEFAULT_S3_PRIVATE_BUCKET
-    S3_FOLDER = 'auto_bid'
 
 
 def is_ad(tag_element, ad_names):
@@ -134,6 +132,7 @@ class KeywordMonitoring(Worker):
         }
         self.s3_path = ''
         self.s3_backup_path = ''
+        self.s3_folder = 'keyword_monitoring'
         self.tmp_path = ''
         self.result_df = pd.DataFrame(columns=['collected_at', 'pc_mobile_type', 'weekday', 'ad_keyword', 'ad_rank',
                                           'year', 'month', 'day', 'hour', 'minute', 'date'])
@@ -202,13 +201,13 @@ class KeywordMonitoring(Worker):
         owner_id = attr.get("owner_id")
         channel = attr.get("channel")
         Key.USE_HEADLESS = info.get("use_headless")
-        self.tmp_path = Key.TEMP_PATH + "/" + owner_id + "/" + channel
         now_time = self.now_time.strftime('%Y-%m-%d %H:%M:%S')
-        os.makedirs(self.tmp_path, exist_ok=True)
         if info.get("s3_folder"):
-            Key.S3_FOLDER = info.get("s3_folder")
-        self.s3_path = Key.S3_FOLDER + "/" + f"owner_id={owner_id}/channel={channel}/year={self.year}/month={self.month}/day={self.day}.csv"
-        self.s3_backup_path = Key.S3_FOLDER + '/backup_files/' + f"owner_id={owner_id}/channel={channel}/{now_time}.csv"
+            self.s3_folder = info.get("s3_folder")
+        self.tmp_path = get_tmp_path() + "/" + self.s3_folder + "/" + owner_id + "/" + channel
+        os.makedirs(self.tmp_path, exist_ok=True)
+        self.s3_path = self.s3_folder + "/" + f"owner_id={owner_id}/channel={channel}/year={self.year}/month={self.month}/day={self.day}_keyword_monitoring.csv"
+        self.s3_backup_path = self.s3_folder + '/backup_files/' + f"owner_id={owner_id}/channel={channel}/{now_time}_keyword_monitoring.csv"
         spread_sheet_url = info.get("spread_sheet_url")
         keyword_sheet = info.get("keyword_sheet")
         ad_names = literal_eval(info.get("ad_names", "[]"))
