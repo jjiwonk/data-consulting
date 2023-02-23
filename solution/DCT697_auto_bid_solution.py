@@ -161,7 +161,7 @@ class AutoBidSolution(KeywordMonitoring):
         if total_result.status_code != 200:
             text = json.loads(total_result.text)
             if text['title'] == "The target keyword you requested does not exist.":
-                result.status_code = text.status
+                result.status_code = text['status']
                 text_temp = []
                 for i in data:
                     time.sleep(self.searching_waiting_time)
