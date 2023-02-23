@@ -81,7 +81,8 @@ class AutoBidSolution(KeywordMonitoring):
         id_list = []
         bid_list = []
         use_gbamt_list = []
-
+        if type(adgroup_json) == dict:
+            return adgroup_json['title']
         for j in adgroup_json:
             id_list.append(j['nccKeywordId'])
             bid_list.append(j['bidAmt'])
@@ -113,7 +114,7 @@ class AutoBidSolution(KeywordMonitoring):
                 if cur_bid >= max_bid:
                     max_bid_msg.append(f"   {group_id} {keyword}: {cur_rank}위 / 최대 {max_bid}원, 현재 {cur_bid}원")
                     bid_amt = cur_bid
-                elif cur_bid < max_bid:
+                else:
                     bid_amt = int(round(cur_bid * (1 + bid_degree) / 10) * 10)
                     if bid_amt > max_bid:
                         bid_amt = max_bid
@@ -122,18 +123,21 @@ class AutoBidSolution(KeywordMonitoring):
                     data = dict(nccKeywordId=keyword_id, nccAdgroupId=group_id, bidAmt=bid_amt, useGroupBidAmt=use_gbamt)
                     self.data_list.append(data)
             elif goal_rank > cur_rank:
-                # 현재 순위가 목표 순위 보다 높은 경우
-                if cur_bid <= min_bid:
-                    min_bid_msg.append(f"   {group_id} {keyword}: {cur_rank}위 / 최소 {min_bid}원, 현재 {cur_bid}원")
+                if self.bid_downgrade is False:
                     bid_amt = cur_bid
-                elif cur_bid > min_bid:
-                    bid_amt = int(round(cur_bid * (1 - bid_degree) / 10) * 10)
-                    if bid_amt < min_bid:
-                        bid_amt = min_bid
-                    elif bid_amt > max_bid:
-                        bid_amt = max_bid
-                    data = dict(nccKeywordId=keyword_id, nccAdgroupId=group_id, bidAmt=bid_amt, useGroupBidAmt=use_gbamt)
-                    self.data_list.append(data)
+                # 현재 순위가 목표 순위 보다 높은 경우
+                else:
+                    if cur_bid <= min_bid:
+                        min_bid_msg.append(f"   {group_id} {keyword}: {cur_rank}위 / 최소 {min_bid}원, 현재 {cur_bid}원")
+                        bid_amt = cur_bid
+                    else:
+                        bid_amt = int(round(cur_bid * (1 - bid_degree) / 10) * 10)
+                        if bid_amt < min_bid:
+                            bid_amt = min_bid
+                        elif bid_amt > max_bid:
+                            bid_amt = max_bid
+                        data = dict(nccKeywordId=keyword_id, nccAdgroupId=group_id, bidAmt=bid_amt, useGroupBidAmt=use_gbamt)
+                        self.data_list.append(data)
             else:
                 # 현재 순위가 목표 순위와 같은 경우
                 bid_amt = cur_bid
@@ -142,13 +146,44 @@ class AutoBidSolution(KeywordMonitoring):
         result_msg = result_msg + max_bid_msg + min_bid_msg
         return result_msg
 
+    class Response:
+        status_code = None
+        text = None
+        dict = None
+
     def adjust_bid_amt(self):
         uri = '/ncc/keywords'
         method = 'PUT'
         params = {'fields': 'bidAmt'}
         data = self.data_list
-        change_result = self.get_results(uri, method, params, data)
-        return change_result
+        result = self.Response()
+        total_result = self.get_results(uri, method, params, data)
+        if total_result.status_code != 200:
+            text = json.loads(total_result.text)
+            if text['title'] == "The target keyword you requested does not exist.":
+                result.status_code = text.status
+                text_temp = []
+                for i in data:
+                    time.sleep(self.searching_waiting_time)
+                    change_result = self.get_results(uri, method, params, data)
+
+                    if change_result.status_code != 200:
+                        text_temp.append("Request error: " + str(i))
+                        result.dict[i['nccKeywordId']] = 'Failed'
+                    else:
+                        result.dict[i['nccKeywordId']] = 'Success'
+                result.text = '\n'.join(text_temp)
+            else:
+                result = total_result
+                result.dict = {}
+                for i in data:
+                    result.dict[i['nccKeywordId']] = 'Failed'
+        else:
+            result = total_result
+            result.dict = {}
+            for i in data:
+                result.dict[i['nccKeywordId']] = 'Success'
+        return result
 
     def auto_bid_result_s3_update(self, owner_id, channel):
         self.s3_log_path = self.s3_folder + "/" + f"owner_id={owner_id}/channel={channel}/year={self.year}/month={self.month}" \
@@ -196,6 +231,11 @@ class AutoBidSolution(KeywordMonitoring):
             spread_sheet_url = info.get("spread_sheet_url")
             keyword_sheet = info.get("keyword_sheet")
             bid_amount_df = self.get_current_bid_amount(spread_sheet_url, keyword_sheet)
+            if type(bid_amount_df) == str:
+                return {
+                    "result_code": ResultCode.ERROR,
+                    "msg": bid_amount_df
+                }
 
             # 현재 키워드 순위와 현재 입찰가 정보 머징
             self.bid_adjust_df = bid_amount_df.merge(rank_df, how='left', on=['ad_keyword', 'pc_mobile_type'])
@@ -203,13 +243,16 @@ class AutoBidSolution(KeywordMonitoring):
             # 입찰가 조정
             owner_id = attr.get("owner_id")
             channel = attr.get("channel")
+            self.bid_downgrade = info.get("bid_downgrade")
             result_msg = self.get_bid_amt_info(owner_id, channel)
             self.result = self.adjust_bid_amt()
-            if self.result.status_code == 200:
-                # 입찰가 조정 결과 로그 s3 업데이트
-                self.bid_adjust_df.insert(0, 'customer_id', self.customer_id)
-                self.auto_bid_result_s3_update(owner_id, channel)
-            else:
+            self.bid_adjust_df.insert(0, 'customer_id', self.customer_id)
+            self.bid_adjust_df.insert(1, 'owner_id', owner_id)
+            self.bid_adjust_df.insert(2, 'channel', channel)
+            # 입찰가 조정 결과 머징
+            self.bid_adjust_df['result'] = self.bid_adjust_df.ad_keyword_id.apply(lambda x: self.result.dict[x] if x in self.result.dict.keys() else 'Skip')
+            self.auto_bid_result_s3_update(owner_id, channel)
+            if self.result.status_code != 200:
                 result_msg = self.result.text
 
         except Exception as e:
@@ -217,13 +260,20 @@ class AutoBidSolution(KeywordMonitoring):
             raise e
 
         if self.result.status_code == 200:
-            return {
-            "result_code": ResultCode.SUCCESS,
-            "msg": "\n".join(result_msg),
-            "result_df": self.data_list
-        }
+            if len(result_msg) > 3:
+                return {
+                    "result_code": ResultCode.ERROR,
+                    "msg": "\n".join(result_msg),
+                }
+            else:
+                return {
+                    "result_code": ResultCode.SUCCESS,
+                    "msg": "\n".join(result_msg),
+                    "result_df": self.data_list
+                }
         else:
             return {
                 "result_code": ResultCode.ERROR,
-                "msg": result_msg
+                "msg": result_msg,
+                "data_list": self.data_list
             }
