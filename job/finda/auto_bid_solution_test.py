@@ -13,6 +13,8 @@ if __name__ == "__main__":
         keyword_column="키워드",
         ad_names='["finda", "핀다"]',
         customer_id=2503399,
+        bid_downgrade=True,
+        error_slack_channel='pjt_dc_error_dev'
     )
 
     worker.work(attr=attr, info=info)
