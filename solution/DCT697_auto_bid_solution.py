@@ -165,8 +165,7 @@ class AutoBidSolution(KeywordMonitoring):
                 text_temp = []
                 for i in data:
                     time.sleep(self.searching_waiting_time)
-                    change_result = self.get_results(uri, method, params, data)
-
+                    change_result = self.get_results(uri, method, params, [i])
                     if change_result.status_code != 200:
                         text_temp.append("Request error: " + str(i))
                         result.dict[i['nccKeywordId']] = 'Failed'
