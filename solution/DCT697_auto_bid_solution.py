@@ -27,6 +27,12 @@ class Signature:
         return base64.b64encode(hash.digest())
 
 
+class Response:
+    status_code = None
+    text = None
+    dict = {}
+
+
 class AutoBidSolution(KeywordMonitoring):
     def __init__(self, job_name = None):
         super().__init__(job_name)
@@ -37,7 +43,8 @@ class AutoBidSolution(KeywordMonitoring):
         self.bid_adjust_df = None
         self.s3_log_path = ''
         self.data_list = []
-        self.result = None
+        self.result_msg = ''
+        self.result = Response()
         self.bid_downgrade = True
 
     def get_header(self, method, uri, api_key, secret_key, customer_id):
@@ -147,18 +154,20 @@ class AutoBidSolution(KeywordMonitoring):
         result_msg = result_msg + max_bid_msg + min_bid_msg
         return result_msg
 
-    class Response:
-        status_code = None
-        text = None
-        dict = {}
-
     def adjust_bid_amt(self):
         uri = '/ncc/keywords'
         method = 'PUT'
         params = {'fields': 'bidAmt'}
         data = self.data_list
-        result = self.Response()
-        total_result = self.get_results(uri, method, params, data)
+        result = Response()
+        if len(self.data_list) > 0:
+            total_result = self.get_results(uri, method, params, data)
+        else:
+            result.status_code = 200
+            result.dict = {}
+            for i in data:
+                self.result.dict[i['nccKeywordId']] = 'Skip'
+            return result
         if total_result.status_code != 200:
             text = json.loads(total_result.text)
             if text['title'] == "The target keyword you requested does not exist.":
@@ -245,7 +254,7 @@ class AutoBidSolution(KeywordMonitoring):
             owner_id = attr.get("owner_id")
             channel = attr.get("channel")
             self.bid_downgrade = info.get("bid_downgrade")
-            result_msg = self.get_bid_amt_info(owner_id, channel)
+            self.result_msg = self.get_bid_amt_info(owner_id, channel)
             self.result = self.adjust_bid_amt()
             self.bid_adjust_df.insert(0, 'customer_id', self.customer_id)
             self.bid_adjust_df.insert(1, 'owner_id', owner_id)
@@ -254,27 +263,27 @@ class AutoBidSolution(KeywordMonitoring):
             self.bid_adjust_df['result'] = self.bid_adjust_df.ad_keyword_id.apply(lambda x: self.result.dict[x] if x in self.result.dict.keys() else 'Skip')
             self.auto_bid_result_s3_update(owner_id, channel)
             if self.result.status_code != 200:
-                result_msg = self.result.text
+                self.result_msg = self.result.text
 
         except Exception as e:
             self.logger.info(e)
             raise e
 
         if self.result.status_code == 200:
-            if len(result_msg) > 3:
+            if len(self.result_msg) > 3:
                 return {
                     "result_code": ResultCode.ERROR,
-                    "msg": "\n".join(result_msg),
+                    "msg": "\n".join(self.result_msg),
                 }
             else:
                 return {
                     "result_code": ResultCode.SUCCESS,
-                    "msg": "\n".join(result_msg),
+                    "msg": "\n".join(self.result_msg),
                     "result_df": self.data_list
                 }
         else:
             return {
                 "result_code": ResultCode.ERROR,
-                "msg": result_msg,
+                "msg": self.result_msg,
                 "data_list": self.data_list
             }
