@@ -20,8 +20,12 @@ def download_file(s3_path: str, s3_bucket: str = DEFAULT_S3_PUBLIC_BUCKET, local
 
 def upload_file(local_path: str, s3_path: str, s3_bucket: str = DEFAULT_S3_PUBLIC_BUCKET) -> str:
     s3 = boto3.client("s3")
+    if '.png' in local_path :
+        content_type = 'image/png'
+    else :
+        content_type = 'application/octet-stream'
     try:
-        s3.upload_file(local_path, s3_bucket, s3_path)
+        s3.upload_file(local_path, s3_bucket, s3_path, ExtraArgs={'ContentType' : content_type})
     except Exception as e:
         print(e)
         raise e
