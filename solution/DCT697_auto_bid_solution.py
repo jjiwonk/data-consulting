@@ -125,14 +125,14 @@ class AutoBidSolution(KeywordMonitoring):
                 if cur_bid > max_bid:
                     if cur_rank == 30:
                         cur_rank = '-'
-                    max_bid_msg.append(f"{keyword}: {cur_rank}위 / 현재 {cur_bid}원 -> 최대 {max_bid}원으로 조정 /// {campaign}, {adgroup}")
+                    max_bid_msg.append(f"{keyword}: {cur_rank}위 / 현재 {cur_bid}원, 최대 {max_bid}원 /// {campaign}, {adgroup}")
                     bid_amt = max_bid
                     data = dict(nccKeywordId=keyword_id, nccAdgroupId=group_id, bidAmt=bid_amt, useGroupBidAmt=use_gbamt)
                     self.data_list.append(data)
                 elif cur_bid == max_bid:
                     if cur_rank == 30:
                         cur_rank = '-'
-                    max_bid_msg.append(f"{keyword}: {cur_rank}위 / 현재 최대 {max_bid}원으로 운영중 /// {campaign}, {adgroup}")
+                    max_bid_msg.append(f"{keyword}: {cur_rank}위 / 현재 {cur_bid}원, 최대 {max_bid}원 /// {campaign}, {adgroup}")
                     bid_amt = cur_bid
                 else:
                     bid_amt = int(round(cur_bid * (1 + bid_degree) / 10) * 10)
@@ -148,12 +148,12 @@ class AutoBidSolution(KeywordMonitoring):
                 # 현재 순위가 목표 순위 보다 높은 경우
                 else:
                     if cur_bid < min_bid:
-                        min_bid_msg.append(f"{keyword}: {cur_rank}위 / 현재 {cur_bid}원 -> 최소 {min_bid}원으로 조정 /// {campaign}, {adgroup}")
+                        min_bid_msg.append(f"{keyword}: {cur_rank}위 / 현재 {cur_bid}원, 최소 {min_bid}원 /// {campaign}, {adgroup}")
                         bid_amt = cur_bid
                         data = dict(nccKeywordId=keyword_id, nccAdgroupId=group_id, bidAmt=bid_amt, useGroupBidAmt=use_gbamt)
                         self.data_list.append(data)
                     elif cur_bid == min_bid:
-                        min_bid_msg.append(f"{keyword}: {cur_rank}위 / 현재 최소 {min_bid}원으로 운영중 /// {campaign}, {adgroup}, ")
+                        min_bid_msg.append(f"{keyword}: {cur_rank}위 / 현재 {cur_bid}원, 최소 {min_bid}원 /// {campaign}, {adgroup}, ")
                         bid_amt = cur_bid
                     else:
                         bid_amt = int(round(cur_bid * (1 - bid_degree) / 10) * 10)
