@@ -166,7 +166,7 @@ class AutoBidSolution(KeywordMonitoring):
             result.status_code = 200
             result.dict = {}
             for i in data:
-                self.result.dict[i['nccKeywordId']] = 'Skip'
+                result.dict[i['nccKeywordId']] = 'Skip'
             return result
         if total_result.status_code != 200:
             text = json.loads(total_result.text)
