@@ -16,4 +16,13 @@ dtypes = {
         'campaign': pa.string(),
         'ad' : pa.string(),
         'event_value': pa.string(),
-        'appsflyer_id':pa.string() }
+        'event_revenue' : pa.float64(),
+        'appsflyer_id':pa.string(),
+        'event_name':pa.string() }
+
+organic_dtypes = {
+        'install_time': pa.string(),
+        'event_time': pa.string(),
+        'event_value': pa.string(),
+        'appsflyer_id':pa.string() ,
+        'event_revenue' : pa.float64(),}
