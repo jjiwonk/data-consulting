@@ -122,11 +122,18 @@ class AutoBidSolution(KeywordMonitoring):
                 cur_rank = int(cur_rank)
             if goal_rank < cur_rank:
                 # 현재 순위가 목표 순위 보다 낮은 경우
-                if cur_bid >= max_bid:
+                if cur_bid > max_bid:
                     if cur_rank == 30:
                         cur_rank = '-'
-                    max_bid_msg.append(f"   {campaign}, {adgroup}, {keyword}: {cur_rank}위 / 최대 {max_bid}원, 현재 {cur_bid}원")
+                    max_bid_msg.append(f"{campaign}, {adgroup}, {keyword}: {cur_rank}위 / 현재 {cur_bid}원 -> 최대 {max_bid}원으로 조정")
                     bid_amt = max_bid
+                    data = dict(nccKeywordId=keyword_id, nccAdgroupId=group_id, bidAmt=bid_amt, useGroupBidAmt=use_gbamt)
+                    self.data_list.append(data)
+                elif cur_bid == max_bid:
+                    if cur_rank == 30:
+                        cur_rank = '-'
+                    max_bid_msg.append(f"{campaign}, {adgroup}, {keyword}: {cur_rank}위 / 현재 최대 {max_bid}원으로 운영중")
+                    bid_amt = cur_bid
                 else:
                     bid_amt = int(round(cur_bid * (1 + bid_degree) / 10) * 10)
                     if bid_amt > max_bid:
@@ -140,8 +147,13 @@ class AutoBidSolution(KeywordMonitoring):
                     bid_amt = min_bid
                 # 현재 순위가 목표 순위 보다 높은 경우
                 else:
-                    if cur_bid <= min_bid:
-                        min_bid_msg.append(f"   {campaign}, {adgroup}, {keyword}: {cur_rank}위 / 최소 {min_bid}원, 현재 {cur_bid}원")
+                    if cur_bid < min_bid:
+                        min_bid_msg.append(f"{campaign}, {adgroup}, {keyword}: {cur_rank}위 / 현재 {cur_bid}원 -> 최소 {min_bid}원으로 조정")
+                        bid_amt = cur_bid
+                        data = dict(nccKeywordId=keyword_id, nccAdgroupId=group_id, bidAmt=bid_amt, useGroupBidAmt=use_gbamt)
+                        self.data_list.append(data)
+                    elif cur_bid == min_bid:
+                        min_bid_msg.append(f"   {campaign}, {adgroup}, {keyword}: {cur_rank}위 / 현재 최소 {min_bid}원으로 운영중")
                         bid_amt = cur_bid
                     else:
                         bid_amt = int(round(cur_bid * (1 - bid_degree) / 10) * 10)
