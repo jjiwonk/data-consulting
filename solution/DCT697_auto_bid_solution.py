@@ -150,7 +150,7 @@ class AutoBidSolution(KeywordMonitoring):
     class Response:
         status_code = None
         text = None
-        dict = None
+        dict = {}
 
     def adjust_bid_amt(self):
         uri = '/ncc/keywords'
@@ -174,15 +174,15 @@ class AutoBidSolution(KeywordMonitoring):
                         result.dict[i['nccKeywordId']] = 'Success'
                 result.text = '\n'.join(text_temp)
             else:
-                result = total_result
-                result.dict = {}
+                total_result.dict = {}
                 for i in data:
-                    result.dict[i['nccKeywordId']] = 'Failed'
+                    total_result.dict[i['nccKeywordId']] = 'Failed'
+                result = total_result
         else:
-            result = total_result
-            result.dict = {}
+            total_result.dict = {}
             for i in data:
-                result.dict[i['nccKeywordId']] = 'Success'
+                total_result.dict[i['nccKeywordId']] = 'Success'
+            result = total_result
         return result
 
     def auto_bid_result_s3_update(self, owner_id, channel):
