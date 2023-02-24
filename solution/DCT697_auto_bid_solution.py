@@ -65,6 +65,7 @@ class AutoBidSolution(KeywordMonitoring):
         gd = GoogleDrive()
         sheet = gd.get_work_sheet(spread_sheet_url, keyword_sheet)
         setting_df = gd.sheet_to_df(sheet)
+        setting_df = setting_df.iloc[:, :9]
         keywords_df = setting_df.drop(setting_df.loc[setting_df.iloc[:, 0] == ''].index)  # 빈행 제거
         keywords_df = keywords_df.rename(columns={'키워드': 'ad_keyword', '디바이스': 'pc_mobile_type',
                                                   '캠페인 ID': 'campaign_id', '광고그룹 ID': 'adgroup_id',
