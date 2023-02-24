@@ -160,10 +160,10 @@ class AutoBidSolution(KeywordMonitoring):
         params = {'fields': 'bidAmt'}
         data = self.data_list
         result = Response()
-        if len(self.data_list) > 0:
+        if len(data) > 0:
             total_result = self.get_results(uri, method, params, data)
         else:
-            result.status_code = 200
+            result.status_code = 400
             result.dict = {}
             for i in data:
                 result.dict[i['nccKeywordId']] = 'Skip'
