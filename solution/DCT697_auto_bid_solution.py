@@ -167,6 +167,7 @@ class AutoBidSolution(KeywordMonitoring):
         else:
             if len(self.result_msg) > 3:
                 result.status_code = 400
+                result.text = '\n'.join(self.result_msg)
             else:
                 result.status_code = 200
             result.dict = {}
