@@ -120,28 +120,19 @@ class KeywordMonitoring(Worker):
         self.minute = self.now_time.minute
         self.date = self.now_time.strftime('%Y-%m-%d')
         self.row = {
-            'owner_id': "",
-            'channel': "",
             'collected_at': self.date,
             'pc_mobile_type': "",
             'weekday': Key.WEEK_DAYS[self.now_time.weekday()],
             'date': "",
             'ad_keyword': "",
             'ad_rank': "",
-            'year': "",
-            'month': "",
-            'day': "",
-            'hour': "",
-            'minute': "",
             'screenshot_url': ""
         }
         self.s3_path = ''
         self.s3_folder = 'keyword_monitoring'
         self.tmp_path = ''
-        self.result_df = pd.DataFrame(columns=['collected_at', 'pc_mobile_type', 'weekday', 'ad_keyword', 'ad_rank',
-                                          'year', 'month', 'day', 'hour', 'minute', 'date'])
-        self.total_df = pd.DataFrame(columns=['collected_at', 'pc_mobile_type', 'weekday', 'ad_keyword', 'ad_rank',
-                                          'year', 'month', 'day', 'hour', 'minute', 'date'])
+        self.result_df = pd.DataFrame(columns=['collected_at', 'pc_mobile_type', 'weekday', 'ad_keyword', 'ad_rank', 'date'])
+        self.total_df = pd.DataFrame(columns=['collected_at', 'pc_mobile_type', 'weekday', 'ad_keyword', 'ad_rank', 'date'])
 
     def get_search_infos(self, media_info) -> dict:
         if media_info == '네이버SA':
@@ -206,8 +197,6 @@ class KeywordMonitoring(Worker):
     def do_work(self, info: dict, attr: dict):
         owner_id = attr.get("owner_id")
         channel = attr.get("channel")
-        self.row['owner_id'] = owner_id
-        self.row['channel'] = channel
         Key.USE_HEADLESS = info.get("use_headless")
         now_time = self.now_time.strftime('%Y-%m-%d %H:%M:%S')
         if info.get("s3_folder"):
@@ -239,6 +228,7 @@ class KeywordMonitoring(Worker):
             gd = GoogleDrive()
             sheet = gd.get_work_sheet(spread_sheet_url, keyword_sheet)
             setting_df = gd.sheet_to_df(sheet)
+            setting_df = setting_df.iloc[:, :11]
             keywords_df = setting_df.drop(setting_df.loc[setting_df.iloc[:, 0] == ''].index) # 빈행 제거
             column_names = setting_df.columns.values
 
@@ -270,11 +260,6 @@ class KeywordMonitoring(Worker):
                         time_stamp = datetime.now()
                         self.crawling_ads(device, keyword, ad_names, time_stamp)
                         self.row['date'] = f"{time_stamp.strftime('%Y-%m-%d %H:%M:%S')}"
-                        self.row['year'] = time_stamp.year
-                        self.row['month'] = time_stamp.month
-                        self.row['day'] = time_stamp.day
-                        self.row['hour'] = time_stamp.hour
-                        self.row['minute'] = time_stamp.minute
                         result_msg.append(
                             f"{device.device_type} - {keyword}: " f"{self.row['ad_rank']}"
                         )

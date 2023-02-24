@@ -72,9 +72,10 @@ class AutoBidSolution(KeywordMonitoring):
         gd = GoogleDrive()
         sheet = gd.get_work_sheet(spread_sheet_url, keyword_sheet)
         setting_df = gd.sheet_to_df(sheet)
-        setting_df = setting_df.iloc[:, :9]
+        setting_df = setting_df.iloc[:, :11]
         keywords_df = setting_df.drop(setting_df.loc[setting_df.iloc[:, 0] == ''].index)  # 빈행 제거
         keywords_df = keywords_df.rename(columns={'키워드': 'ad_keyword', '디바이스': 'pc_mobile_type',
+                                                  '캠페인명': 'campaign_name', '광고그룹명': 'adgroup_name',
                                                   '캠페인 ID': 'campaign_id', '광고그룹 ID': 'adgroup_id',
                                                   '키워드 ID': 'ad_keyword_id', '목표 순위': 'goal_rank',
                                                   '최소 입찰가': 'min_bid', '최대 입찰가': 'max_bid',
@@ -103,6 +104,8 @@ class AutoBidSolution(KeywordMonitoring):
         max_bid_msg = [f"## 최대 입찰가 조정 필요 ##"]
         min_bid_msg = [f"## 최소 입찰가 조정 필요 ##"]
         for index, row in self.bid_adjust_df.iterrows():
+            campaign = row['campaign_name']
+            adgroup = row['adgroup_name']
             keyword = row['ad_keyword']
             keyword_id = row['ad_keyword_id']
             group_id = row['adgroup_id']
@@ -122,8 +125,8 @@ class AutoBidSolution(KeywordMonitoring):
                 if cur_bid >= max_bid:
                     if cur_rank == 30:
                         cur_rank = '-'
-                    max_bid_msg.append(f"   {group_id} {keyword}: {cur_rank}위 / 최대 {max_bid}원, 현재 {cur_bid}원")
-                    bid_amt = cur_bid
+                    max_bid_msg.append(f"   {campaign}, {adgroup}, {keyword}: {cur_rank}위 / 최대 {max_bid}원, 현재 {cur_bid}원")
+                    bid_amt = max_bid
                 else:
                     bid_amt = int(round(cur_bid * (1 + bid_degree) / 10) * 10)
                     if bid_amt > max_bid:
@@ -134,11 +137,11 @@ class AutoBidSolution(KeywordMonitoring):
                     self.data_list.append(data)
             elif goal_rank > cur_rank:
                 if self.bid_downgrade is False:
-                    bid_amt = cur_bid
+                    bid_amt = min_bid
                 # 현재 순위가 목표 순위 보다 높은 경우
                 else:
                     if cur_bid <= min_bid:
-                        min_bid_msg.append(f"   {group_id} {keyword}: {cur_rank}위 / 최소 {min_bid}원, 현재 {cur_bid}원")
+                        min_bid_msg.append(f"   {campaign}, {adgroup}, {keyword}: {cur_rank}위 / 최소 {min_bid}원, 현재 {cur_bid}원")
                         bid_amt = cur_bid
                     else:
                         bid_amt = int(round(cur_bid * (1 - bid_degree) / 10) * 10)
@@ -235,7 +238,7 @@ class AutoBidSolution(KeywordMonitoring):
             rank_df = pd.DataFrame()
             rank_df = pd.concat([rank_df, self.result_df])
             # 현재 키워드 순위 모니터링 결과 받아오기
-            rank_df = rank_df.loc[:, ['ad_keyword', 'pc_mobile_type', 'ad_rank', 'date', 'year', 'month', 'day', 'hour', 'minute']]
+            rank_df = rank_df.loc[:, ['ad_keyword', 'pc_mobile_type', 'ad_rank', 'date']]
 
             # 입찰가 조정 로그 저장폴더 변경
             if info.get("s3_folder"):
@@ -263,8 +266,6 @@ class AutoBidSolution(KeywordMonitoring):
             self.result_msg = self.get_bid_amt_info(owner_id, channel)
             self.result = self.adjust_bid_amt()
             self.bid_adjust_df.insert(0, 'customer_id', self.customer_id)
-            self.bid_adjust_df.insert(1, 'owner_id', owner_id)
-            self.bid_adjust_df.insert(2, 'channel', channel)
             # 입찰가 조정 결과 머징
             self.bid_adjust_df['result'] = self.bid_adjust_df.ad_keyword_id.apply(lambda x: self.result.dict[x] if x in self.result.dict.keys() else 'Skip')
             self.auto_bid_result_s3_update(owner_id, channel)
