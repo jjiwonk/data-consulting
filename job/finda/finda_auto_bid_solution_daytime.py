@@ -14,7 +14,7 @@ if __name__ == "__main__":
         ad_names='["finda", "핀다"]',
         customer_id=2503399,
         bid_downgrade=True,
-        error_slack_channel='#dc_bot_finda_sa_입찰가솔루션'
+        error_slack_channel='dc_bot_finda_sa_입찰가솔루션'
     )
 
     worker.work(attr=attr, info=info)
