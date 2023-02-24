@@ -16,7 +16,7 @@ SLACK_API_RETRY_CNT = 3
 slack_token = os.getenv("SLACK_TOKEN", None)
 
 
-def send_result_slack_msg(job_result: dict, job_name, start_time, alert_channel):
+def send_result_slack_msg(job_result: dict, job_name, start_time, success_alert_channel, error_alert_channel):
     """
     worker의 실행 결과를 슬랙 메시지로 전송.
     환경 변수로 SLACK_TOKEN을 가지고 있지 않으면 아무 작업을 하지 않음.
@@ -41,9 +41,14 @@ def send_result_slack_msg(job_result: dict, job_name, start_time, alert_channel)
     default_channel = get_default_channel(result_code)
     if default_channel:
         channels.append(default_channel)
-    if alert_channel:
-        fields.append({"type": "mrkdwn", "text": f"*CHANNEL*\n#{alert_channel}"})
-        channels.append(alert_channel)
+    if error_alert_channel:
+        if result_code.value >= ResultCode.ERROR.value:
+            fields.append({"type": "mrkdwn", "text": f"*CHANNEL*\n#{error_alert_channel}"})
+            channels.append(error_alert_channel)
+    if success_alert_channel:
+        if result_code.value >= ResultCode.SUCCESS.value:
+            fields.append({"type": "mrkdwn", "text": f"*CHANNEL*\n#{success_alert_channel}"})
+            channels.append(success_alert_channel)
 
     texts = []
     for k, v in job_result.items():

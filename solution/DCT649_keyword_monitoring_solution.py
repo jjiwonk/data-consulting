@@ -13,7 +13,7 @@ from utils.selenium_util import get_chromedriver
 from bs4 import BeautifulSoup
 from utils.s3 import download_file, upload_file, delete_file
 from worker.const import ResultCode
-from utils.const import DEFAULT_S3_PRIVATE_BUCKET
+from utils.const import DEFAULT_S3_PRIVATE_BUCKET, DEFAULT_S3_PUBLIC_BUCKET
 from utils.path_util import get_tmp_path
 from worker.abstract_worker import Worker
 
@@ -116,8 +116,12 @@ class KeywordMonitoring(Worker):
         self.year = self.now_time.year
         self.month = self.now_time.month
         self.day = self.now_time.day
+        self.hour = self.now_time.hour
+        self.minute = self.now_time.minute
         self.date = self.now_time.strftime('%Y-%m-%d')
         self.row = {
+            'owner_id': "",
+            'channel': "",
             'collected_at': self.date,
             'pc_mobile_type': "",
             'weekday': Key.WEEK_DAYS[self.now_time.weekday()],
@@ -129,9 +133,9 @@ class KeywordMonitoring(Worker):
             'day': "",
             'hour': "",
             'minute': "",
+            'screenshot_url': ""
         }
         self.s3_path = ''
-        self.s3_backup_path = ''
         self.s3_folder = 'keyword_monitoring'
         self.tmp_path = ''
         self.result_df = pd.DataFrame(columns=['collected_at', 'pc_mobile_type', 'weekday', 'ad_keyword', 'ad_rank',
@@ -161,10 +165,11 @@ class KeywordMonitoring(Worker):
 
     def save_screenshot(self, filename):
         local_screenshot_path = self.tmp_path + filename
-        s3_screenshot_path = self.s3_path.split('.')[0] + filename
+        s3_screenshot_path = '/'.join(self.s3_path.split('.')[0].split('/')[:-1]) + filename
         self.driver.save_screenshot(local_screenshot_path)
-        upload_file(local_screenshot_path, s3_screenshot_path, DEFAULT_S3_PRIVATE_BUCKET)
+        screenshot_url = upload_file(local_screenshot_path, s3_screenshot_path, DEFAULT_S3_PUBLIC_BUCKET)
         os.remove(local_screenshot_path)
+        return screenshot_url
 
     def crawling_ads(self, device: Device, keyword: str, ad_names: list, time_stamp: datetime):
         # 최대 5번 크롤링을 시도함.
@@ -176,7 +181,7 @@ class KeywordMonitoring(Worker):
                 date = str(time_stamp).replace('-', '').replace(' ', '').split(':')
                 date = date[0] + '시' + date[1] + '분' + date[2] + '초'
                 filename = f'/{keyword}_{date}.png'
-                self.save_screenshot(filename)
+                screenshot_url = self.save_screenshot(filename)
                 html_source = self.driver.page_source
                 soup = BeautifulSoup(html_source, 'html.parser')
                 # selector를 사용해 상품에 해당하는 부분을 선택함.
@@ -189,6 +194,7 @@ class KeywordMonitoring(Worker):
                     # ad_element가 광고주의 광고라면 row에 등수를 기록함.
                     if ad_element and is_ad(ad_element, ad_names):
                         self.row['ad_rank'] = str(index + 1)
+                        self.row['screenshot_url'] = screenshot_url
                         break
                 return
             except Exception as e:
@@ -200,14 +206,16 @@ class KeywordMonitoring(Worker):
     def do_work(self, info: dict, attr: dict):
         owner_id = attr.get("owner_id")
         channel = attr.get("channel")
+        self.row['owner_id'] = owner_id
+        self.row['channel'] = channel
         Key.USE_HEADLESS = info.get("use_headless")
         now_time = self.now_time.strftime('%Y-%m-%d %H:%M:%S')
         if info.get("s3_folder"):
             self.s3_folder = info.get("s3_folder")
         self.tmp_path = get_tmp_path() + "/" + self.s3_folder + "/" + owner_id + "/" + channel
         os.makedirs(self.tmp_path, exist_ok=True)
-        self.s3_path = self.s3_folder + "/" + f"owner_id={owner_id}/channel={channel}/year={self.year}/month={self.month}/day={self.day}_keyword_monitoring.csv"
-        self.s3_backup_path = self.s3_folder + '/backup_files/' + f"owner_id={owner_id}/channel={channel}/{now_time}_keyword_monitoring.csv"
+        self.s3_path = self.s3_folder + "/" + f"owner_id={owner_id}/channel={channel}/year={self.year}/month={self.month}" \
+                                              f"/day={self.day}/hour={self.hour}/minute={self.minute}/keyword_monitoring.csv"
         spread_sheet_url = info.get("spread_sheet_url")
         keyword_sheet = info.get("keyword_sheet")
         ad_names = literal_eval(info.get("ad_names", "[]"))
@@ -292,11 +300,6 @@ class KeywordMonitoring(Worker):
                 pass
 
             if previous_file_path:
-                # 백업 저장
-                backup_path = self.tmp_path + f'/day={self.day}_backup.csv'
-                self.result_df.to_csv(backup_path, encoding='utf-8-sig', index=False)
-                upload_file(local_path=backup_path, s3_path=self.s3_backup_path, s3_bucket=DEFAULT_S3_PRIVATE_BUCKET)
-                os.remove(backup_path)
                 # s3 저장
                 previous_df = pd.read_csv(previous_file_path, encoding='utf-8-sig')
                 previous_df = previous_df.astype(str)
@@ -309,8 +312,6 @@ class KeywordMonitoring(Worker):
                 self.total_df = self.result_df
                 result_path = self.tmp_path + f'/day={self.day}.csv'
                 self.total_df.to_csv(result_path, encoding='utf-8-sig', index=False)
-                # 백업 저장
-                upload_file(local_path=result_path, s3_path=self.s3_backup_path, s3_bucket=DEFAULT_S3_PRIVATE_BUCKET)
                 # s3 저장
                 upload_file(local_path=result_path, s3_path=self.s3_path, s3_bucket=DEFAULT_S3_PRIVATE_BUCKET)
                 os.remove(result_path)

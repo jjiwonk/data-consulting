@@ -16,7 +16,8 @@ class Worker(metaclass=ABCMeta):
 
     def work(self, info: dict, attr: dict = None):
         result = dict()
-        alert_channel = None
+        success_alert_channel = info.get("slack_channel", None)
+        error_alert_channel = info.get("error_slack_channel", None)
 
         try:
             result = self.do_work(info, attr)
@@ -24,16 +25,13 @@ class Worker(metaclass=ABCMeta):
                 result = {"msg": str(result)}
             if not result.get("result_code"):
                 result["result_code"] = ResultCode.SUCCESS
-            if info.get("slack_channel"):
-                alert_channel = info.get("slack_channel")
         except Exception as e:
             tb = traceback.format_exc()
             result["traceback"] = tb
             result["result_code"] = ResultCode.ERROR
-            alert_channel = info.get("error_slack_channel")
             self.logger.error(f"{e}\n{tb}")
         try:
-            send_result_slack_msg(result, self.job_name, self.start_time, alert_channel)
+            send_result_slack_msg(result, self.job_name, self.start_time, success_alert_channel, error_alert_channel)
         except Exception as e:
             self.logger.error(f"슬랙 메시지 전송 실패\n{e}")
 
