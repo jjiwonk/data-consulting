@@ -120,6 +120,8 @@ class AutoBidSolution(KeywordMonitoring):
             if goal_rank < cur_rank:
                 # 현재 순위가 목표 순위 보다 낮은 경우
                 if cur_bid >= max_bid:
+                    if cur_bid == 30:
+                        cur_bid = '-'
                     max_bid_msg.append(f"   {group_id} {keyword}: {cur_rank}위 / 최대 {max_bid}원, 현재 {cur_bid}원")
                     bid_amt = cur_bid
                 else:
