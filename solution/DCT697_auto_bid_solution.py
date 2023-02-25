@@ -208,7 +208,7 @@ class AutoBidSolution(KeywordMonitoring):
                 for i in data:
                     total_result.dict[i['nccKeywordId']] = 'Failed'
                 result = total_result
-                result.text = text['title']
+                result.text = str(text)
         else:
             total_result.dict = {}
             for i in data:
