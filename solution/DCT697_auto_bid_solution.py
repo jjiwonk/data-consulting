@@ -96,13 +96,13 @@ class AutoBidSolution(KeywordMonitoring):
             id_list.append(j['nccKeywordId'])
             bid_list.append(j['bidAmt'])
             use_gbamt_list.append(j['useGroupBidAmt'])
-        bid_amount_df = pd.DataFrame({'ad_keyword_id': id_list, 'cur_bid': bid_list, 'use_groupbid':use_gbamt_list})
+        bid_amount_df = pd.DataFrame({'ad_keyword_id': id_list, 'cur_bid': bid_list, 'use_groupbid': use_gbamt_list})
         bid_amount_df = keywords_df.merge(bid_amount_df, how='left', on='ad_keyword_id')
         return bid_amount_df
 
     def get_bid_amt_info(self, owner_id, channel):
-        max_bid_msg = [f"## 최대 입찰가 조정 필요 ##"]
-        min_bid_msg = [f"## 최소 입찰가 조정 필요 ##"]
+        max_bid_msg = [f"## 최대 입찰가 상향 필요 ##"]
+        min_bid_msg = [f"## 최소 입찰가 하향 필요 ##"]
         for index, row in self.bid_adjust_df.iterrows():
             campaign = row['campaign_name']
             adgroup = row['adgroup_name']
@@ -168,7 +168,7 @@ class AutoBidSolution(KeywordMonitoring):
                 bid_amt = cur_bid
             self.bid_adjust_df.loc[index, 'next_bid'] = bid_amt
         result_msg = [f"{owner_id} {channel} 입찰가 조정 결과"]
-        result_msg = result_msg + max_bid_msg + min_bid_msg
+        result_msg = result_msg + max_bid_msg + ['\n'] + min_bid_msg
         return result_msg
 
     def adjust_bid_amt(self):
