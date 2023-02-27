@@ -225,9 +225,11 @@ def integrate_data():
         ga_df = ga_pivot_df.copy()
         if media == 'FBIG':
             df = load.fb_prep()
+            right_on_ga = ['campaign_id', 'group_id', 'ad']
+            right_on_apps = ['campaign_id', 'group_id', 'ad']
             # 예외처리
             df.loc[df['ad'] == '0209_pm_bigsale_na_da_prd_mix_slide - 사본', 'ad'] = '0209_pm_bigsale_na_da_prd_mix_slide'
-            df = data_merge(merging_info, df, apps_df, ga_df, index_df, False)
+            df = data_merge(merging_info, df, apps_df, ga_df, index_df, False, right_on_ga=right_on_ga, right_on_apps=right_on_apps)
         elif media == 'FBIG_DPA':
             df = load.fb_dpa_prep()
             df = data_merge(merging_info, df, apps_df, ga_df, index_df, False)
