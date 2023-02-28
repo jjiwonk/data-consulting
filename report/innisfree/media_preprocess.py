@@ -243,6 +243,22 @@ def na_spda_prep() -> pd.DataFrame:
     return df
 
 
+def na_hdda_prep() -> pd.DataFrame:
+    df = get_basic_data('Naver_NOSP')
+    camp_list = ref.index_df.loc[ref.index_df['매체(표기)'] == 'Naver_헤드라인DA', '캠페인'].unique().tolist()
+    df = df.loc[df['캠페인'].isin(camp_list)]
+    df['매체'] = 'Naver_헤드라인DA'
+    return df
+
+
+def na_shda_prep() -> pd.DataFrame:
+    df = get_basic_data('Naver_NOSP')
+    camp_list = ref.index_df.loc[ref.index_df['매체(표기)'] == 'Naver_쇼핑라이브DA', '캠페인'].unique().tolist()
+    df = df.loc[df['캠페인'].isin(camp_list)]
+    df['매체'] = 'Naver_쇼핑라이브DA'
+    return df
+
+
 def na_gfa_prep() -> pd.DataFrame:
     df = get_basic_data('Naver_GFA')
     camp_list = ref.index_df.loc[ref.index_df['매체(표기)'] == 'Naver_GFA', '캠페인'].unique().tolist()

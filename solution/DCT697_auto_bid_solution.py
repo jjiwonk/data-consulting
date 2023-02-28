@@ -96,13 +96,13 @@ class AutoBidSolution(KeywordMonitoring):
             id_list.append(j['nccKeywordId'])
             bid_list.append(j['bidAmt'])
             use_gbamt_list.append(j['useGroupBidAmt'])
-        bid_amount_df = pd.DataFrame({'ad_keyword_id': id_list, 'cur_bid': bid_list, 'use_groupbid':use_gbamt_list})
+        bid_amount_df = pd.DataFrame({'ad_keyword_id': id_list, 'cur_bid': bid_list, 'use_groupbid': use_gbamt_list})
         bid_amount_df = keywords_df.merge(bid_amount_df, how='left', on='ad_keyword_id')
         return bid_amount_df
 
     def get_bid_amt_info(self, owner_id, channel):
-        max_bid_msg = [f"## 최대 입찰가 조정 필요 ##"]
-        min_bid_msg = [f"## 최소 입찰가 조정 필요 ##"]
+        max_bid_msg = [f"## 최대 입찰가 상향 필요 ##"]
+        min_bid_msg = [f"## 최소 입찰가 하향 필요 ##"]
         for index, row in self.bid_adjust_df.iterrows():
             campaign = row['campaign_name']
             adgroup = row['adgroup_name']
@@ -168,7 +168,7 @@ class AutoBidSolution(KeywordMonitoring):
                 bid_amt = cur_bid
             self.bid_adjust_df.loc[index, 'next_bid'] = bid_amt
         result_msg = [f"{owner_id} {channel} 입찰가 조정 결과"]
-        result_msg = result_msg + max_bid_msg + min_bid_msg
+        result_msg = result_msg + max_bid_msg + ['\n'] + min_bid_msg
         return result_msg
 
     def adjust_bid_amt(self):
@@ -179,42 +179,43 @@ class AutoBidSolution(KeywordMonitoring):
         result = Response()
         if len(data) > 0:
             total_result = self.get_results(uri, method, params, data)
+            if total_result.status_code != 200:
+                text = json.loads(total_result.text)
+                if text['title'] == "The target keyword you requested does not exist.":
+                    result.status_code = text['status']
+                    text_temp = []
+                    for i in data:
+                        time.sleep(self.searching_waiting_time)
+                        change_result = self.get_results(uri, method, params, [i])
+                        if change_result.status_code != 200:
+                            text_temp.append("Request error: " + str(i))
+                            result.dict[i['nccKeywordId']] = 'Failed'
+                        else:
+                            result.dict[i['nccKeywordId']] = 'Success'
+                    result.text = '\n'.join(text_temp)
+                else:
+                    total_result.dict = {}
+                    for i in data:
+                        total_result.dict[i['nccKeywordId']] = 'Failed'
+                    result = total_result
+                    result.text = str(text)
+            else:
+                total_result.dict = {}
+                for i in data:
+                    total_result.dict[i['nccKeywordId']] = 'Success'
+                result = total_result
+            return result
         else:
-            if len(self.result_msg) > 3:
-                result.status_code = 400
+            if len(self.result_msg) > 4:
+                result.status_code = 200
                 result.text = '\n'.join(self.result_msg)
             else:
                 result.status_code = 200
+                result.text = '입찰 조정할 사항이 없습니다.'
             result.dict = {}
             for i in data:
                 result.dict[i['nccKeywordId']] = 'Skip'
             return result
-        if total_result.status_code != 200:
-            text = json.loads(total_result.text)
-            if text['title'] == "The target keyword you requested does not exist.":
-                result.status_code = text['status']
-                text_temp = []
-                for i in data:
-                    time.sleep(self.searching_waiting_time)
-                    change_result = self.get_results(uri, method, params, [i])
-                    if change_result.status_code != 200:
-                        text_temp.append("Request error: " + str(i))
-                        result.dict[i['nccKeywordId']] = 'Failed'
-                    else:
-                        result.dict[i['nccKeywordId']] = 'Success'
-                result.text = '\n'.join(text_temp)
-            else:
-                total_result.dict = {}
-                for i in data:
-                    total_result.dict[i['nccKeywordId']] = 'Failed'
-                result = total_result
-                result.text = text['title']
-        else:
-            total_result.dict = {}
-            for i in data:
-                total_result.dict[i['nccKeywordId']] = 'Success'
-            result = total_result
-        return result
 
     def auto_bid_result_s3_update(self, owner_id, channel):
         self.s3_log_path = self.s3_folder + "/" + f"owner_id={owner_id}/channel={channel}/year={self.year}/month={self.month}" \
@@ -289,9 +290,9 @@ class AutoBidSolution(KeywordMonitoring):
             raise e
 
         if self.result.status_code == 200:
-            if len(self.result_msg) > 3:
+            if len(self.result_msg) > 4:
                 return {
-                    "result_code": ResultCode.ERROR,
+                    "result_code": ResultCode.SUCCESS,
                     "msg": "\n".join(self.result_msg),
                 }
             else:

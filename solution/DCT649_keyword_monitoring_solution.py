@@ -113,11 +113,11 @@ class KeywordMonitoring(Worker):
         self.searching_waiting_time = 1
         self.driver = None
         self.now_time = datetime.now(Key.KST)
-        self.year = self.now_time.year
-        self.month = self.now_time.month
-        self.day = self.now_time.day
-        self.hour = self.now_time.hour
-        self.minute = self.now_time.minute
+        self.year = self.now_time.strftime('%Y')
+        self.month = self.now_time.strftime('%m')
+        self.day = self.now_time.strftime('%d')
+        self.hour = self.now_time.strftime('%H')
+        self.minute = self.now_time.strftime('%M')
         self.date = self.now_time.strftime('%Y-%m-%d')
         self.row = {
             'collected_at': self.date,
