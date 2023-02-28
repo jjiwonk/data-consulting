@@ -207,7 +207,7 @@ class AutoBidSolution(KeywordMonitoring):
             return result
         else:
             if len(self.result_msg) > 4:
-                result.status_code = 400
+                result.status_code = 200
                 result.text = '\n'.join(self.result_msg)
             else:
                 result.status_code = 200
@@ -290,7 +290,7 @@ class AutoBidSolution(KeywordMonitoring):
             raise e
 
         if self.result.status_code == 200:
-            if len(self.result_msg) > 3:
+            if len(self.result_msg) > 4:
                 return {
                     "result_code": ResultCode.SUCCESS,
                     "msg": "\n".join(self.result_msg),
