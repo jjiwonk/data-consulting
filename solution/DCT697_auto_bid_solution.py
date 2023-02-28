@@ -292,7 +292,7 @@ class AutoBidSolution(KeywordMonitoring):
         if self.result.status_code == 200:
             if len(self.result_msg) > 3:
                 return {
-                    "result_code": ResultCode.ERROR,
+                    "result_code": ResultCode.SUCCESS,
                     "msg": "\n".join(self.result_msg),
                 }
             else:
