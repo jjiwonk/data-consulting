@@ -211,6 +211,7 @@ class AutoBidSolution(KeywordMonitoring):
                 result.text = '\n'.join(self.result_msg)
             else:
                 result.status_code = 200
+                result.text = '입찰 조정할 사항이 없습니다.'
             result.dict = {}
             for i in data:
                 result.dict[i['nccKeywordId']] = 'Skip'
