@@ -1,7 +1,7 @@
 import os
-
 import boto3
-
+from datetime import datetime, date
+import calendar
 from utils.const import DEFAULT_S3_PUBLIC_BUCKET, DEFAULT_S3_PRIVATE_BUCKET
 from utils.path_util import get_tmp_path
 
@@ -37,6 +37,7 @@ def delete_file(s3_bucket: str, s3_path: str):
     s3 = boto3.client("s3")
     s3.delete_object(Bucket=s3_bucket, Key=s3_path)
 
+
 def get_info_from_s3(owner_id, product_id):
     s3_path = 'job_info/owner_id={}/{}.txt'.format(owner_id, product_id)
     local_path = get_tmp_path()
@@ -46,3 +47,19 @@ def get_info_from_s3(owner_id, product_id):
     f.close()
     os.remove(info_dir)
     return info
+
+
+def build_partition_s3(default_s3_path, standard_date: datetime=datetime.now(), s3_buckt=DEFAULT_S3_PUBLIC_BUCKET):
+    s3 = boto3.client('s3')
+    year = standard_date.strftime('%Y')
+    month = standard_date.strftime('%m')
+    num_days = calendar.monthrange(standard_date.year, standard_date.month)[1]
+    days = [date(standard_date.year, standard_date.month, day) for day in range(1, num_days + 1)]
+    for day in days:
+        day = day.strftime('%d')
+        for hour in list(range(0, 13, 1)):
+            hour = str(hour).zfill(2)
+            for minute in list(range(0, 60, 5)):
+                minute = str(minute).zfill(2)
+                directory_name = f"{default_s3_path}/year={year}/month={month}/day={day}/hour={hour}/minute={minute}"
+                s3.put_object(Bucket=s3_buckt, Key=(directory_name + '/'))
