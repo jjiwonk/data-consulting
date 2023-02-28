@@ -180,7 +180,7 @@ class AutoBidSolution(KeywordMonitoring):
         if len(data) > 0:
             total_result = self.get_results(uri, method, params, data)
         else:
-            if len(self.result_msg) > 3:
+            if len(self.result_msg) > 4:
                 result.status_code = 400
                 result.text = '\n'.join(self.result_msg)
             else:
