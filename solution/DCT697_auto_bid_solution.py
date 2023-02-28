@@ -179,6 +179,32 @@ class AutoBidSolution(KeywordMonitoring):
         result = Response()
         if len(data) > 0:
             total_result = self.get_results(uri, method, params, data)
+            if total_result.status_code != 200:
+                text = json.loads(total_result.text)
+                if text['title'] == "The target keyword you requested does not exist.":
+                    result.status_code = text['status']
+                    text_temp = []
+                    for i in data:
+                        time.sleep(self.searching_waiting_time)
+                        change_result = self.get_results(uri, method, params, [i])
+                        if change_result.status_code != 200:
+                            text_temp.append("Request error: " + str(i))
+                            result.dict[i['nccKeywordId']] = 'Failed'
+                        else:
+                            result.dict[i['nccKeywordId']] = 'Success'
+                    result.text = '\n'.join(text_temp)
+                else:
+                    total_result.dict = {}
+                    for i in data:
+                        total_result.dict[i['nccKeywordId']] = 'Failed'
+                    result = total_result
+                    result.text = str(text)
+            else:
+                total_result.dict = {}
+                for i in data:
+                    total_result.dict[i['nccKeywordId']] = 'Success'
+                result = total_result
+            return result
         else:
             if len(self.result_msg) > 4:
                 result.status_code = 400
@@ -189,32 +215,6 @@ class AutoBidSolution(KeywordMonitoring):
             for i in data:
                 result.dict[i['nccKeywordId']] = 'Skip'
             return result
-        if total_result.status_code != 200:
-            text = json.loads(total_result.text)
-            if text['title'] == "The target keyword you requested does not exist.":
-                result.status_code = text['status']
-                text_temp = []
-                for i in data:
-                    time.sleep(self.searching_waiting_time)
-                    change_result = self.get_results(uri, method, params, [i])
-                    if change_result.status_code != 200:
-                        text_temp.append("Request error: " + str(i))
-                        result.dict[i['nccKeywordId']] = 'Failed'
-                    else:
-                        result.dict[i['nccKeywordId']] = 'Success'
-                result.text = '\n'.join(text_temp)
-            else:
-                total_result.dict = {}
-                for i in data:
-                    total_result.dict[i['nccKeywordId']] = 'Failed'
-                result = total_result
-                result.text = str(text)
-        else:
-            total_result.dict = {}
-            for i in data:
-                total_result.dict[i['nccKeywordId']] = 'Success'
-            result = total_result
-        return result
 
     def auto_bid_result_s3_update(self, owner_id, channel):
         self.s3_log_path = self.s3_folder + "/" + f"owner_id={owner_id}/channel={channel}/year={self.year}/month={self.month}" \
