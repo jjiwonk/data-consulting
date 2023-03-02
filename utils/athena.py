@@ -2,7 +2,7 @@ import boto3
 import time
 
 def athena_table_refresh(database, table_name):
-    athena = boto3.client('athena')
+    athena = boto3.client('athena', region_name = 'ap-northeast-2')
     res = athena.start_query_execution(
         QueryString=f"MSCK REPAIR TABLE {database}.{table_name}",
         QueryExecutionContext={
