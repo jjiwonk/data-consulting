@@ -9,7 +9,7 @@ import base64
 import pandas as pd
 from utils.google_drive import GoogleDrive
 from worker.const import ResultCode
-from utils.s3 import download_file, upload_file
+from utils.s3 import download_file, upload_file, build_partition_s3
 from utils.const import DEFAULT_S3_PRIVATE_BUCKET
 from solution.DCT649_keyword_monitoring_solution import KeywordMonitoring
 
@@ -281,6 +281,11 @@ class AutoBidSolution(KeywordMonitoring):
             self.bid_adjust_df.insert(0, 'customer_id', self.customer_id)
             # 입찰가 조정 결과 머징
             self.bid_adjust_df['result'] = self.bid_adjust_df.ad_keyword_id.apply(lambda x: self.result.dict[x] if x in self.result.dict.keys() else 'Skip')
+            # 월초 s3 폴더 생성
+            if self.day == '01' and self.hour == '00' and self.minute == '00':
+                default_path = self.s3_folder + "/" + f"owner_id={owner_id}/channel={channel}"
+                build_partition_s3(default_s3_path=default_path, standard_date=self.now_time, s3_bucket=DEFAULT_S3_PRIVATE_BUCKET)
+            # 입찰가 조정 결과 s3 업데이트
             self.auto_bid_result_s3_update(owner_id, channel)
             if self.result.status_code != 200:
                 self.result_msg = self.result.text
