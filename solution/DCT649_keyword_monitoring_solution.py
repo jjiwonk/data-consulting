@@ -11,7 +11,7 @@ from utils.google_drive import (
 )
 from utils.selenium_util import get_chromedriver
 from bs4 import BeautifulSoup
-from utils.s3 import download_file, upload_file, delete_file
+from utils.s3 import download_file, upload_file, build_partition_s3
 from worker.const import ResultCode
 from utils.const import DEFAULT_S3_PRIVATE_BUCKET, DEFAULT_S3_PUBLIC_BUCKET
 from utils.path_util import get_tmp_path
@@ -198,7 +198,6 @@ class KeywordMonitoring(Worker):
         owner_id = attr.get("owner_id")
         channel = attr.get("channel")
         Key.USE_HEADLESS = info.get("use_headless")
-        now_time = self.now_time.strftime('%Y-%m-%d %H:%M:%S')
         if info.get("s3_folder"):
             self.s3_folder = info.get("s3_folder")
         self.tmp_path = get_tmp_path() + "/" + self.s3_folder + "/" + owner_id + "/" + channel
@@ -276,6 +275,11 @@ class KeywordMonitoring(Worker):
                 self.driver.quit()
                 self.logger.info(f"{device.device_type} 키워드 검색 완료.")
             self.logger.info(f"{media_info} 모니터링 완료")
+
+            # 월초 s3 폴더 생성
+            if self.day == '01' and self.hour == '00' and self.minute == '00':
+                default_path = self.s3_folder + "/" + f"owner_id={owner_id}/channel={channel}"
+                build_partition_s3(default_s3_path=default_path, standard_date=self.now_time, s3_bucket=DEFAULT_S3_PRIVATE_BUCKET)
 
             previous_file_path = None
             try:

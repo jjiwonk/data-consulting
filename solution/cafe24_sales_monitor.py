@@ -211,7 +211,9 @@ class Cafe24SalesMonitor(Worker):
                     alert = driver.switch_to.alert
                     alert.dismiss()
                     self.logger.info("얼럿 창 종료")
+                    time.sleep(2)
                 except NoAlertPresentException:
+                    time.sleep(2)
                     pass
 
                 button = driver.find_elements(By.CSS_SELECTOR, ".center tr")[0].find_element(By.TAG_NAME, "a")
