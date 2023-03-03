@@ -141,6 +141,8 @@ class NaverShoppingCrawling(Worker):
                 driver.get(url)
                 pid = parse.urlparse(url).path.split('/')[-1]
 
+                time.sleep(10)
+
                 html = driver.page_source
                 bs = BeautifulSoup(html, "html.parser")
 
