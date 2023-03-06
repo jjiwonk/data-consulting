@@ -70,8 +70,8 @@ class AutoBidSolution(KeywordMonitoring):
         return r
 
     def get_current_bid_amount(self, spread_sheet_url, keyword_sheet):
-        RETRY_CNT = 5
-        WAITING_TIME = 5
+        RETRY_CNT = 3
+        WAITING_TIME = 60
         gd = GoogleDrive()
         for i in range(RETRY_CNT):
             try:
