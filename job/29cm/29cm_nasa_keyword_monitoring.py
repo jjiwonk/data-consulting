@@ -12,7 +12,9 @@ if __name__ == "__main__":
         keyword_sheet="키워드 설정",
         keyword_column="키워드",
         ad_names='["29cm", "29CM"]',
-        slack_channel='dcbot_29cm_네이버sa_키워드순위모니터링'
+        slack_channel='dcbot_29cm_네이버sa_키워드순위모니터링',
+        error_slack_channel='dcbot_29cm_네이버sa_키워드순위모니터링',
+        send_result_msg=False
     )
 
     worker.work(attr=attr, info=info)
