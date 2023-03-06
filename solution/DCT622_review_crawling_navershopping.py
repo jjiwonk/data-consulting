@@ -141,25 +141,22 @@ class NaverShoppingCrawling(Worker):
                 driver.get(url)
                 pid = parse.urlparse(url).path.split('/')[-1]
 
+                time.sleep(10)
+
                 html = driver.page_source
                 bs = BeautifulSoup(html, "html.parser")
 
-                #bs.find()
-                ul_list = driver.find_elements(by=By.TAG_NAME, value = 'ul')
+                ul_list = bs.find('ul', {'role' : 'tablist'}).find_all('a')
                 target_idx = 0
                 for idx, ul in enumerate(ul_list) :
-                    if '쇼핑몰리뷰' in ul.text :
+                    if '쇼핑몰리뷰' in ul.text:
                         target_idx = idx
                         break
 
-                floating_btn_list = ul_list[target_idx].find_elements(by = By.TAG_NAME, value = 'li')
-                for btn in enumerate(floating_btn_list) :
-                    if '쇼핑몰리뷰' in btn.text :
-                        btn.click()
-                        btn_text = btn.text
-                        break
+                floating_btn = driver.find_element(by= By.CSS_SELECTOR,value = f'#snb > ul > li:nth-child({target_idx+1}) > a')
+                floating_btn.click()
 
-                final_page_num = math.ceil(int(''.join(re.compile('\d').findall(btn_text)))/20)
+                final_page_num = math.ceil(int(''.join(re.compile('\d').findall(floating_btn.text)))/20)
 
                 sort_btn_class = bs.find('a', {'role' : 'button', 'class' : re.compile('filter_sort'), 'data-nclick' : 'N=a:rev.rec'}).get('class')[0]
                 recent_sort_btn = driver.find_elements(by = By.CLASS_NAME, value = sort_btn_class)[1]
@@ -244,13 +241,13 @@ class NaverShoppingCrawling(Worker):
         except Exception as e :
             print(e)
             self.logger.info(e)
-            final_df = pd.concat(Key.review_df_list, sort=False, ignore_index=True)
-            final_df_merge = download_sheet.merge(final_df, on='제품 URL')
-
-            final_df_merge_concat = pd.concat([mother_table, final_df_merge], sort=False, ignore_index=True)
-            final_df_merge_concat = final_df_merge_concat.loc[final_df_merge_concat['제품 URL'].str.len() > 0]
-            final_df_merge_concat = final_df_merge_concat.drop_duplicates('review_id')
-            final_df_merge_concat.to_csv(download_dir + '/temp_df.csv', index=False, encoding='utf-8-sig')
+            # final_df = pd.concat(Key.review_df_list, sort=False, ignore_index=True)
+            # final_df_merge = download_sheet.merge(final_df, on='제품 URL')
+            #
+            # final_df_merge_concat = pd.concat([mother_table, final_df_merge], sort=False, ignore_index=True)
+            # final_df_merge_concat = final_df_merge_concat.loc[final_df_merge_concat['제품 URL'].str.len() > 0]
+            # final_df_merge_concat = final_df_merge_concat.drop_duplicates('review_id')
+            # final_df_merge_concat.to_csv(download_dir + '/temp_df.csv', index=False, encoding='utf-8-sig')
             selenium_error_logging(driver, download_dir, Key.screenshot_file_name, Key.page_source_file_name)
             raise e
 
