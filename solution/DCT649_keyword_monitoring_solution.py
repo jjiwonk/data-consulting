@@ -167,7 +167,7 @@ class KeywordMonitoring(Worker):
         crawling_exception = Exception()
         for i in range(Key.CRAWLING_RETRY_CNT):
             try:
-                url = "https://m.ad.search.naver.com/search.naver?sm=&where=m_expd&query={keyword}".format(keyword=keyword)
+                url = device.search_url + keyword
                 self.driver.get(url)
                 date = str(time_stamp).replace('-', '').replace(' ', '').split(':')
                 date = date[0] + '시' + date[1] + '분' + date[2] + '초'
