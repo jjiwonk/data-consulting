@@ -6,6 +6,7 @@ import requests
 import hashlib
 import hmac
 import base64
+import gspread
 import pandas as pd
 from utils.google_drive import GoogleDrive
 from worker.const import ResultCode
@@ -69,8 +70,20 @@ class AutoBidSolution(KeywordMonitoring):
         return r
 
     def get_current_bid_amount(self, spread_sheet_url, keyword_sheet):
+        RETRY_CNT = 5
+        WAITING_TIME = 5
         gd = GoogleDrive()
-        sheet = gd.get_work_sheet(spread_sheet_url, keyword_sheet)
+        for i in range(RETRY_CNT):
+            try:
+                sheet = gd.get_work_sheet(spread_sheet_url, keyword_sheet)
+                break
+            except gspread.exceptions.APIError as e:
+                error_code = e.args[0].get("code")
+                if error_code == 429 and i != RETRY_CNT - 1:
+                    # Call Limit으로 인한 Quota 초과인 경우 대기 후 RETRY_CNT만큼 재시도.
+                    time.sleep(WAITING_TIME)
+                    continue
+                raise e
         setting_df = gd.sheet_to_df(sheet)
         setting_df = setting_df.iloc[:, :11]
         keywords_df = setting_df.drop(setting_df.loc[setting_df.iloc[:, 0] == ''].index)  # 빈행 제거
