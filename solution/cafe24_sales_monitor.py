@@ -82,8 +82,8 @@ class Cafe24SalesMonitor(Worker):
         spreadsheet_url = info.get("spreadsheet_url")
         raw_sheet_name = info.get("raw_sheet_name")
         sales_sheet_name = info.get("sales_sheet_name")
-        screenshot_file_name = f'Error Screenshot_{owner_id}_{product_id}_{schedule_time}.png'
-        page_source_file_name = f'Error PageSource_{owner_id}_{product_id}_{schedule_time}.txt'
+        screenshot_file_name = f'Error Screenshot_{owner_id}_{product_id}_{schedule_time.replace(":", "")}.png'
+        page_source_file_name = f'Error PageSource_{owner_id}_{product_id}_{schedule_time.replace(":", "")}.txt'
         n_products = info.get("n_products")
 
         # tmp 폴더에 소스 폴더 생성 -> 리포트 임시저장
