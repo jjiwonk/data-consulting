@@ -129,7 +129,7 @@ def selenium_error_logging(driver, download_dir, screenshot_file_name, page_sour
 
     page_source_path = download_dir + '/' + page_source_file_name
     page_source = driver.page_source
-    f = open(page_source_path, 'w')
+    f = open(page_source_path, 'w', encoding='UTF-8')
     f.write(page_source)
     f.close()
     s3.upload_file(local_path=page_source_path, s3_path='page_source/' + page_source_file_name,
