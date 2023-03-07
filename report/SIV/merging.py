@@ -102,8 +102,8 @@ def merge_indexing() :
     merge = pd.merge(df, index, on='머징코드', how='left').fillna('no_index')
 
     # 예외처리
-    merge.loc[merge['지면/상품'].isin(['쇼핑검색_P','쇼핑검색_M']),'구매(GA)'] = merge['구매(대시보드)']
-    merge.loc[merge['지면/상품'].isin(['쇼핑검색_P','쇼핑검색_M']),'매출(GA)'] = merge['매출(대시보드)']
+    #merge.loc[merge['지면/상품'].isin(['쇼핑검색_P','쇼핑검색_M']),'구매(GA)'] = merge['구매(대시보드)']
+    #merge.loc[merge['지면/상품'].isin(['쇼핑검색_P','쇼핑검색_M']),'매출(GA)'] = merge['매출(대시보드)']
 
     ad_index = ref.index_df[['머징코드','캠페인(인덱스)','세트(인덱스)','프로모션','브랜드','카테고리','소재형태','소재이미지','소재카피']]
     ad_index = ref.index_dup_drop(ad_index,'머징코드')
@@ -120,4 +120,4 @@ def merge_indexing() :
 
 merge = merge_indexing()
 
-merge.to_csv(dr.download_dir +f'daily_report/daily_report_{ref.r_date.yearmonth}.csv', index= False , encoding= 'utf-8-sig')
+merge.to_csv(dr.download_dir +f'daily_report/daily_report_{ref.r_date.yearmonth}_구글sa.csv', index= False , encoding= 'utf-8-sig')
