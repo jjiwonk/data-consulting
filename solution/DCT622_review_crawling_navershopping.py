@@ -174,6 +174,8 @@ class NaverShoppingCrawling(Worker):
                 btn_class_name = bs.find('div', {'class': re.compile('pagination_pagination')}).get('class')[0]
 
                 while num <= final_page_num :
+                    html = driver.page_source
+                    bs = BeautifulSoup(html, "html.parser")
                     review_list = bs.find('ul', {'class': re.compile('reviewItems_list')}).find_all('li')
 
                     data = []

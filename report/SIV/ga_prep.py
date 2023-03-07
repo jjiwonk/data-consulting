@@ -75,7 +75,7 @@ def ga_exception(df):
 
     #예외처리(시트 + 브검)
 
-    c_media = ['google','naver']
+    c_media = ['google','naver','navershoppingsa']
     df.loc[df['source'].isin(c_media), 'campaign'] = df['campaign'].apply(lambda x: x.replace(x, ref.exc_cdict[x]) if x in ref.exc_cdict.keys() else x)
 
     df.loc[df['source'] == 'criteo', 'adContent'] = df['adContent'].apply(lambda x: x.replace(x, ref.exc_ga_adict[x]) if x in ref.exc_ga_adict.keys() else x)
