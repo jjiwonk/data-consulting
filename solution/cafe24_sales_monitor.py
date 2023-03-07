@@ -123,7 +123,7 @@ class Cafe24SalesMonitor(Worker):
                     sales_manage_tab = driver.find_element(By.CLASS_NAME, "link.order")
                     sales_manage_tab.click()
                     break
-                except TimeoutException as e:
+                except Exception as e:
                     if max_retry_cnt > 0:
                         max_retry_cnt -= 1
                         driver.refresh()
