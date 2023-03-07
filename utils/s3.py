@@ -1,6 +1,7 @@
 import os
 import boto3
 from datetime import datetime, date
+import time
 import calendar
 from utils.const import DEFAULT_S3_PUBLIC_BUCKET, DEFAULT_S3_PRIVATE_BUCKET
 from utils.path_util import get_tmp_path
@@ -64,4 +65,9 @@ def build_partition_s3(default_s3_path, standard_date: datetime=datetime.now(), 
                 directory_name = f"{default_s3_path}/year={year}/month={month}/day={day}/hour={hour}/minute={minute}"
                 res = s3.list_objects_v2(Bucket=s3_bucket, Prefix=directory_name, MaxKeys=1)
                 if 'Contents' not in res:
-                    s3.put_object(Bucket=s3_bucket, Key=(directory_name + '/'))
+                    try:
+                        s3.put_object(Bucket=s3_bucket, Key=(directory_name + '/'))
+                    except Exception as e:
+                        time.sleep(30)
+                        s3.put_object(Bucket=s3_bucket, Key=(directory_name + '/'))
+                        pass
