@@ -14,7 +14,7 @@ from utils.google_drive import (
 )
 from selenium.webdriver.common.keys import Keys
 from selenium.common.exceptions import NoAlertPresentException, ElementClickInterceptedException
-
+from worker.const import ResultCode
 from utils.selenium_util import get_chromedriver, click_and_find_downloaded_filename, selenium_error_logging
 from utils.path_util import get_tmp_path
 import utils.os_util as os_util
@@ -361,7 +361,7 @@ class Cafe24SalesMonitor(Worker):
 
         except Exception as e:
             self.logger.warning(str(e))
-            selenium_error_logging(driver, download_dir, screenshot_file_name, page_source_file_name)
+            selenium_error_logging(driver, download_dir[:-1], screenshot_file_name, page_source_file_name)
             raise e
 
         finally:
@@ -374,7 +374,13 @@ class Cafe24SalesMonitor(Worker):
         response = requests.post(slack_webhook_url, json={"text": slack_msg})
 
         if response.status_code == 200:
-            return "Cafe24SalesMonitor Job complete."
+            return {
+                "result_code": ResultCode.SUCCESS,
+                "msg": "Cafe24SalesMonitor Job complete."
+            }
 
         else:
-            return "Cafe24SalesMonitor Job FAILED."
+            return {
+                "result_code": ResultCode.ERROR,
+                "msg": "Cafe24SalesMonitor Job FAILED."
+            }

@@ -307,6 +307,8 @@ class KeywordMonitoring(Worker):
         except Exception as e:
             self.logger.error(e)
             raise e
+        if not info.get("send_result_msg", True):
+            result_msg = ['Keyword Monitoring Job complete.']
 
         return {
             "result_code": ResultCode.SUCCESS,

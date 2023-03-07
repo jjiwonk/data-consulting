@@ -145,7 +145,7 @@ class columns:
     apps_metric =[ '유입(AF)', 'UV(AF)', 'appopen(AF)','구매(AF)', '매출(AF)', '주문취소(AF)', '주문취소매출(AF)', '총주문건(AF)', '총매출(AF)','브랜드구매(AF)', '브랜드매출(AF)', '첫구매(AF)', '첫구매매출(AF)', '설치(AF)', '재설치(AF)','가입(AF)']
 
     #ga 데이터 컬럼
-    ga1_media = ['naver','google','kakao','criteo','meta','kakao_plus_channel','buzzvil','kakao_int','naver_int','buzzad_int','doohub_int','adisonofferwall_int','blind']
+    ga1_media = ['naver','google','kakao','criteo','meta','kakao_plus_channel','buzzvil','kakao_int','naver_int','buzzad_int','doohub_int','adisonofferwall_int','blind','navershoppingsa']
 
     ga1_dtype = {
         '﻿dataSource': pa.string(),
