@@ -69,3 +69,7 @@ def build_partition_s3(default_s3_path, standard_date: datetime=datetime.now(), 
                     time.sleep(30)
                     s3.put_object(Bucket=s3_bucket, Key=(directory_name + '/'))
                     pass
+
+
+default_s3_path = 'keyword_monitoring/owner_id=drgroot/channel=네이버SA'
+build_partition_s3(default_s3_path, datetime.now(), DEFAULT_S3_PRIVATE_BUCKET)

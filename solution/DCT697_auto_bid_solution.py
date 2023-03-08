@@ -31,7 +31,7 @@ class Signature:
 
 class Response:
     status_code = None
-    text = None
+    reason = None
     dict = {}
 
 
@@ -206,13 +206,13 @@ class AutoBidSolution(KeywordMonitoring):
                             result.dict[i['nccKeywordId']] = 'Failed'
                         else:
                             result.dict[i['nccKeywordId']] = 'Success'
-                    result.text = '\n'.join(text_temp)
+                    result.reason = '\n'.join(text_temp)
                 else:
                     total_result.dict = {}
                     for i in data:
                         total_result.dict[i['nccKeywordId']] = 'Failed'
                     result = total_result
-                    result.text = str(text)
+                    result.reason = str(text)
             else:
                 total_result.dict = {}
                 for i in data:
@@ -222,10 +222,10 @@ class AutoBidSolution(KeywordMonitoring):
         else:
             if len(self.result_msg) > 4:
                 result.status_code = 200
-                result.text = '\n'.join(self.result_msg)
+                result.reason = '\n'.join(self.result_msg)
             else:
                 result.status_code = 200
-                result.text = '입찰 조정할 사항이 없습니다.'
+                result.reason = '입찰 조정할 사항이 없습니다.'
             result.dict = {}
             for i in data:
                 result.dict[i['nccKeywordId']] = 'Skip'
@@ -305,7 +305,7 @@ class AutoBidSolution(KeywordMonitoring):
             # 입찰가 조정 결과 s3 업데이트
             self.auto_bid_result_s3_update(owner_id, channel)
             if self.result.status_code != 200:
-                self.result_msg = self.result.text
+                self.result_msg = self.result.reason
 
         except Exception as e:
             self.logger.info(e)
