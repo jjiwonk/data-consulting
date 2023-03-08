@@ -55,7 +55,7 @@ def build_partition_s3(default_s3_path, standard_date: datetime=datetime.now(), 
     year = standard_date.strftime('%Y')
     month = standard_date.strftime('%m')
     num_days = calendar.monthrange(standard_date.year, standard_date.month)[1]
-    days = [date(standard_date.year, standard_date.month, day) for day in range(1, num_days + 1)]
+    days = [date(standard_date.year, standard_date.month, day) for day in range(22, num_days + 1)]
     for day in days:
         day = day.strftime('%d')
         for hour in list(range(0, 24, 1)):
@@ -63,11 +63,9 @@ def build_partition_s3(default_s3_path, standard_date: datetime=datetime.now(), 
             for minute in list(range(0, 60, 5)):
                 minute = str(minute).zfill(2)
                 directory_name = f"{default_s3_path}/year={year}/month={month}/day={day}/hour={hour}/minute={minute}"
-                res = s3.list_objects_v2(Bucket=s3_bucket, Prefix=directory_name, MaxKeys=1)
-                if 'Contents' not in res:
-                    try:
-                        s3.put_object(Bucket=s3_bucket, Key=(directory_name + '/'))
-                    except Exception as e:
-                        time.sleep(30)
-                        s3.put_object(Bucket=s3_bucket, Key=(directory_name + '/'))
-                        pass
+                try:
+                    s3.put_object(Bucket=s3_bucket, Key=(directory_name + '/'))
+                except Exception as e:
+                    time.sleep(30)
+                    s3.put_object(Bucket=s3_bucket, Key=(directory_name + '/'))
+                    pass
