@@ -10,6 +10,7 @@ import gspread
 import pandas as pd
 from utils.google_drive import GoogleDrive
 from worker.const import ResultCode
+import boto3
 from utils.s3 import download_file, upload_file, build_partition_s3
 from utils.const import DEFAULT_S3_PRIVATE_BUCKET
 from solution.DCT649_keyword_monitoring_solution import KeywordMonitoring
@@ -294,9 +295,12 @@ class AutoBidSolution(KeywordMonitoring):
             self.bid_adjust_df.insert(0, 'customer_id', self.customer_id)
             # 입찰가 조정 결과 머징
             self.bid_adjust_df['result'] = self.bid_adjust_df.ad_keyword_id.apply(lambda x: self.result.dict[x] if x in self.result.dict.keys() else 'Skip')
-            # 월초 s3 폴더 생성
-            if self.day == '01' and self.hour == '00' and self.minute == '00':
-                default_path = self.s3_folder + "/" + f"owner_id={owner_id}/channel={channel}"
+            # 당월 폴더 없는 경우 파티션 신규 생성
+            default_path = self.s3_folder + "/" + f"owner_id={owner_id}/channel={channel}"
+            directory_name = f"{default_path}/year={self.year}/month={self.month}"
+            s3 = boto3.client("s3")
+            res = s3.list_objects_v2(Bucket=DEFAULT_S3_PRIVATE_BUCKET, Prefix=directory_name, MaxKeys=1)
+            if 'Contents' not in res:
                 build_partition_s3(default_s3_path=default_path, standard_date=self.now_time, s3_bucket=DEFAULT_S3_PRIVATE_BUCKET)
             # 입찰가 조정 결과 s3 업데이트
             self.auto_bid_result_s3_update(owner_id, channel)
