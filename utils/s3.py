@@ -68,4 +68,4 @@ def build_partition_s3(default_s3_path, standard_date: datetime=datetime.now(), 
                 except Exception as e:
                     time.sleep(30)
                     s3.put_object(Bucket=s3_bucket, Key=(directory_name + '/'))
-                    pass
+                    continue
