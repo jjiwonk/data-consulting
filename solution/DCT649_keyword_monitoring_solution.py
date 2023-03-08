@@ -11,6 +11,7 @@ from utils.google_drive import (
 )
 from utils.selenium_util import get_chromedriver
 from bs4 import BeautifulSoup
+import boto3
 from utils.s3 import download_file, upload_file, build_partition_s3
 from worker.const import ResultCode
 from utils.const import DEFAULT_S3_PRIVATE_BUCKET, DEFAULT_S3_PUBLIC_BUCKET
@@ -275,12 +276,14 @@ class KeywordMonitoring(Worker):
                 self.driver.quit()
                 self.logger.info(f"{device.device_type} 키워드 검색 완료.")
             self.logger.info(f"{media_info} 모니터링 완료")
-
-            # 월초 s3 폴더 생성
-            if self.day == '01' and self.hour == '00' and self.minute == '00':
-                default_path = self.s3_folder + "/" + f"owner_id={owner_id}/channel={channel}"
+            # 당월 폴더 없는 경우 파티션 신규 생성
+            default_path = self.s3_folder + "/" + f"owner_id={owner_id}/channel={channel}"
+            directory_name = f"{default_path}/year={self.year}/month={self.month}"
+            s3 = boto3.client("s3")
+            res = s3.list_objects_v2(Bucket=DEFAULT_S3_PRIVATE_BUCKET, Prefix=directory_name, MaxKeys=1)
+            if 'Contents' not in res:
                 build_partition_s3(default_s3_path=default_path, standard_date=self.now_time, s3_bucket=DEFAULT_S3_PRIVATE_BUCKET)
-
+            # 해당 시간대 데이터 존재하면 병합
             previous_file_path = None
             try:
                 previous_file_path = download_file(s3_path=self.s3_path, local_path=self.tmp_path, s3_bucket=DEFAULT_S3_PRIVATE_BUCKET)
