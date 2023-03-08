@@ -55,7 +55,7 @@ def build_partition_s3(default_s3_path, standard_date: datetime=datetime.now(), 
     year = standard_date.strftime('%Y')
     month = standard_date.strftime('%m')
     num_days = calendar.monthrange(standard_date.year, standard_date.month)[1]
-    days = [date(standard_date.year, standard_date.month, day) for day in range(22, num_days + 1)]
+    days = [date(standard_date.year, standard_date.month, day) for day in range(1, num_days + 1)]
     for day in days:
         day = day.strftime('%d')
         for hour in list(range(0, 24, 1)):
