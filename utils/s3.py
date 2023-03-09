@@ -63,9 +63,14 @@ def build_partition_s3(default_s3_path, standard_date: datetime=datetime.now(), 
             for minute in list(range(0, 60, 5)):
                 minute = str(minute).zfill(2)
                 directory_name = f"{default_s3_path}/year={year}/month={month}/day={day}/hour={hour}/minute={minute}"
-                try:
-                    s3.put_object(Bucket=s3_bucket, Key=(directory_name + '/'))
-                except Exception as e:
-                    time.sleep(30)
-                    s3.put_object(Bucket=s3_bucket, Key=(directory_name + '/'))
-                    pass
+                max_retry_cnt = 5
+                while max_retry_cnt >= 0:
+                    try:
+                        s3.put_object(Bucket=s3_bucket, Key=(directory_name + '/'))
+                        break
+                    except Exception as e:
+                        if max_retry_cnt > 0:
+                            max_retry_cnt -= 1
+                            time.sleep(10)
+                        else:
+                            raise e
