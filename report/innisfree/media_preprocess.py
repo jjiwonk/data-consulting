@@ -208,8 +208,8 @@ def nabs_prep() -> pd.DataFrame:
     df2 = get_basic_data('Naver_NOSP')
     camp_list = ref.index_df.loc[ref.index_df['매체(표기)'] == 'Naver_BSA', '캠페인'].unique().tolist()
     df2 = df2.loc[df2['캠페인'].isin(camp_list)]
-    ad_dict = ref.media_info.bs_ad_dict
-    df2['ad'] = df2['ad_detail'].apply(lambda x: ad_dict[x])
+    # ad_dict = ref.media_info.bs_ad_dict
+    # df2['ad'] = df2['ad_detail'].apply(lambda x: ad_dict[x])
 
     df = pd.concat([df1, df2], sort=False, ignore_index=True)
     df['매체'] = 'Naver_BSA'
@@ -247,6 +247,7 @@ def na_hdda_prep() -> pd.DataFrame:
     df = get_basic_data('Naver_NOSP')
     camp_list = ref.index_df.loc[ref.index_df['매체(표기)'] == 'Naver_헤드라인DA', '캠페인'].unique().tolist()
     df = df.loc[df['캠페인'].isin(camp_list)]
+    df['ad'] = df['ad'].apply(lambda x: str(x)[9:])
     df['매체'] = 'Naver_헤드라인DA'
     return df
 
@@ -255,7 +256,17 @@ def na_shda_prep() -> pd.DataFrame:
     df = get_basic_data('Naver_NOSP')
     camp_list = ref.index_df.loc[ref.index_df['매체(표기)'] == 'Naver_쇼핑라이브DA', '캠페인'].unique().tolist()
     df = df.loc[df['캠페인'].isin(camp_list)]
+    df['ad'] = df['ad'].apply(lambda x: str(x)[9:])
     df['매체'] = 'Naver_쇼핑라이브DA'
+    return df
+
+
+def na_rolling_prep() -> pd.DataFrame:
+    df = get_basic_data('Naver_NOSP')
+    camp_list = ref.index_df.loc[ref.index_df['매체(표기)'] == 'Naver_롤링보드', '캠페인'].unique().tolist()
+    df = df.loc[df['캠페인'].isin(camp_list)]
+    df['ad'] = df['ad'].apply(lambda x: str(x)[9:])
+    df['매체'] = 'Naver_롤링보드'
     return df
 
 
@@ -325,5 +336,12 @@ def rtb_prep() -> pd.DataFrame:
 def tw_prep() -> pd.DataFrame:
     df = get_basic_data('Twitter')
     camp_list = ref.index_df.loc[ref.index_df['매체(표기)'] == 'Twitter', '캠페인'].unique().tolist()
+    df = df.loc[df['캠페인'].isin(camp_list)]
+    return df
+
+
+def tiktok_prep() -> pd.DataFrame:
+    df = get_basic_data('Tiktok')
+    camp_list = ref.index_df.loc[ref.index_df['매체(표기)'] == 'Tiktok', '캠페인'].unique().tolist()
     df = df.loc[df['캠페인'].isin(camp_list)]
     return df

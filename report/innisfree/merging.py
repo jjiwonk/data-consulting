@@ -48,6 +48,8 @@ def integrate_media_data():
             df = load.na_hdda_prep()
         elif media == 'Naver_쇼핑라이브DA':
             df = load.na_shda_prep()
+        elif media == 'Naver_롤링보드':
+            df = load.na_rolling_prep()
         elif media == 'SNOW':
             df = load.na_snow_prep()
         elif media == 'Naver_GFA':
@@ -62,6 +64,8 @@ def integrate_media_data():
             df = load.remerge_prep()
         elif media == 'RTBhouse':
             df = load.rtb_prep()
+        elif media == 'Tiktok':
+            df = load.tiktok_prep()
         else:
             df = load.get_handi_data(media)
         df_list.append(df)
@@ -229,7 +233,17 @@ def integrate_data():
             right_on_apps = ['campaign_id', 'group_id', 'ad']
             # 예외처리
             df.loc[df['ad'] == '0209_pm_bigsale_na_da_prd_mix_slide - 사본', 'ad'] = '0209_pm_bigsale_na_da_prd_mix_slide'
-            df = data_merge(merging_info, df, apps_df, ga_df, index_df, False, right_on_ga=right_on_ga, right_on_apps=right_on_apps)
+            df = data_merge(merging_info, df, apps_df, ga_df, index_df, False, right_on_ga=right_on_ga,
+                            right_on_apps=right_on_apps)
+            # GA utm_trg 공백값 추가 처리
+            empty_df = pd.DataFrame(columns=df.columns)
+            apps_empty_df = pd.DataFrame(columns=apps_df.columns)
+            non_utm_ga_df = ga_df.loc[ga_df['utm_trg'] == '']
+            right_on_ga = ['campaign_id', 'ad']
+            non_utm_df = data_merge(merging_info, empty_df, apps_empty_df, non_utm_ga_df, index_df, False,
+                                    right_on_ga=right_on_ga)
+            non_utm_df['광고그룹'] = ''
+            df = pd.concat([df, non_utm_df], sort=False, ignore_index=True).drop_duplicates(ignore_index=True)
         elif media == 'FBIG_DPA':
             df = load.fb_dpa_prep()
             df = data_merge(merging_info, df, apps_df, ga_df, index_df, False)
@@ -362,6 +376,9 @@ def integrate_data():
         elif media == 'Naver_쇼핑라이브DA':
             df = load.na_shda_prep()
             df = data_merge(merging_info, df, apps_df, ga_df, index_df, False)
+        elif media == 'Naver_롤링보드':
+            df = load.na_rolling_prep()
+            df = data_merge(merging_info, df, apps_df, ga_df, index_df, False)
         elif media == 'Naver_GFA':
             df = load.na_gfa_prep()
             df = data_merge(merging_info, df, apps_df, ga_df, index_df, False)
@@ -391,6 +408,9 @@ def integrate_data():
             df = data_merge(merging_info, df, apps_df, ga_df, index_df, False, right_on_media=right_on_media, right_on_apps=right_on_apps)
             df['medium'] = 'others'
             df['ad'] = 'RTB_dynamic'
+        elif media == 'Tiktok':
+            df = load.tiktok_prep()
+            df = data_merge(merging_info, df, apps_df, ga_df, index_df, False)
         else:
             df = load.get_handi_data(media)
             df = data_merge(merging_info, df, apps_df, ga_df, index_df, False)
@@ -673,6 +693,13 @@ def get_no_index_data():
             df['매체'] = media
             index_df = index_df.loc[index_df['매체(표기)'] == media].reset_index(drop=True)
             df = data_merge(merging_info, df, apps_df, ga_df, index_df, True)
+        elif media == 'Naver_롤링보드':
+            df = load.get_basic_data(source)
+            camp_list = index_df.loc[index_df['매체(표기)'] != media, '캠페인'].unique().tolist()
+            df = df.loc[~(df['캠페인'].isin(camp_list))]
+            df['매체'] = media
+            index_df = index_df.loc[index_df['매체(표기)'] == media].reset_index(drop=True)
+            df = data_merge(merging_info, df, apps_df, ga_df, index_df, True)
         elif media == 'Naver_GFA':
             df = load.get_basic_data(source)
             camp_list = index_df.loc[index_df['매체(표기)'] != media, '캠페인'].unique().tolist()
@@ -722,6 +749,13 @@ def get_no_index_data():
             # 매체 데이터에 ad 추출 안됨, ga 매핑X
             apps_df['ad'] = ''
             df = data_merge(merging_info, df, apps_df, ga_df, index_df, True, right_on_media=right_on_media, right_on_apps=right_on_apps)
+        elif media == 'TikTok':
+            df = load.get_basic_data(source)
+            camp_list = index_df.loc[index_df['매체(표기)'] != media, '캠페인'].unique().tolist()
+            df = df.loc[~(df['캠페인'].isin(camp_list))]
+            df['매체'] = media
+            index_df = index_df.loc[index_df['매체(표기)'] == media].reset_index(drop=True)
+            df = data_merge(merging_info, df, apps_df, ga_df, index_df, True)
         else:
             df = load.get_handi_data(media)
             df['매체'] = media
