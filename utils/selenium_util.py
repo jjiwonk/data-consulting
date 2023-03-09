@@ -54,6 +54,7 @@ def get_chromedriver(headless: bool = True, mobile: bool = False, download_dir: 
         chrome_options.add_argument("--headless=new")
         chrome_options.add_argument("--no-sandbox")
         chrome_options.add_argument("--incognito")
+        chrome_options.add_argument("--single-process")
         chrome_options.add_argument("--disable-dev-shm-usage")
         chrome_options.add_argument("disable-component-cloud-policy")
     if mobile is True:
