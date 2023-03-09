@@ -11,8 +11,8 @@ from utils.google_drive import (
 )
 from utils.selenium_util import get_chromedriver
 from bs4 import BeautifulSoup
-import boto3
-from utils.s3 import download_file, upload_file, build_partition_s3
+import math
+from utils.s3 import upload_file
 from worker.const import ResultCode
 from utils.const import DEFAULT_S3_PRIVATE_BUCKET, DEFAULT_S3_PUBLIC_BUCKET
 from utils.path_util import get_tmp_path
@@ -118,7 +118,12 @@ class KeywordMonitoring(Worker):
         self.month = self.now_time.strftime('%m')
         self.day = self.now_time.strftime('%d')
         self.hour = self.now_time.strftime('%H')
-        self.minute = self.now_time.strftime('%M')
+        if self.now_time.minute % 5 != 0 & self.now_time.minute % 10 < 5:
+            self.minute = str(math.floor(self.now_time.minute / 10) * 10).zfill(2)
+        elif self.now_time.minute % 5 != 0 & self.now_time.minute % 10 > 5:
+            self.minute = str(math.ceil(self.now_time.minute / 10) * 10).zfill(2)
+        else:
+            self.minute = self.now_time.strftime('%M')
         self.date = self.now_time.strftime('%Y-%m-%d')
         self.row = {
             'collected_at': self.date,
@@ -133,7 +138,6 @@ class KeywordMonitoring(Worker):
         self.s3_folder = 'keyword_monitoring'
         self.tmp_path = ''
         self.result_df = pd.DataFrame(columns=['collected_at', 'pc_mobile_type', 'weekday', 'ad_keyword', 'ad_rank', 'date'])
-        self.total_df = pd.DataFrame(columns=['collected_at', 'pc_mobile_type', 'weekday', 'ad_keyword', 'ad_rank', 'date'])
 
     def get_search_infos(self, media_info) -> dict:
         if media_info == '네이버SA':
@@ -237,7 +241,7 @@ class KeywordMonitoring(Worker):
                 if device.keyword_column not in column_names:
                     device.keyword_column = column_names[0]
                 # device 별로 키워드를 입력.
-                keywords = keywords_df.loc[setting_df['디바이스'] == device.device_type, device.keyword_column].unique().tolist()
+                keywords = keywords_df.loc[keywords_df['디바이스'] == device.device_type, device.keyword_column].unique().tolist()
                 if keywords:
                     device.keywords = keywords
 
@@ -276,37 +280,7 @@ class KeywordMonitoring(Worker):
                 self.driver.quit()
                 self.logger.info(f"{device.device_type} 키워드 검색 완료.")
             self.logger.info(f"{media_info} 모니터링 완료")
-            # 당월 폴더 없는 경우 파티션 신규 생성
-            default_path = self.s3_folder + "/" + f"owner_id={owner_id}/channel={channel}"
-            directory_name = f"{default_path}/year={self.year}/month={self.month}"
-            s3 = boto3.client("s3")
-            res = s3.list_objects_v2(Bucket=DEFAULT_S3_PRIVATE_BUCKET, Prefix=directory_name, MaxKeys=1)
-            if 'Contents' not in res:
-                build_partition_s3(default_s3_path=default_path, standard_date=self.now_time, s3_bucket=DEFAULT_S3_PRIVATE_BUCKET)
-            # 해당 시간대 데이터 존재하면 병합
-            previous_file_path = None
-            try:
-                previous_file_path = download_file(s3_path=self.s3_path, local_path=self.tmp_path, s3_bucket=DEFAULT_S3_PRIVATE_BUCKET)
-            except:
-                self.logger.info(f"no previous file on {self.s3_path}")
-                pass
 
-            if previous_file_path:
-                # s3 저장
-                previous_df = pd.read_csv(previous_file_path, encoding='utf-8-sig')
-                previous_df = previous_df.astype(str)
-                self.total_df = pd.concat([previous_df, self.result_df], axis=0, ignore_index=True)
-                self.total_df = self.total_df.drop_duplicates(keep='last')
-                self.total_df.to_csv(previous_file_path, encoding='utf-8-sig', index=False)
-                upload_file(local_path=previous_file_path, s3_path=self.s3_path, s3_bucket=DEFAULT_S3_PRIVATE_BUCKET)
-                os.remove(previous_file_path)
-            else:
-                self.total_df = self.result_df
-                result_path = self.tmp_path + f'/day={self.day}.csv'
-                self.total_df.to_csv(result_path, encoding='utf-8-sig', index=False)
-                # s3 저장
-                upload_file(local_path=result_path, s3_path=self.s3_path, s3_bucket=DEFAULT_S3_PRIVATE_BUCKET)
-                os.remove(result_path)
         except Exception as e:
             self.logger.error(e)
             raise e
@@ -316,7 +290,7 @@ class KeywordMonitoring(Worker):
         return {
             "result_code": ResultCode.SUCCESS,
             "msg": "\n".join(result_msg),
-            "result_df": self.total_df
+            "result_df": self.result_df
         }
 
 #
