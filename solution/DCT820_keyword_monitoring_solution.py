@@ -3,19 +3,17 @@ import pandas as pd
 import random
 from ast import literal_eval
 import time
+import math
 from datetime import datetime
 from pytz import timezone
-
-from utils.google_drive import (
-    GoogleDrive,
-)
 from utils.selenium_util import get_chromedriver
 from bs4 import BeautifulSoup
-import math
-from utils.s3 import upload_file
+import boto3
+from utils.s3 import download_file, upload_file, build_partition_s3
 from worker.const import ResultCode
 from utils.const import DEFAULT_S3_PRIVATE_BUCKET, DEFAULT_S3_PUBLIC_BUCKET
 from utils.path_util import get_tmp_path
+from utils.dropbox_util import download
 from worker.abstract_worker import Worker
 
 
@@ -109,7 +107,7 @@ class Device:
 
 
 class KeywordMonitoring(Worker):
-    def __init__(self, job_name):
+    def __init__(self, job_name=''):
         super().__init__(job_name=job_name)
         self.searching_waiting_time = 1
         self.driver = None
@@ -138,6 +136,18 @@ class KeywordMonitoring(Worker):
         self.s3_folder = 'keyword_monitoring'
         self.tmp_path = ''
         self.result_df = pd.DataFrame(columns=['collected_at', 'pc_mobile_type', 'weekday', 'ad_keyword', 'ad_rank', 'date'])
+        self.total_df = pd.DataFrame(columns=['collected_at', 'pc_mobile_type', 'weekday', 'ad_keyword', 'ad_rank', 'date'])
+
+    def get_keyword_df(self, file_name):
+        path = f"/광고사업부/데이터컨설팅/데이터 솔루션/키워드 모니터링 솔루션/{file_name}"
+        dst = self.tmp_path + '/' + file_name
+        download(path, dst)
+        if file_name.split('.')[-1] == 'xlsx':
+            df = pd.read_excel(dst, sheet_name=0, engine='openpyxl')
+        else:
+            df = pd.read_csv(dst, encoding='utf-8-sig')
+        os.remove(dst)
+        return df
 
     def get_search_infos(self, media_info) -> dict:
         if media_info == '네이버SA':
@@ -209,8 +219,7 @@ class KeywordMonitoring(Worker):
         os.makedirs(self.tmp_path, exist_ok=True)
         self.s3_path = self.s3_folder + "/" + f"owner_id={owner_id}/channel={channel}/year={self.year}/month={self.month}" \
                                               f"/day={self.day}/hour={self.hour}/minute={self.minute}/keyword_monitoring.csv"
-        spread_sheet_url = info.get("spread_sheet_url")
-        keyword_sheet = info.get("keyword_sheet")
+        file_name = info.get("file_name")
         ad_names = literal_eval(info.get("ad_names", "[]"))
         media_info = info.get("media_info", "")
         search_infos = self.get_search_infos(media_info)
@@ -229,12 +238,8 @@ class KeywordMonitoring(Worker):
 
         result_msg = [f"{media_info} 키워드 검색 순위 모니터링 결과"]
         try:
-            gd = GoogleDrive()
-            sheet = gd.get_work_sheet(spread_sheet_url, keyword_sheet)
-            setting_df = gd.sheet_to_df(sheet)
-            setting_df = setting_df.iloc[:, :11]
-            keywords_df = setting_df.drop(setting_df.loc[setting_df.iloc[:, 0] == ''].index) # 빈행 제거
-            column_names = setting_df.columns.values
+            keywords_df = self.get_keyword_df(file_name)
+            column_names = keywords_df.columns.values
 
             for device in devices:
                 # 키워드 컬럼을 잡 인포로 받지 않았거나 입력 받은 값이 존재하지 않는 경우, 첫 번째 컬럼을 공통 키워드로 사용.
@@ -280,7 +285,37 @@ class KeywordMonitoring(Worker):
                 self.driver.quit()
                 self.logger.info(f"{device.device_type} 키워드 검색 완료.")
             self.logger.info(f"{media_info} 모니터링 완료")
+            # 당월 폴더 없는 경우 파티션 신규 생성
+            default_path = self.s3_folder + "/" + f"owner_id={owner_id}/channel={channel}"
+            directory_name = f"{default_path}/year={self.year}/month={self.month}"
+            s3 = boto3.client("s3")
+            res = s3.list_objects_v2(Bucket=DEFAULT_S3_PRIVATE_BUCKET, Prefix=directory_name, MaxKeys=1)
+            if 'Contents' not in res:
+                build_partition_s3(default_s3_path=default_path, standard_date=self.now_time, s3_bucket=DEFAULT_S3_PRIVATE_BUCKET)
+            # 해당 시간대 데이터 존재하면 병합
+            previous_file_path = None
+            try:
+                previous_file_path = download_file(s3_path=self.s3_path, local_path=self.tmp_path, s3_bucket=DEFAULT_S3_PRIVATE_BUCKET)
+            except:
+                self.logger.info(f"no previous file on {self.s3_path}")
+                pass
 
+            if previous_file_path:
+                # s3 저장
+                previous_df = pd.read_csv(previous_file_path, encoding='utf-8-sig')
+                previous_df = previous_df.astype(str)
+                self.total_df = pd.concat([previous_df, self.result_df], axis=0, ignore_index=True)
+                self.total_df = self.total_df.drop_duplicates(keep='last')
+                self.total_df.to_csv(previous_file_path, encoding='utf-8-sig', index=False)
+                upload_file(local_path=previous_file_path, s3_path=self.s3_path, s3_bucket=DEFAULT_S3_PRIVATE_BUCKET)
+                os.remove(previous_file_path)
+            else:
+                self.total_df = self.result_df
+                result_path = self.tmp_path + f'/day={self.day}.csv'
+                self.total_df.to_csv(result_path, encoding='utf-8-sig', index=False)
+                # s3 저장
+                upload_file(local_path=result_path, s3_path=self.s3_path, s3_bucket=DEFAULT_S3_PRIVATE_BUCKET)
+                os.remove(result_path)
         except Exception as e:
             self.logger.error(e)
             raise e
@@ -290,25 +325,20 @@ class KeywordMonitoring(Worker):
         return {
             "result_code": ResultCode.SUCCESS,
             "msg": "\n".join(result_msg),
-            "result_df": self.result_df
+            "result_df": self.total_df
         }
 
-#
-# if __name__ == "__main__":
-#     attr = dict(
-#         owner_id="finda", channel="네이버SA"
-#     )
-#     # info = s3.get_info_from_s3(attr['owner_id'], attr['product_id'])
-#     # worker.work(attr=attr, info=info)
-#
-#     info = dict(
-#         media_info='네이버SA',
-#         use_headless=True,
-#         spread_sheet_url="https://docs.google.com/spreadsheets/d/1Qk3f7FjPDeOK8hEwAp_PV6TYWjRzf6YclM_1YBqU0p0/edit#gid=0",
-#         keyword_sheet="키워드 설정",
-#         keyword_column="키워드",
-#         ad_names='["finda", "핀다"]',
-#     )
-#     worker = AutoBidSolution()
-#     df = worker.do_work(info, attr)
 
+if __name__ == "__main__":
+    attr = dict(
+        owner_id="samsungkracc", channel="네이버SA"
+    )
+    info = dict(
+        media_info='네이버SA',
+        use_headless=True,
+        keyword_column="키워드",
+        ad_names='["samsungpop", "삼성증권"]',
+        file_name='samsungkracc_keywords_list.xlsx'
+    )
+    worker = KeywordMonitoring()
+    df = worker.do_work(info, attr)
