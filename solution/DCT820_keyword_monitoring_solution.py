@@ -116,9 +116,9 @@ class KeywordMonitoring(Worker):
         self.month = self.now_time.strftime('%m')
         self.day = self.now_time.strftime('%d')
         self.hour = self.now_time.strftime('%H')
-        if self.now_time.minute % 5 != 0 & self.now_time.minute % 10 < 5:
+        if self.now_time.minute % 5 != 0 & self.now_time.minute % 10 != 0 & self.now_time.minute % 10 < 5:
             self.minute = str(math.floor(self.now_time.minute / 10) * 10).zfill(2)
-        elif self.now_time.minute % 5 != 0 & self.now_time.minute % 10 > 5:
+        elif self.now_time.minute % 5 != 0 & self.now_time.minute % 10 != 0 & self.now_time.minute % 10 > 5:
             self.minute = str(math.ceil(self.now_time.minute / 10) * 10).zfill(2)
         else:
             self.minute = self.now_time.strftime('%M')
@@ -333,16 +333,16 @@ class KeywordMonitoring(Worker):
         }
 
 
-if __name__ == "__main__":
-    attr = dict(
-        owner_id="samsungkracc", channel="네이버SA"
-    )
-    info = dict(
-        media_info='네이버SA',
-        use_headless=True,
-        keyword_column="키워드",
-        ad_names='["samsungpop", "삼성증권"]',
-        file_name='samsungkracc_keywords_list.xlsx'
-    )
-    worker = KeywordMonitoring()
-    df = worker.do_work(info, attr)
+# if __name__ == "__main__":
+#     attr = dict(
+#         owner_id="samsungkracc", channel="네이버SA"
+#     )
+#     info = dict(
+#         media_info='네이버SA',
+#         use_headless=True,
+#         keyword_column="키워드",
+#         ad_names='["samsungpop", "삼성증권"]',
+#         file_name='samsungkracc_keywords_list.xlsx'
+#     )
+#     worker = KeywordMonitoring()
+#     df = worker.do_work(info, attr)
