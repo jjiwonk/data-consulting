@@ -136,3 +136,4 @@ def selenium_error_logging(driver, download_dir, screenshot_file_name, page_sour
     s3.upload_file(local_path=page_source_path, s3_path='page_source/' + page_source_file_name,
                    s3_bucket=const.DEFAULT_S3_PRIVATE_BUCKET)
     os.remove(page_source_path)
+    driver.quit()
