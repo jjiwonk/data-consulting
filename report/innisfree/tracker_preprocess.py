@@ -21,7 +21,7 @@ def get_apps_log_data():
     ro = pacsv.ReadOptions(block_size=10 << 20, encoding = 'utf-8-sig')
     table_list = []
 
-    while date <= to_date :
+    while date <= to_date:
         date_name = date.strftime('%Y%m%d')
         file_name = f'appsflyer_daily_report_{date_name}.csv'
 
@@ -36,21 +36,22 @@ def get_apps_log_data():
     raw_data = raw_data.to_pandas()
     return raw_data
 
+
 def apps_log_data_prep():
     raw_data = get_apps_log_data()
 
     target_event_list = list(ref.apps_info.target_event_dict.keys())
     raw_data = raw_data.loc[raw_data['event_name'].isin(target_event_list)]
-    raw_data = raw_data.loc[raw_data['is_primary_attribution']!='False']
-    raw_data = raw_data.loc[raw_data['partner'].isin(['madit',''])]
-    raw_data = raw_data.loc[raw_data['attributed_touch_type']!='impression']
+    raw_data = raw_data.loc[raw_data['is_primary_attribution'] != 'False']
+    raw_data = raw_data.loc[raw_data['partner'].isin(['madit', ''])]
+    raw_data = raw_data.loc[raw_data['attributed_touch_type'] != 'impression']
 
     raw_data[['attributed_touch_time', 'install_time', 'event_time']] = raw_data[['attributed_touch_time', 'install_time', 'event_time']].apply(lambda x: pd.to_datetime(x))
-    raw_data = raw_data.sort_values(['install_time','event_time'])
+    raw_data = raw_data.sort_values(['install_time', 'event_time'])
     raw_data = raw_data.drop_duplicates(['appsflyer_id', 'event_name', 'event_time'])
 
     raw_data['date'] = raw_data['event_time'].dt.date
-    raw_data['platform'] = raw_data['platform'].apply(lambda x : 'aos' if x == 'android' else 'ios')
+    raw_data['platform'] = raw_data['platform'].apply(lambda x: 'aos' if x == 'android' else 'ios')
 
     raw_data.loc[raw_data['attributed_touch_time'].isnull(), 'attributed_touch_time'] = raw_data['install_time']
 
@@ -60,22 +61,23 @@ def apps_log_data_prep():
     raw_data = raw_data.loc[(raw_data['CTIT'] < datetime.timedelta(ref.apps_info.ctit))&
                             (raw_data['ITET'] < datetime.timedelta(ref.apps_info.itet))]
 
-    for col in ref.columns.apps_pivot_columns :
+    for col in ref.columns.apps_pivot_columns:
         raw_data[col] = raw_data[col].fillna('')
 
     raw_data['cnt'] = 1
     raw_data['event_revenue'] = pd.to_numeric(raw_data['event_revenue'])
 
-    raw_data_pivot = raw_data.pivot_table(index = ref.columns.apps_pivot_columns, columns = 'event_name', values='cnt',aggfunc = 'sum')
-    revenue_pivot = raw_data.loc[raw_data['event_name']=='af_purchase'].pivot_table(index = ref.columns.apps_pivot_columns, columns = 'event_name', values = 'event_revenue', aggfunc='sum')
-    revenue_pivot = revenue_pivot.rename(columns = {'af_purchase' : 'Revenue_app'})
+    raw_data_pivot = raw_data.pivot_table(index=ref.columns.apps_pivot_columns, columns='event_name', values='cnt',aggfunc='sum')
+    revenue_pivot = raw_data.loc[raw_data['event_name'] == 'af_purchase'].pivot_table(index=ref.columns.apps_pivot_columns, columns='event_name', values='event_revenue', aggfunc='sum')
+    revenue_pivot = revenue_pivot.rename(columns={'af_purchase': 'Revenue_app'})
 
-    total_pivot = pd.concat([raw_data_pivot, revenue_pivot], sort = False)
+    total_pivot = pd.concat([raw_data_pivot, revenue_pivot], sort=False)
     total_pivot = total_pivot.fillna(0)
     total_pivot['Open'] = total_pivot['install'] + total_pivot['re-engagement'] + total_pivot['re-attribution']
-    total_pivot = total_pivot.rename(columns = ref.apps_info.target_event_dict).reset_index()
+    total_pivot = total_pivot.rename(columns=ref.apps_info.target_event_dict).reset_index()
     total_pivot = total_pivot[ref.columns.apps_result_columns]
     return total_pivot
+
 
 def get_apps_agg_data():
     apps_dir = dr.report_dir + '/appsflyer_aggregated_prism'
@@ -84,28 +86,28 @@ def get_apps_agg_data():
     to_date = ref.report_date.target_date
 
     df_list = []
-    while date <= to_date :
+    while date <= to_date:
         date_name = date.strftime('%Y%m%d')
         d7_date = (date - datetime.timedelta(6)).strftime('%Y-%m-%d')
         file_name = f'appsflyer_aggregated_report_{date_name}.csv'
         df = pd.read_csv(apps_dir + '/' + file_name)
         print(file_name + ' Read 완료')
 
-        if date != to_date :
-            df = df.loc[df['date']==d7_date]
+        if date != to_date:
+            df = df.loc[df['date'] == d7_date]
         else :
             pass
 
         df_list.append(df)
         date = date + datetime.timedelta(1)
 
-    total_df = pd.concat(df_list, sort = False, ignore_index= True)
+    total_df = pd.concat(df_list, sort=False, ignore_index=True)
     total_df = total_df.loc[pd.to_datetime(total_df['date']).dt.month == to_date.month]
     total_df = total_df.loc[total_df["media_source_pid"].isin(ref.apps_info.agg_data_media_filter)]
     total_df.loc[total_df['conversion_type'] == 're-engagement', 're-engagement'] = total_df['conversions']
     total_df.loc[total_df['conversion_type'] == 're-attribution', 're-attribution'] = total_df['conversions']
 
-    total_df = total_df.rename(columns = ref.apps_info.apps_aggregated_rename_dict)
+    total_df = total_df.rename(columns=ref.apps_info.apps_aggregated_rename_dict)
     total_df[['Installs', 're-open', 're-install']] = total_df[['Installs', 're-open', 're-install']].fillna(0).astype('int')
     total_df['Open'] = total_df['Installs'] + total_df['re-open'] + total_df['re-install']
     return total_df
@@ -122,6 +124,7 @@ def get_ga_data(report_type):
 
     while date <= to_date:
         date_name = date.strftime('%Y%m%d')
+        file_name = ''
         if report_type == 'trg':
             file_name = f'166897841_d7_report_{date_name}.csv'
         elif report_type == 'non_trg' :
@@ -137,21 +140,21 @@ def get_ga_data(report_type):
 
     raw_data = pd.concat(df_list, sort=False, ignore_index=True)
 
-    for col in ref.columns.ga_dimension_cols :
-        if col not in raw_data.columns :
+    for col in ref.columns.ga_dimension_cols:
+        if col not in raw_data.columns:
             raw_data[col] = ''
         else :
             raw_data[col] = raw_data[col].fillna('')
 
-    for col in ref.columns.ga_metric_cols :
-        if col not in raw_data.columns :
+    for col in ref.columns.ga_metric_cols:
+        if col not in raw_data.columns:
             raw_data[col] = 0
         else :
             raw_data[col] = raw_data[col].fillna(0)
 
     raw_data = raw_data.loc[raw_data['dataSource'] == 'web']
     raw_data['check_sourcemedium'] = raw_data['sourceMedium'].apply(lambda x: ('organic' not in x) & ('referral' not in x))
-    raw_data = raw_data.loc[raw_data['check_sourcemedium'] == True]
+    raw_data = raw_data.loc[raw_data['check_sourcemedium'] is True]
     raw_data = raw_data.drop(columns='check_sourcemedium')
     raw_data = raw_data[ref.columns.ga_dimension_cols + ref.columns.ga_metric_cols]
     return raw_data
@@ -159,7 +162,8 @@ def get_ga_data(report_type):
 
 def ga_prep():
     except_dimension50_cols = ref.columns.ga_dimension_cols
-    except_dimension50_cols = list(set(except_dimension50_cols) - set(['dimension50']))
+    col = ['dimension50']
+    except_dimension50_cols = list(set(except_dimension50_cols) - set(col))
 
     trg_df = get_ga_data('trg')
     mapping_key = list(trg_df[except_dimension50_cols].values)
@@ -174,22 +178,22 @@ def ga_prep():
     mapping_data = non_trg_df.loc[non_trg_df.index.isin(mapping_key)].reset_index()
 
     trg_df_reverse = trg_df.copy()
-    trg_df_reverse[ref.columns.ga_metric_cols] = trg_df[ref.columns.ga_metric_cols].apply(lambda x : x * -1)
+    trg_df_reverse[ref.columns.ga_metric_cols] = trg_df[ref.columns.ga_metric_cols].apply(lambda x: x * -1)
     trg_df_reverse['dimension50'] = ''
 
     mapping_data = pd.concat([mapping_data, trg_df_reverse])
-    mapping_data = mapping_data.pivot_table(index =except_dimension50_cols, values = ref.columns.ga_metric_cols, aggfunc = 'sum').reset_index()
+    mapping_data = mapping_data.pivot_table(index=except_dimension50_cols, values = ref.columns.ga_metric_cols, aggfunc='sum').reset_index()
 
-    total_df = pd.concat([non_mapping_data,mapping_data, trg_df])
+    total_df = pd.concat([non_mapping_data, mapping_data, trg_df])
     total_df['deviceCategory'] = total_df['deviceCategory'].apply(lambda x: ref.ga_info.ga_device_dict.get(x))
 
-    for col in ref.columns.ga_dimension_cols :
-        if col in total_df.columns :
+    for col in ref.columns.ga_dimension_cols:
+        if col in total_df.columns:
             total_df[col] = total_df[col].fillna('')
-        else :
+        else:
             total_df[col] = ''
 
-    total_df_pivot = total_df.pivot_table(index = ref.columns.ga_dimension_cols, values = ref.columns.ga_metric_cols, aggfunc = 'sum').reset_index()
+    total_df_pivot = total_df.pivot_table(index=ref.columns.ga_dimension_cols, values=ref.columns.ga_metric_cols, aggfunc='sum').reset_index()
     total_df_pivot = total_df_pivot.loc[total_df_pivot[ref.columns.ga_metric_cols].values.sum(axis=1) > 0, :]
     total_df_pivot = total_df_pivot.rename(columns=ref.ga_info.ga_rename_dict)[ref.ga_info.ga_rename_dict.values()]
     return total_df_pivot
