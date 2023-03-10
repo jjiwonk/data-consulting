@@ -186,6 +186,9 @@ class SpcDownload(Worker):
             self.logger.info(e)
             selenium_error_logging(driver, download_dir, Key.screenshot_file_name, Key.page_source_file_name)
             raise e
+        finally:
+            driver.quit()
+            self.logger.info("크롬 브라우저 종료")
 
     def file_concat(self):
         files = os.listdir(Key.tmp_path)

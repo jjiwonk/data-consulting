@@ -277,12 +277,12 @@ class KeywordMonitoring(Worker):
                         self.result_df = pd.concat([self.result_df, temp], axis=0)
 
                     except Exception as e:
+                        self.driver.quit()
                         error_msg = f"{device.device_type} - {keyword}: 오류 발생. error_msg: {e}"
                         self.logger.warning(error_msg)
                         result_msg.append(error_msg)
                     # 키워드마다 대기 시간을 줌.
                     time.sleep(self.searching_waiting_time)
-                self.driver.quit()
                 self.logger.info(f"{device.device_type} 키워드 검색 완료.")
             self.logger.info(f"{media_info} 모니터링 완료")
             # 당월 폴더 없는 경우 파티션 신규 생성
@@ -319,6 +319,10 @@ class KeywordMonitoring(Worker):
         except Exception as e:
             self.logger.error(e)
             raise e
+        finally:
+            self.driver.quit()
+            self.logger.info("크롬 브라우저 종료")
+
         if not info.get("send_result_msg", True):
             result_msg = ['Keyword Monitoring Job complete.']
 

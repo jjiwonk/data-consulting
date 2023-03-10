@@ -92,9 +92,8 @@ class KakaoGiftRankingCollect(Worker):
 
         msg_header = f"*{brand_name} 카카오선물하기 랭킹 모니터링*\n{schedule_date}\n\n"
         msg_body = ""
+        driver = get_chromedriver(headless=Key.USE_HEADLESS)
         try:
-            driver = get_chromedriver(headless=Key.USE_HEADLESS)
-
             driver.get(Key.URL)
             driver.implicitly_wait(5)
             self.logger.info("카카오선물하기 웹사이트 접속 완료")
