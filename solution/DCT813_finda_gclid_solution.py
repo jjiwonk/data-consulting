@@ -1,190 +1,134 @@
 import pandas as pd
 import os
-from datetime import date , timedelta
+from utils.path_util import get_tmp_path
+from utils import s3
+from utils import const
+
 import datetime
-import utils.dropbox_util as dropbox
-from setting import directory as dr
+from utils.google_ads import get_google_client
+from utils import athena
+from worker.abstract_worker import Worker
 
+class clickconversion_upload(Worker):
+    # 아데나에서 쿼리를 가져온 후 그 쿼리를 사용하여 데이터 프레임 가져오기
+    def athena_download(self, owner_id):
+        tmp_path = get_tmp_path() + f"/{owner_id}/"
 
-# 기존 경로 + 어제 날짜 해서 파일 불러오기
-yesterday = date.today() - timedelta(1)
-yesterday = yesterday.strftime('%Y%m%d')
+        os.makedirs(tmp_path, exist_ok=True)
 
-file_dir = f'C:/Users/MADUP/Dropbox (주식회사매드업)/광고사업부/4. 광고주/핀다_7팀/2. 리포트/자동화리포트/appsflyer_prism/appsflyer_daily_report_{yesterday}.csv'
-use_col = ['attributed_touch_time', 'install_time', 'event_time', 'event_name','keywords', 'media_source','appsflyer_id','platform','sub_param_1','sub_param_2','sub_param_3']
+        s3_path = f'query/{owner_id}/gclid_query.txt'
+        f_path = s3.download_file(s3_path=s3_path, s3_bucket=const.DEFAULT_S3_PRIVATE_BUCKET, local_path=tmp_path)
 
-df = pd.read_csv(file_dir,usecols = use_col)
+        f = open(f_path, 'r', encoding='utf-8-sig')
+        query = str(f.read())
 
-def common_df(df):
-    df['event_time'] = pd.to_datetime(df['event_time'])
-    df['install_time'] = pd.to_datetime(df['install_time'])
-    df['attributed_touch_time'] = pd.to_datetime(df['attributed_touch_time'])
-    df = df.sort_values(by=['event_time'], ascending=True)
+        del f
+        df = athena.get_table_data_from_athena('dmp_athena', query)
+        os.remove(f_path)
+        return df
 
-    install_df = df.loc[df['event_name'].str.contains('install')]
-    event_df = df.loc[(df['event_name'].str.contains('loan_contract_completed'))|(df['event_name'].str.contains('Viewed LA Home'))|(df['event_name'].str.contains('Clicked Signup'))]
+    def data_prep(self ,df):
 
-    install_df = install_df.loc[(install_df['install_time'] - install_df['attributed_touch_time']) < datetime.timedelta(days=1)]
-    event_df = event_df.loc[(event_df['event_time'] - event_df['attributed_touch_time']) < datetime.timedelta(days=1)]
+        # 기여기간 가공
+        df = df.sort_values(by=['event_time'], ascending=True)
 
-    df = pd.concat([install_df,event_df])
+        df['event_time'] = pd.to_datetime(df['event_time'])
+        df['install_time'] = pd.to_datetime(df['install_time'])
+        df['attributed_touch_time'] = pd.to_datetime(df['attributed_touch_time'])
 
-    df = df.loc[df['media_source'] == 'googlesamo']
-    df['Conversion Name'] = '-'
+        df['CTET'] = df['event_time'] - df['attributed_touch_time']
+        df['CTIT'] = df['install_time'] - df['attributed_touch_time']
 
-    df.loc[(df['event_name'].str.contains('loan_contract_completed'))&(df['platform'] == 'android'),'Conversion Name'] = '대출실행_aos_gclid_madup_230220'
-    df.loc[(df['event_name'].str.contains('loan_contract_completed'))&(df['platform'] == 'ios'), 'Conversion Name'] = '대출실행_ios_gclid_madup_230220'
+        df['conversion_action_id'] = '-'
 
-    df.loc[(df['event_name'].str.contains('Viewed LA Home'))&(df['platform'] == 'android'),'Conversion Name'] = '한도조회_aos_gclid_madup_230220'
-    df.loc[(df['event_name'].str.contains('Viewed LA Home'))&(df['platform'] == 'ios'), 'Conversion Name'] = '한도조회_ios_gclid_madup_230220'
+        def conversion_id(df, event_name, platform, conversion_id):
+            if event_name == 'install':
+                df.loc[(df['event_name'].str.contains(event_name)) & (df['platform'] == platform) & (
+                            df['CTIT'] < datetime.timedelta(days=1)), 'conversion_action_id'] = conversion_id
+            else:
+                df.loc[(df['event_name'].str.contains(event_name)) & (df['platform'] == platform) & (
+                            df['CTET'] < datetime.timedelta(days=1)), 'conversion_action_id'] = conversion_id
+            return df
 
-    df.loc[(df['event_name'].str.contains('Clicked Signup'))&(df['platform'] == 'android'),'Conversion Name'] = '회원가입_aos_gclid_madup_230220'
-    df.loc[(df['event_name'].str.contains('Clicked Signup'))&(df['platform'] == 'ios'), 'Conversion Name'] = '회원가입_ios_gclid_madup_230220'
+        # conversion_id 값 추가 될때 별도 쿼리로 id 확인 필요
+        df = conversion_id(df, 'loan_contract_completed', 'android', '6469848862')
+        df = conversion_id(df, 'loan_contract_completed', 'ios', '6469884462')
+        df = conversion_id(df, 'Viewed LA Home', 'android', '6469870061')
+        df = conversion_id(df, 'Viewed LA Home', 'ios', '6469880541')
+        df = conversion_id(df, 'Clicked Signup', 'android', '6469868867')
+        df = conversion_id(df, 'Clicked Signup', 'ios', '6469873439')
+        df = conversion_id(df, 'install', 'android', '6469097954')
+        df = conversion_id(df, 'install', 'android', '6469872884')
 
-    df.loc[(df['event_name'].str.contains('install'))&(df['platform'] == 'android'),'Conversion Name'] = '인스톨_aos_gclid_madup_230220'
-    df.loc[(df['event_name'].str.contains('install'))&(df['platform'] == 'ios'), 'Conversion Name'] = '인스톨_ios_gclid_madup_230220'
+        df = df.loc[df['conversion_action_id'] != '-']
 
-    limit_df = df.loc[df['event_name'].str.contains('Viewed LA Home')]
-    limit_df = limit_df.drop_duplicates(['appsflyer_id'], keep = 'first')
+        # 한도 조회 유저 중복제거
+        limit_df = df.loc[df['event_name'].str.contains('Viewed LA Home')]
+        limit_df = limit_df.drop_duplicates(['appsflyer_id'], keep='first')
+        df = df.loc[~df['event_name'].str.contains('Viewed LA Home')]
+        df = pd.concat([df, limit_df])
 
-    df = df.loc[~df['event_name'].str.contains('Viewed LA Home')]
+        # API 양식에 맞게 가공
+        prep_df = df[['sub_param_1', 'sub_param_2', 'sub_param_3', 'conversion_action_id',
+                 'attributed_touch_time']].drop_duplicates()
+        prep_df['attributed_touch_time'] = prep_df['attributed_touch_time'].apply(lambda x: x.strftime('%Y-%m-%d %H:%M:%S+00:00'))
+        prep_df = prep_df.rename(columns={'sub_param_1': 'gclid', 'sub_param_2': 'gbraid', 'sub_param_3': 'wbraid',
+                                'attributed_touch_time': 'conversion_date_time'})
+        prep_df.index = range(len(prep_df))
 
-    google_df = pd.concat([df,limit_df])
+        return prep_df
 
-    google_df = google_df[['sub_param_1','sub_param_2','sub_param_3', 'Conversion Name', 'attributed_touch_time']].fillna('-')
-    google_df = google_df.drop_duplicates()
+    def send_conversion(self ,prep_df ,owner_id ,customer_id):
 
-    google_df = google_df.rename(columns = {'sub_param_1' : 'Google Click ID','attributed_touch_time' :'Conversion Time','sub_param_2' :'gbraid','sub_param_3' :'wbraid'})
+        key = prep_df.to_dict('index')
+        client = get_google_client(owner_id)
 
-    return google_df
+        request = client.get_type("UploadClickConversionsRequest")
+        request.customer_id = customer_id
 
-df = common_df(df)
+        for i in range(len(df)):
+            conversion_action_id = key[i].get('conversion_action_id')
+            gclid = key[i].get('gclid')
+            gbraid = key[i].get('gbraid')
+            wbraid = key[i].get('wbraid')
+            conversion_date_time = key[i].get('conversion_date_time')
 
-# 캠페인 가져오기
+            click_conversion = client.get_type("ClickConversion")
+            conversion_upload_service = client.get_service("ConversionUploadService")
+            conversion_action_service = client.get_service("ConversionActionService")
+            click_conversion.conversion_action = conversion_action_service.conversion_action_path(
+                customer_id, conversion_action_id
+            )
 
-df.to_csv(dr.download_dir +'/샘플.csv',encoding = 'utf-8-sig')
+            # Sets the single specified ID field.
+            if gclid != '':
+                click_conversion.gclid = gclid
+            elif gbraid != '':
+                click_conversion.gbraid = gbraid
+            else:
+                click_conversion.wbraid = wbraid
 
-import os
-import argparse
-import sys
-import datetime
+            click_conversion.conversion_date_time = conversion_date_time
 
-from google.ads.googleads.client import GoogleAdsClient
-from google.ads.googleads.errors import GoogleAdsException
+            request.conversions.append(click_conversion)
 
-
-
-get_yaml = {"client_id": "300152565038-2aqabln45206jk14iic019kk2amh7r0q.apps.googleusercontent.com",
-            "client_secret": "dnHNMa0MrrFvQoKZG12FqYFb",
-            "developer_token": "2DKmBuEfKim2PzBfRv5qBw",
-            "login_customer_id": "4983132762",
-            "refresh_token": "1/4HcbodjHTDka6xj6q3Mk_0Ftf6w-n756I4mrJi7I8ND6n_ARSJd2RIsMmoE_o8uh",
-            "madup_account": "madup_madit@madup.com",
-            "use_proto_plus": "True"}
-
-for key in get_yaml.keys():
-    env_key = "GOOGLE_ADS_" + key.upper()
-    os.environ[env_key] = get_yaml[key]
-
-client = GoogleAdsClient.load_from_env()
-
-customer_id = '4983132762'
-conversion_action_id = '10890838645'
-gclid = 'Cj0KCQiApKagBhC1ARIsAFc7Mc7QJGl18RKW9kMVxqHO1mWT0h-v_u8yCL--7_tldIwXkaiyVSYVP3kaAkOUEALw_wcB'
-conversion_date_time = '2023-03-09 19:18:07-05:00'
-conversion_value = 1
-conversion_custom_variable_id = 2600119784864
-conversion_custom_variable_value = '한도조회_aos_gclid_madup_230220'
-
-'frame: pages [pagers.py:66]  id:2600119784864'
-
-
-# [START upload_offline_conversion]
-def main(
-    client,
-    customer_id,
-    conversion_action_id,
-    gclid,
-    conversion_date_time,
-    conversion_value,
-    conversion_custom_variable_id,
-    conversion_custom_variable_value,
-    gbraid,
-    wbraid,
-):
-    """Creates a click conversion with a default currency of USD.
-    Args:
-        client: An initialized GoogleAdsClient instance.
-        customer_id: The client customer ID string.
-        conversion_action_id: The ID of the conversion action to upload to.
-        gclid: The Google Click Identifier ID. If set, the wbraid and gbraid
-            parameters must be None.
-        conversion_date_time: The the date and time of the conversion (should be
-            after the click time). The format is 'yyyy-mm-dd hh:mm:ss+|-hh:mm',
-            e.g. '2021-01-01 12:32:45-08:00'.
-        conversion_value: The conversion value in the desired currency.
-        conversion_custom_variable_id: The ID of the conversion custom
-            variable to associate with the upload.
-        conversion_custom_variable_value: The str value of the conversion custom
-            variable to associate with the upload.
-        gbraid: The GBRAID for the iOS app conversion. If set, the gclid and
-            wbraid parameters must be None.
-        wbraid: The WBRAID for the iOS app conversion. If set, the gclid and
-            gbraid parameters must be None.
-    """
-    click_conversion = client.get_type("ClickConversion")
-    conversion_upload_service = client.get_service("ConversionUploadService")
-    conversion_action_service = client.get_service("ConversionActionService")
-    click_conversion.conversion_action = conversion_action_service.conversion_action_path(
-        customer_id, conversion_action_id
-    )
-
-    # Sets the single specified ID field.
-    if gclid:
-        click_conversion.gclid = gclid
-    elif gbraid:
-        click_conversion.gbraid = gbraid
-    else:
-        click_conversion.wbraid = wbraid
-
-    click_conversion.conversion_value = float(conversion_value)
-    click_conversion.conversion_date_time = conversion_date_time
-    click_conversion.currency_code = "USD"
-
-    if conversion_custom_variable_id and conversion_custom_variable_value:
-        conversion_custom_variable = client.get_type("CustomVariable")
-        conversion_custom_variable.conversion_custom_variable = conversion_upload_service.conversion_custom_variable_path(
-            customer_id, conversion_custom_variable_id
+        request.partial_failure = True
+        conversion_upload_response = conversion_upload_service.upload_click_conversions(
+            request=request,
         )
-        conversion_custom_variable.value = conversion_custom_variable_value
-        click_conversion.custom_variables.append(conversion_custom_variable)
 
-    request = client.get_type("UploadClickConversionsRequest")
-    request.customer_id = customer_id
-    request.conversions.append(click_conversion)
-    request.partial_failure = True
-    conversion_upload_response = conversion_upload_service.upload_click_conversions(
-        request=request,
-    )
-    uploaded_click_conversion = conversion_upload_response.results[0]
-    print(
-        f"Uploaded conversion that occurred at "
-        f'"{uploaded_click_conversion.conversion_date_time}" from '
-        f'Google Click ID "{uploaded_click_conversion.gclid}" '
-        f'to "{uploaded_click_conversion.conversion_action}"'
-    )
-    # [END upload_offline_conversion]
+        return print(f'Google Click ID {len(list(conversion_upload_response.results))}개 업로드 완료')
 
-ga_service = client.get_service("GoogleAdsService")
+        # [END upload_offline_conversion]
 
-query = """
-        SELECT conversion_custom_variable.id FROM conversion_custom_variable"""
+    def do_work(self ,info:dict, attr:dict):
 
-    search_request = client.get_type("SearchGoogleAdsRequest")
-    search_request.customer_id = customer_id
-    search_request.query = query
-    page_size = 5
-    search_request.page_size = page_size
+        owner_id = attr['owner_id']
+        customer_id = info['customer_id']
 
+        df = self.athena_download(owner_id)
+        prep_df = self.data_prep(df)
+        self.send_conversion(prep_df,owner_id,customer_id)
 
-    results = ga_service.search(request=search_request)
+        return "Click Conversion Upload Success"
+
