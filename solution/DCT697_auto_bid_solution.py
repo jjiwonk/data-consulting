@@ -180,6 +180,10 @@ class AutoBidSolution(KeywordMonitoring):
             else:
                 # 현재 순위가 목표 순위와 같은 경우
                 bid_amt = cur_bid
+                if bid_amt > max_bid:
+                    bid_amt = max_bid
+                elif bid_amt < min_bid:
+                    bid_amt = min_bid
             self.bid_adjust_df.loc[index, 'next_bid'] = bid_amt
         result_msg = [f"{owner_id} {channel} 입찰가 조정 결과"]
         result_msg = result_msg + max_bid_msg + ['\n'] + min_bid_msg
