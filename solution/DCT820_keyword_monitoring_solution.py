@@ -73,11 +73,11 @@ class Key:
     S3_BUCKET = DEFAULT_S3_PRIVATE_BUCKET
 
 
-def is_ad(tag_element, ad_names):
+def is_ad(tag_element, ad_name):
     # 해당 광고가 입력 받은 광고의 광고주명, URL인지 확인하여 참 거짓 반환.
     tag_text = tag_element.text.split("\n")
     for tag_t in tag_text:
-        if any(ad_name.lower() in tag_t.lower() for ad_name in ad_names):
+        if ad_name.lower() in tag_t.lower():
             return True
     return False
 
@@ -129,23 +129,25 @@ class KeywordMonitoring(Worker):
             'weekday': Key.WEEK_DAYS[self.now_time.weekday()],
             'date': "",
             'ad_keyword': "",
-            'ad_rank': "",
-            'screenshot_url': ""
+            'url_dict': "",
         }
         self.s3_path = ''
         self.s3_folder = 'keyword_monitoring'
         self.tmp_path = ''
-        self.result_df = pd.DataFrame(columns=['collected_at', 'pc_mobile_type', 'weekday', 'ad_keyword', 'ad_rank', 'date'])
-        self.total_df = pd.DataFrame(columns=['collected_at', 'pc_mobile_type', 'weekday', 'ad_keyword', 'ad_rank', 'date'])
+        self.result_msg = []
+        self.result_df = pd.DataFrame(columns=['collected_at', 'pc_mobile_type', 'weekday', 'ad_keyword', 'ad_rank',
+                                               'date', 'screenshot_url', 'ad_name', 'url_dict'])
+        self.total_df = pd.DataFrame(columns=['collected_at', 'pc_mobile_type', 'weekday', 'ad_keyword', 'ad_rank',
+                                              'date', 'screenshot_url','ad_name', 'url_dict'])
 
     def get_keyword_df(self, file_name):
         path = f"/광고사업부/데이터컨설팅/데이터 솔루션/키워드 모니터링 솔루션/{file_name}"
         dst = self.tmp_path + '/' + file_name
         download(path, dst)
-        if file_name.split('.')[-1] == 'xlsx':
-            df = pd.read_excel(dst, sheet_name=0, engine='openpyxl')
-        else:
+        if file_name.split('.')[-1] == 'csv':
             df = pd.read_csv(dst, encoding='utf-8-sig')
+        else:
+            df = pd.read_excel(dst, sheet_name=0, engine='openpyxl')
         os.remove(dst)
         return df
 
@@ -177,7 +179,7 @@ class KeywordMonitoring(Worker):
         os.remove(local_screenshot_path)
         return screenshot_url
 
-    def crawling_ads(self, device: Device, keyword: str, ad_names: list, time_stamp: datetime):
+    def crawling_ads(self, device: Device, keyword: str, ad_names: dict, time_stamp: datetime):
         # 최대 5번 크롤링을 시도함.
         crawling_exception = Exception()
         for i in range(Key.CRAWLING_RETRY_CNT):
@@ -187,7 +189,7 @@ class KeywordMonitoring(Worker):
                 date = str(time_stamp).replace('-', '').replace(' ', '').split(':')
                 date = date[0] + '시' + date[1] + '분' + date[2] + '초'
                 filename = f'/{keyword}_{date}.png'
-                screenshot_url = self.save_screenshot(filename)
+                # screenshot_url = self.save_screenshot(filename)
                 html_source = self.driver.page_source
                 soup = BeautifulSoup(html_source, 'html.parser')
                 # selector를 사용해 상품에 해당하는 부분을 선택함.
@@ -196,13 +198,36 @@ class KeywordMonitoring(Worker):
                     return
                 url_tag, url_class = device.ad_name_path
                 # 위의 상품에 해당하는 부분에서 url_tag와 url_class를 포함하는 건들(상품의 회사명에 해당하는 부분)을 모두 찾아 해당하는 광고주의 광고가 있는지 찾음.
-                for index, ad_element in enumerate(ads.find_all(url_tag, url_class)[:15]):
+                rows = []
+                ads_list = ads.find_all(url_tag, url_class)[:device.ads_in_page]
+                url_dict = dict()
+                for index, ad_element in enumerate(ads_list):
+                    tag_text = ad_element.text.split("\n")
+                    for text in tag_text:
+                        if 'http' in text:
+                            url_dict[index + 1] = text
+                self.row['url_dict'] = str(url_dict)
+                for ad_name in ad_names.keys():
                     # ad_element가 광고주의 광고라면 row에 등수를 기록함.
-                    if ad_element and is_ad(ad_element, ad_names):
-                        self.row['ad_rank'] = str(index + 1)
-                        self.row['screenshot_url'] = screenshot_url
-                        break
-                return
+                    temp_row = dict()
+                    for index, ad_element in enumerate(ads_list):
+                        if ad_element and is_ad(ad_element, ad_name):
+                            temp_row['ad_rank'] = str(index + 1)
+                            # temp_row['screenshot_url'] = screenshot_url
+                            temp_row['ad_name'] = ad_names[ad_name]
+                            self.result_msg.append(
+                                f"{device.device_type} - {keyword}: " f"{temp_row['ad_rank']}"
+                            )
+                            rows.append(temp_row)
+                    if len(temp_row) == 0:
+                        temp_row['ad_rank'] = '-'
+                        # temp_row['screenshot_url'] = screenshot_url
+                        temp_row['ad_name'] = ad_names[ad_name]
+                        self.result_msg.append(
+                            f"{device.device_type} - {keyword}: " f"{temp_row['ad_rank']}"
+                        )
+                        rows.append(temp_row)
+                return rows
             except Exception as e:
                 self.logger.warning(f"크롤링 {i + 1}/{Key.CRAWLING_RETRY_CNT}번 시도 중 오류 발생 - {e}")
                 crawling_exception = e
@@ -220,7 +245,7 @@ class KeywordMonitoring(Worker):
         self.s3_path = self.s3_folder + "/" + f"owner_id={owner_id}/channel={channel}/year={self.year}/month={self.month}" \
                                               f"/day={self.day}/hour={self.hour}/minute={self.minute}/keyword_monitoring.csv"
         file_name = info.get("file_name")
-        ad_names = literal_eval(info.get("ad_names", "[]"))
+        ad_names = literal_eval(info.get("ad_names", "{}"))
         media_info = info.get("media_info", "")
         search_infos = self.get_search_infos(media_info)
 
@@ -236,7 +261,7 @@ class KeywordMonitoring(Worker):
         )
         devices = [pc, mo]
 
-        result_msg = [f"{media_info} 키워드 검색 순위 모니터링 결과"]
+        self.result_msg = [f"{media_info} 키워드 검색 순위 모니터링 결과"]
         try:
             keywords_df = self.get_keyword_df(file_name)
             column_names = keywords_df.columns.values
@@ -255,32 +280,30 @@ class KeywordMonitoring(Worker):
                 num = random.randrange(0, 5)
                 if device.device_type == 'MO':
                     user_agent = Key.USER_AGENTS[num]['MO']
-                    self.driver = get_chromedriver(headless=Key.USE_HEADLESS, mobile=True, user_agent=user_agent)
+                    mobile = True
                 else:
                     user_agent = Key.USER_AGENTS[num]['PC']
-                    self.driver = get_chromedriver(headless=Key.USE_HEADLESS, mobile=False, user_agent=user_agent)
+                    mobile = False
                 # 키워드 별로 검색 후에 순위를 확인함.
+                self.driver = get_chromedriver(headless=Key.USE_HEADLESS, mobile=mobile, user_agent=user_agent)
                 for keyword in device.keywords:
                     # 키워드 별로 랭킹 초기화. 랭킹이 없는 경우 "-"를 반환.
                     self.row['pc_mobile_type'] = device.device_type
-                    self.row['ad_rank'] = "-"
                     self.row['ad_keyword'] = keyword
                     try:
                         time_stamp = datetime.now()
-                        self.crawling_ads(device, keyword, ad_names, time_stamp)
+                        rows = self.crawling_ads(device, keyword, ad_names, time_stamp)
                         self.row['date'] = f"{time_stamp.strftime('%Y-%m-%d %H:%M:%S')}"
-                        result_msg.append(
-                            f"{device.device_type} - {keyword}: " f"{self.row['ad_rank']}"
-                        )
                         # 해당 키워드에 해당하는 등수를 찾은 후에, 결과 데이터프레임에 행 추가
-                        temp = pd.DataFrame([self.row])
+                        for row in rows:
+                            row.update(self.row)
+                        temp = pd.DataFrame(rows)
                         self.result_df = pd.concat([self.result_df, temp], axis=0)
-
                     except Exception as e:
-                        self.driver.quit()
                         error_msg = f"{device.device_type} - {keyword}: 오류 발생. error_msg: {e}"
                         self.logger.warning(error_msg)
-                        result_msg.append(error_msg)
+                        self.result_msg.append(error_msg)
+                        self.driver.refresh()
                     # 키워드마다 대기 시간을 줌.
                     time.sleep(self.searching_waiting_time)
                 self.logger.info(f"{device.device_type} 키워드 검색 완료.")
@@ -314,8 +337,8 @@ class KeywordMonitoring(Worker):
                 result_path = self.tmp_path + f'/day={self.day}.csv'
                 self.total_df.to_csv(result_path, encoding='utf-8-sig', index=False)
                 # s3 저장
-                upload_file(local_path=result_path, s3_path=self.s3_path, s3_bucket=DEFAULT_S3_PRIVATE_BUCKET)
-                os.remove(result_path)
+                # upload_file(local_path=result_path, s3_path=self.s3_path, s3_bucket=DEFAULT_S3_PRIVATE_BUCKET)
+                # os.remove(result_path)
         except Exception as e:
             self.logger.error(e)
             raise e
@@ -324,11 +347,11 @@ class KeywordMonitoring(Worker):
             self.logger.info("크롬 브라우저 종료")
 
         if not info.get("send_result_msg", True):
-            result_msg = ['Keyword Monitoring Job complete.']
+            self.result_msg = ['Keyword Monitoring Job complete.']
 
         return {
             "result_code": ResultCode.SUCCESS,
-            "msg": "\n".join(result_msg),
+            "msg": "\n".join(self.result_msg),
             "result_df": self.total_df
         }
 
