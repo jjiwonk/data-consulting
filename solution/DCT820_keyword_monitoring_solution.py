@@ -189,7 +189,7 @@ class KeywordMonitoring(Worker):
                 date = str(time_stamp).replace('-', '').replace(' ', '').split(':')
                 date = date[0] + '시' + date[1] + '분' + date[2] + '초'
                 filename = f'/{keyword}_{date}.png'
-                # screenshot_url = self.save_screenshot(filename)
+                screenshot_url = self.save_screenshot(filename)
                 html_source = self.driver.page_source
                 soup = BeautifulSoup(html_source, 'html.parser')
                 # selector를 사용해 상품에 해당하는 부분을 선택함.
@@ -213,7 +213,7 @@ class KeywordMonitoring(Worker):
                     for index, ad_element in enumerate(ads_list):
                         if ad_element and is_ad(ad_element, ad_name):
                             temp_row['ad_rank'] = str(index + 1)
-                            # temp_row['screenshot_url'] = screenshot_url
+                            temp_row['screenshot_url'] = screenshot_url
                             temp_row['ad_name'] = ad_names[ad_name]
                             self.result_msg.append(
                                 f"{device.device_type} - {keyword}: " f"{temp_row['ad_rank']}"
@@ -221,7 +221,7 @@ class KeywordMonitoring(Worker):
                             rows.append(temp_row)
                     if len(temp_row) == 0:
                         temp_row['ad_rank'] = '-'
-                        # temp_row['screenshot_url'] = screenshot_url
+                        temp_row['screenshot_url'] = screenshot_url
                         temp_row['ad_name'] = ad_names[ad_name]
                         self.result_msg.append(
                             f"{device.device_type} - {keyword}: " f"{temp_row['ad_rank']}"
@@ -337,8 +337,8 @@ class KeywordMonitoring(Worker):
                 result_path = self.tmp_path + f'/day={self.day}.csv'
                 self.total_df.to_csv(result_path, encoding='utf-8-sig', index=False)
                 # s3 저장
-                # upload_file(local_path=result_path, s3_path=self.s3_path, s3_bucket=DEFAULT_S3_PRIVATE_BUCKET)
-                # os.remove(result_path)
+                upload_file(local_path=result_path, s3_path=self.s3_path, s3_bucket=DEFAULT_S3_PRIVATE_BUCKET)
+                os.remove(result_path)
         except Exception as e:
             self.logger.error(e)
             raise e
