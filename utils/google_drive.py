@@ -5,7 +5,10 @@ import time
 import gspread
 import typing
 from gspread.utils import finditem
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaFileUpload
 from oauth2client.service_account import ServiceAccountCredentials
+
 import pandas as pd
 
 from utils.const import *
@@ -122,6 +125,34 @@ class GoogleDrive:
                    value_input_option=value_input_option,
                    response_value_render_option=response_value_render_option)
 
+class GoogleDriveClient:
+    def __init__(
+            self,
+            s3_credential_file_path: str = DEFAULT_SPREAD_SHEET_CREDENTIAL_FILE_PATH,
+            s3_bucket: str = DEFAULT_S3_PRIVATE_BUCKET,
+    ):
+        scope = ['https://www.googleapis.com/auth/drive.metadata',
+                  'https://www.googleapis.com/auth/drive.file',
+                  'https://www.googleapis.com/auth/drive']
+        self.__tmp_credential_file_path = get_tmp_path() + "/" + s3_credential_file_path.split("/")[-1]
+        credential_file = download_file(s3_path=s3_credential_file_path, s3_bucket=s3_bucket)
+        credentials = ServiceAccountCredentials.from_json_keyfile_name(credential_file, scope)
+        self.service = build('drive', 'v3', credentials=credentials)
+
+    def __del__(self):
+        if os.path.exists(self.__tmp_credential_file_path):
+            try:
+                os.remove(self.__tmp_credential_file_path)
+            except Exception as e:
+                pass
+
+    def file_upload(self, file_paths, name, folder_id):
+        gdrive = self.service
+        media = MediaFileUpload(file_paths, resumable=True)
+        file_metadata = {
+            "name": name,
+            "parents": [folder_id]}
+        return gdrive.files().create(body=file_metadata, media_body=media, fields='id').execute()
 
 def _convert_idx_to_char(idx: int):
     # first column(idx:1) has column label 'A'
