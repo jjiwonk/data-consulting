@@ -277,7 +277,6 @@ class KeywordMonitoring(Worker):
                         result_msg.append(error_msg)
                     # 키워드마다 대기 시간을 줌.
                     time.sleep(self.searching_waiting_time)
-                self.driver.quit()
                 self.logger.info(f"{device.device_type} 키워드 검색 완료.")
             self.logger.info(f"{media_info} 모니터링 완료")
 
