@@ -118,9 +118,9 @@ class KeywordMonitoring(Worker):
         self.month = self.now_time.strftime('%m')
         self.day = self.now_time.strftime('%d')
         self.hour = self.now_time.strftime('%H')
-        if self.now_time.minute % 5 != 0 & self.now_time.minute % 10 != 0 & self.now_time.minute % 10 < 5:
+        if self.now_time.minute % 5 != 0 and self.now_time.minute % 10 != 0 and self.now_time.minute % 10 < 5:
             self.minute = str(math.floor(self.now_time.minute / 10) * 10).zfill(2)
-        elif self.now_time.minute % 5 != 0 & self.now_time.minute % 10 != 0 & self.now_time.minute % 10 > 5:
+        elif self.now_time.minute % 5 != 0 and self.now_time.minute % 10 != 0 and self.now_time.minute % 10 > 5:
             self.minute = str(math.ceil(self.now_time.minute / 10) * 10).zfill(2)
         else:
             self.minute = self.now_time.strftime('%M')
