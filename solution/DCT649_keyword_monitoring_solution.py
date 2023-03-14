@@ -137,7 +137,7 @@ class KeywordMonitoring(Worker):
         self.s3_path = ''
         self.s3_folder = 'keyword_monitoring'
         self.tmp_path = ''
-        self.result_df = pd.DataFrame(columns=['collected_at', 'pc_mobile_type', 'weekday', 'ad_keyword', 'ad_rank', 'date'])
+        self.result_df = pd.DataFrame(columns=['collected_at', 'pc_mobile_type', 'weekday', 'ad_keyword', 'ad_rank', 'date', 'screenshot_url'])
 
     def get_search_infos(self, media_info) -> dict:
         if media_info == '네이버SA':
@@ -297,23 +297,3 @@ class KeywordMonitoring(Worker):
             "msg": "\n".join(result_msg),
             "result_df": self.result_df
         }
-
-#
-# if __name__ == "__main__":
-#     attr = dict(
-#         owner_id="finda", channel="네이버SA"
-#     )
-#     # info = s3.get_info_from_s3(attr['owner_id'], attr['product_id'])
-#     # worker.work(attr=attr, info=info)
-#
-#     info = dict(
-#         media_info='네이버SA',
-#         use_headless=True,
-#         spread_sheet_url="https://docs.google.com/spreadsheets/d/1Qk3f7FjPDeOK8hEwAp_PV6TYWjRzf6YclM_1YBqU0p0/edit#gid=0",
-#         keyword_sheet="키워드 설정",
-#         keyword_column="키워드",
-#         ad_names='["finda", "핀다"]',
-#     )
-#     worker = AutoBidSolution()
-#     df = worker.do_work(info, attr)
-
