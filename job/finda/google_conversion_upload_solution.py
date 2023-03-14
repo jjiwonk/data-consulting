@@ -59,7 +59,7 @@ if __name__ == "__main__":
         df = conversion_id(df, 'Clicked Signup', 'android', '6469868867')
         df = conversion_id(df, 'Clicked Signup', 'ios', '6469873439')
         df = conversion_id(df, 'install', 'android', '6469097954')
-        df = conversion_id(df, 'install', 'android', '6469872884')
+        df = conversion_id(df, 'install', 'ios', '6469872884')
 
         df = df.loc[df['conversion_action_id'] != '-']
 
