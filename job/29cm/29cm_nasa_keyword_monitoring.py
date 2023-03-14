@@ -9,10 +9,10 @@ if __name__ == "__main__":
         media_info='네이버SA',
         use_headless=True,
         keyword_column="키워드",
-        ad_names='["29cm", "29CM"]',
+        ad_names='{"29cm": "29CM"}',
         slack_channel='dcbot_29cm_네이버sa_키워드순위모니터링',
         error_slack_channel='dcbot_29cm_네이버sa_키워드순위모니터링',
-        file_name='29cm_keywords_list.xlsx',
+        file_name='29cm_keywords_list.csv',
         send_result_msg=False
     )
 
