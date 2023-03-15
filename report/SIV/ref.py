@@ -20,6 +20,7 @@ ds_df = spreadsheet.spread_sheet(doc, 'DS데이터', 0, 0 ).reset_index(drop=Tru
 ds_raw = ds_df[['날짜', '머징코드', '방문수(DS)', '방문자수(DS)', '구매방문수(DS)', '구매금액(DS)', '회원가입방문수(DS)']]
 sib_bsa = spreadsheet.spread_sheet(doc, '뷰티_BSA_RD', 0, 0 ).reset_index(drop=True)
 brand_index = spreadsheet.spread_sheet(doc, '브랜드매출_인덱싱', 0, 3).reset_index(drop=True)
+shoppingsa_index = spreadsheet.spread_sheet(doc, '쇼핑검색 그룹ID', 0, 0).reset_index(drop=True)
 
 # 브랜드 구매용 별도 인덱스
 ind = index_df[['머징코드','브랜드']].drop_duplicates(keep = 'last').rename(columns = {'브랜드':'브랜드_인덱스'})
