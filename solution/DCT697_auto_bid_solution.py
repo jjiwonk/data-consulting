@@ -182,8 +182,12 @@ class AutoBidSolution(KeywordMonitoring):
                 bid_amt = cur_bid
                 if bid_amt > max_bid:
                     bid_amt = max_bid
+                    data = dict(nccKeywordId=keyword_id, nccAdgroupId=group_id, bidAmt=bid_amt, useGroupBidAmt=use_gbamt)
+                    self.data_list.append(data)
                 elif bid_amt < min_bid:
                     bid_amt = min_bid
+                    data = dict(nccKeywordId=keyword_id, nccAdgroupId=group_id, bidAmt=bid_amt, useGroupBidAmt=use_gbamt)
+                    self.data_list.append(data)
             self.bid_adjust_df.loc[index, 'next_bid'] = bid_amt
         result_msg = [f"{owner_id} {channel} 입찰가 조정 결과"]
         result_msg = result_msg + max_bid_msg + ['\n'] + min_bid_msg
