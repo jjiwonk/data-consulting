@@ -153,8 +153,8 @@ def get_ga_data(report_type):
             raw_data[col] = raw_data[col].fillna(0)
 
     raw_data = raw_data.loc[raw_data['dataSource'] == 'web']
-    raw_data['check_sourcemedium'] = raw_data['sourceMedium'].apply(lambda x: ('organic' not in x) & ('referral' not in x))
-    raw_data = raw_data.loc[raw_data['check_sourcemedium'] is True]
+    raw_data['check_sourcemedium'] = raw_data['sourceMedium'].apply(lambda x: 1 if ('organic' not in x) & ('referral' not in x) is True else 0)
+    raw_data = raw_data.loc[raw_data['check_sourcemedium'] == 1]
     raw_data = raw_data.drop(columns='check_sourcemedium')
     raw_data = raw_data[ref.columns.ga_dimension_cols + ref.columns.ga_metric_cols]
     return raw_data
