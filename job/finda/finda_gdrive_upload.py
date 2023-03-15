@@ -53,7 +53,7 @@ if __name__ == "__main__":
         folder_id = '1tkaPtYAlRt0Zq3P4rQ6u4JCY7pN-7Xzz',
         file_name = 'finda_keyword_cost_data',
         file_format = 'csv',
-        success_slack_channel='dc_민정수_test',
+        slack_channel='dc_민정수_test',
         error_slack_channel='dc_민정수_test'
     )
 
