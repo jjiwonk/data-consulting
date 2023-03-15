@@ -190,3 +190,12 @@ def get_카카오BSA_SA():
     df['날짜'] = df['날짜'].dt.date
     df = df.loc[(ref.r_date.start_date <= df['날짜']) & (df['날짜'] <= ref.r_date.target_date)]
     return  df
+
+def get_네이버SS_SA():
+    df = media_prep('네이버SS')
+    df = pd.merge(df, ref.media_index, on='캠페인', how='left').fillna('no_index')
+    df = df.loc[df['지면/상품'].isin(['쇼핑검색_P', '쇼핑검색_M'])]
+    df = df.drop(columns=['지면/상품'])
+    df['소재'] = '-'
+    df['키워드'] = '-'
+    return df

@@ -129,12 +129,71 @@ def sa_merging(day):
 
     merge_df = merge_df.loc[merge_df['캠페인'] != '-']
 
+    return merge_df
+
+def shopping_sa(day):
+
+    naverss_df = mprep.get_네이버SS_SA()
+    naverss_df = ref.adcode(naverss_df, '캠페인', '세트', '소재')
+    naverss_df['날짜'] = pd.to_datetime(naverss_df['날짜'])
+
+    naverss_df = ref.week_day(naverss_df)
+
+    dimension = ['머징코드','캠페인', '세트', '키워드','연도','월'] + day
+    metric = ['노출','클릭','비용', 'SPEND_AGENCY']
+
+    naverss_df = naverss_df.groupby(dimension)[metric].sum().reset_index()
+
+    ga_df = gprep.ga_read('type1', ref.columns.ga1_dtype.keys())
+    ga_df = ga_df.loc[ga_df['source'] == 'navershoppingsa']
+    ga_df = ref.adcode_ga(ga_df)
+
+    # last 기준으로 없애기
+    shopping_cdict = dict(zip(ref.shoppingsa_index['그룹ID'], ref.shoppingsa_index['캠페인명']))
+    shopping_gdict = dict(zip(ref.shoppingsa_index['그룹ID'], ref.shoppingsa_index['그룹명']))
+
+    ga_df[['세트','브랜드구매(GA)', '브랜드매출(GA)']] = 0
+    ga_df.loc[ga_df['source'] == 'navershoppingsa', '세트'] = ga_df['campaign'].apply(lambda x: x.replace(x, shopping_gdict[x]) if x in shopping_gdict.keys() else '-')
+    ga_df.loc[ga_df['source'] == 'navershoppingsa', 'campaign'] = ga_df['campaign'].apply(lambda x: x.replace(x, shopping_cdict[x]) if x in shopping_cdict.keys() else '-')
+
+    ga_df = ga_df.loc[ga_df['세트']!='-']
+
+    ga_df = ga_df.rename(columns={'sessions': '세션(GA)','users': 'UA(GA)','transactions': '구매(GA)','transactionRevenue': '매출(GA)','goal1Completions': '가입(GA)'
+                                  ,'campaign': '캠페인','keyword': '키워드'})
+
+    ga_df = ref.week_day(ga_df)
+    ga_df = ref.adcode(ga_df,'캠페인','세트','키워드')
+
+    ga_dimension = ['머징코드','캠페인','세트','키워드','연도', '월'] + day
+    ga_metric = ['세션(GA)', 'UA(GA)', '구매(GA)', '매출(GA)','브랜드구매(GA)', '브랜드매출(GA)', '가입(GA)']
+    ga_df.loc[ga_df['키워드'].isin(['{keyword}', '{query}']), '키워드'] = '(not set)'
+
+    ga_df = ga_df.groupby(ga_dimension)[ga_metric].sum().reset_index().rename(columns ={'keyword' : '키워드'})
+
+    df = pd.concat([naverss_df,ga_df]).fillna(0)
+    df.to_csv(dr.download_dir + f'keyword_raw/naverss_report_{ref.r_date.yearmonth}_{day}.csv', index=False,encoding='utf-8-sig')
+
+    return df
+
+def indexing(day):
+
+    merge_df = sa_merging(day)
+    shopping_df = shopping_sa(day)
+
+    df = pd.concat([merge_df, shopping_df]).fillna(0)
+
     index = ref.index_df[['지면/상품','매체','캠페인 구분','KPI','캠페인 라벨','OS','파트(주체)','파트 구분','머징코드']].drop_duplicates()
     index['중복'] = index.duplicated(['머징코드'])
     index = index.loc[index['중복'] == False]
-    df = pd.merge(merge_df, index, on='머징코드', how='left').fillna('no_index')
+    df = pd.merge(df, index, on='머징코드', how='left').fillna('no_index')
 
-    report_col = ['파트 구분', '연도', '월'] + day +[ '매체', '지면/상품', '캠페인 구분', 'KPI', '캠페인', '세트', '키워드', '캠페인 라벨', 'OS', '노출', '도달', '클릭', '조회','비용', 'SPEND_AGENCY','세션(GA)', 'UA(GA)', '구매(GA)', '매출(GA)',
+    #키워드 구분 컬럼 추가
+    df['키워드 구분'] = '브랜드KW'
+
+    keyword_dict = dict(zip(ref.shoppingsa_index['키워드구분세트'], ref.shoppingsa_index['키워드구분']))
+    df.loc[(df['캠페인 구분'] == 'SA')&(df['매체'].isin(['네이버SA', '카카오SA', '구글SA']))&(df['지면/상품'].isin(['검색_M', '검색_P'])), '키워드 구분'] = df['세트'].apply(lambda x: x.replace(x, keyword_dict[x]) if x in keyword_dict.keys() else '브랜드KW')
+
+    report_col = ['파트 구분', '연도', '월'] + day +[ '매체', '지면/상품', '캠페인 구분', 'KPI', '캠페인', '세트', '키워드', '캠페인 라벨', 'OS','키워드 구분', '노출', '도달', '클릭', '조회','비용', 'SPEND_AGENCY','세션(GA)', 'UA(GA)', '구매(GA)', '매출(GA)',
        '브랜드구매(GA)', '브랜드매출(GA)', '가입(GA)','유입(AF)', 'UV(AF)', 'appopen(AF)','구매(AF)', '매출(AF)', '주문취소(AF)', '주문취소매출(AF)', '총주문건(AF)', '총매출(AF)', '첫구매(AF)', '첫구매매출(AF)', '설치(AF)', '재설치(AF)','가입(AF)','브랜드구매(AF)','브랜드매출(AF)']
 
     df = df[report_col]
@@ -147,5 +206,6 @@ def sa_merging(day):
 
     return df
 
-df = sa_merging(['주차','날짜'])
-df = sa_merging(['주차'])
+week_df = indexing(['주차'])
+day_df = indexing(['주차','날짜'])
+
