@@ -307,6 +307,8 @@ class KeywordMonitoring(Worker):
                     # 키워드마다 대기 시간을 줌.
                     time.sleep(self.searching_waiting_time)
                 self.logger.info(f"{device.device_type} 키워드 검색 완료.")
+            self.driver.quit()
+            self.logger.info("크롬 브라우저 종료")
             self.logger.info(f"{media_info} 모니터링 완료")
             # 당월 폴더 없는 경우 파티션 신규 생성
             default_path = self.s3_folder + "/" + f"owner_id={owner_id}/channel={channel}"
@@ -343,8 +345,9 @@ class KeywordMonitoring(Worker):
             self.logger.error(e)
             raise e
         finally:
-            self.driver.quit()
-            self.logger.info("크롬 브라우저 종료")
+            if self.driver.service.is_connectable():
+                self.driver.quit()
+                self.logger.info("크롬 브라우저 종료")
 
         if not info.get("send_result_msg", True):
             self.result_msg = ['Keyword Monitoring Job complete.']
