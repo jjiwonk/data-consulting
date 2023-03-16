@@ -40,7 +40,7 @@ def athena_table_refresh(database, table_name):
 
     return execute_query(athena, res)
 
-def get_table_data_from_athena(database, query, source):
+def get_table_data_from_athena(database, query, source= 'result'):
     athena = boto3.client('athena', region_name = 'ap-northeast-2')
     res = athena.start_query_execution(
         QueryString= query,
@@ -70,7 +70,7 @@ def get_table_data_from_athena(database, query, source):
 
         result_df = pd.DataFrame(listed_results, columns=columns)
 
-    else :
+    elif source == 's3' :
         s3_file = res['QueryExecutionId']
         s3_path = f'Unsaved/{s3_file}.csv'
 
