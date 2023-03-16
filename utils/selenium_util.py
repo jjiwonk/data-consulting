@@ -51,11 +51,11 @@ def get_chromedriver(headless: bool = True, mobile: bool = False, download_dir: 
         )
 
     if headless is True:
-        chrome_options.add_argument("--headless=new")
-        chrome_options.add_argument("--no-sandbox")
-        chrome_options.add_argument("--incognito")
-        chrome_options.add_argument("--disable-setuid-sandbox")
-        chrome_options.add_argument("--disable-dev-shm-usage")
+        chrome_options.add_argument("--headless=new")  # 화면창 안띄움
+        chrome_options.add_argument("--no-sandbox")  # 리소스 액세스 방지
+        chrome_options.add_argument("--incognito")  # 시크릿모드
+        chrome_options.add_argument("--disable-setuid-sandbox")  # 크롬 충돌 방지
+        chrome_options.add_argument("--disable-dev-shm-usage")  # 메모리 부족 방지
         chrome_options.add_argument("disable-component-cloud-policy")
     if mobile is True:
         mobile_emulation = {"deviceName": "iPhone X"}
