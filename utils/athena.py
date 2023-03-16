@@ -1,6 +1,10 @@
 import boto3
 import time
 import pandas as pd
+from utils import s3
+from utils import const
+from utils.path_util import get_tmp_path
+import os
 
 def execute_query(athena, res):
     while True :
@@ -36,7 +40,7 @@ def athena_table_refresh(database, table_name):
 
     return execute_query(athena, res)
 
-def get_table_data_from_athena(database, query) :
+def get_table_data_from_athena(database, query, source):
     athena = boto3.client('athena', region_name = 'ap-northeast-2')
     res = athena.start_query_execution(
         QueryString= query,
@@ -49,19 +53,34 @@ def get_table_data_from_athena(database, query) :
     )
 
     result = execute_query(athena, res)
-    columns = [info['Name'] for info in result['ResultSet']['ResultSetMetadata']['ColumnInfo']]
 
-    listed_results = []
-    for res in result['ResultSet']['Rows'][1:]:
-        values = []
-        for field in res['Data']:
-            try:
-                values.append(list(field.values())[0])
-            except:
-                values.append(list(' '))
+    if source == 'result':
+        columns = [info['Name'] for info in result['ResultSet']['ResultSetMetadata']['ColumnInfo']]
 
-        listed_results.append(dict(zip(columns, values)))
+        listed_results = []
+        for res in result['ResultSet']['Rows'][1:]:
+            values = []
+            for field in res['Data']:
+                try:
+                    values.append(list(field.values())[0])
+                except:
+                    values.append(list(' '))
 
-    result_df = pd.DataFrame(listed_results, columns=columns)
+            listed_results.append(dict(zip(columns, values)))
+
+        result_df = pd.DataFrame(listed_results, columns=columns)
+
+    else :
+        s3_file = res['QueryExecutionId']
+        s3_path = f'Unsaved/{s3_file}.csv'
+
+        tmp_path = get_tmp_path() + f"/athena/"
+        os.makedirs(tmp_path, exist_ok=True)
+
+        f_path = s3.download_file(s3_path=s3_path, s3_bucket=const.DEFAULT_S3_PRIVATE_BUCKET, local_path=tmp_path)
+        result_df = pd.read_csv(f_path , encoding= 'utf-8-sig')
+
+        os.remove(f_path)
 
     return result_df
+
