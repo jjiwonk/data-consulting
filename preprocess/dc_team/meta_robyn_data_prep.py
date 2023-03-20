@@ -58,7 +58,7 @@ def sales_data_prep():
     # 자사몰 매출
     company_df = pd.read_excel(raw_dir, sheet_name='RAW_자사몰매출')
     company_df = company_df.rename(columns=rename_dict)
-    company_df['date'] = company_df.apply(lambda x: str(x['Year'])+'-'+str(x['Month']).zfill(0)+'-'+str(x['Day']).zfill(2), axis=1)
+    company_df['date'] = company_df.apply(lambda x: str(x['Year'])+'-'+str(x['Month']).zfill(2)+'-'+str(x['Day']).zfill(2), axis=1)
     company_sales = company_df.pivot_table(index='date', columns='sales_type', values='sales', aggfunc='sum').reset_index()
     company_sales = company_sales.fillna(0)
     company_sales.columns = ['date', 'smartstore_sales', 'company_sales', 'kakaoshopping_sales']
