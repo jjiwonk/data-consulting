@@ -180,7 +180,7 @@ def get_NOSP_SA():
 def get_구글SA_SA():
     df = media_prep('구글SA')
     df = pd.merge(df, ref.media_index, on='캠페인', how='left').fillna('no_index')
-    df = df.loc[df['지면/상품'].isin(['구글SA_P', '구글SA_M'])].drop(columns=['지면/상품'])
+    df = df.loc[df['지면/상품'].isin(['구글SA_P', '구글SA_M','구글SA_PM'])].drop(columns=['지면/상품'])
     df['소재'] = '-'
     return df
 
