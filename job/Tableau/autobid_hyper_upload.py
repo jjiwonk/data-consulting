@@ -60,8 +60,7 @@ if __name__ == "__main__":
         error_slack_channel='pjt_dc_erro',
         num_list = ['goal_rank', 'min_bid', 'max_bid', 'cur_bid', 'ad_rank', 'next_bid' ,'year', 'month', 'day', 'hour', 'minute'],
         text_list = ['customer_id', 'ad_keyword', 'campaign_name', 'campaign_id','adgroup_name', 'adgroup_id', 'ad_keyword_id', 'pc_mobile_type','bid_degree', 'use_groupbid','result', 'owner_id','channel'],
-        date_list = ['date'],
-
+        date_list = ['date']
     )
 
     info['report_col'] =  info['num_list'] + info['text_list'] + info['date_list']
