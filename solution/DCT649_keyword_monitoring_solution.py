@@ -182,7 +182,7 @@ class KeywordMonitoring(Worker):
                 soup = BeautifulSoup(html_source, 'html.parser')
                 # selector를 사용해 상품에 해당하는 부분을 선택함.
                 ads = soup.select_one(device.selector)
-                if not ads:
+                if ads is None:
                     return
                 url_tag, url_class = device.ad_name_path
                 # 위의 상품에 해당하는 부분에서 url_tag와 url_class를 포함하는 건들(상품의 회사명에 해당하는 부분)을 모두 찾아 해당하는 광고주의 광고가 있는지 찾음.
