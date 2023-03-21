@@ -7,12 +7,12 @@ import json
 import datetime
 
 class Key :
-    media_list = ['kakao_int', 'Facebook Ads', 'fbig', 'restricted']
+    media_list = ['rtbhouse_int', 'naver_gfa', 'kakao_int', 'Facebook Ads','fbig','restricted']
     itet_limit = 7
 
 
 def get_prism_data() :
-    prism_dir = dr.download_dir + '/2301_230222'
+    prism_dir = dr.download_dir + '/2301_230319'
     prism_files = os.listdir(prism_dir)
 
     dtypes = {
