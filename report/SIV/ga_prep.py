@@ -124,7 +124,10 @@ def brand_order():
 
     merge = pd.merge(df,index, on = '머징코드', how = 'left').fillna('-')
 
+    # 예외처리
     merge.loc[merge['productBrand'] == 'GAP Kids', 'productBrand'] = 'GAP Adults'
+    ##
+    merge.loc[(merge['머징코드'].isin(['SVFK0123','SVFK0122'])) & (merge['productBrand'].isin(['GIORGIO ARMANI','EMPORIO ARMANI','EMPORIO ARMANI JUNIOR','ARMANI EXCHANGE','EMPORIO ARMANI UNDERWEAR'])), 'productBrand'] = 'GIORGIO ARMANI'
 
     # 값 수정하기
     order = merge.loc[merge['productBrand'] == merge['브랜드']]
@@ -158,9 +161,8 @@ def ga_report():
     df = pd.concat([df, br_df])
 
     df = df.rename(columns=ref.columns.ga1_rename)
-
     df.to_csv(dr.download_dir + f'GA_raw/ga_raw_{ref.r_date.yearmonth}.csv',index = False, encoding = 'utf-8-sig')
-
     df = ref.date_dt(df)
 
     return df
+
