@@ -191,13 +191,17 @@ def indexing(day):
     df['키워드 구분'] = '브랜드KW'
 
     keyword_dict = dict(zip(ref.shoppingsa_index['키워드구분세트'], ref.shoppingsa_index['키워드구분']))
-    df.loc[(df['캠페인 구분'] == 'SA')&(df['매체'].isin(['네이버SA', '카카오SA', '구글SA']))&(df['지면/상품'].isin(['검색_M', '검색_P'])), '키워드 구분'] = df['세트'].apply(lambda x: x.replace(x, keyword_dict[x]) if x in keyword_dict.keys() else '브랜드KW')
+    df.loc[(df['캠페인 구분'] == 'SA') & (df['매체'].isin(['네이버SA', '카카오SA', '구글SA']))&(df['지면/상품'].isin(['검색_M', '검색_P'])), '키워드 구분'] = df['세트'].apply(lambda x: x.replace(x, keyword_dict[x]) if x in keyword_dict.keys() else '브랜드KW')
 
-    report_col = ['파트 구분', '연도', '월'] + day +[ '매체', '지면/상품', '캠페인 구분', 'KPI', '캠페인', '세트', '키워드', '캠페인 라벨', 'OS','키워드 구분', '노출', '도달', '클릭', '조회','비용', 'SPEND_AGENCY','세션(GA)', 'UA(GA)', '구매(GA)', '매출(GA)',
+    df.loc[(df['파트 구분'] == 'SIVILLAGE') & (df['캠페인 구분'] == 'SA') & (df['매체'] == '네이버SA') & (df['지면/상품'].isin(['쇼핑검색_M', '쇼핑검색_P'])), '키워드 구분'] = '쇼핑검색'
+    df.loc[(df['파트 구분'] == 'SIVILLAGE') & (df['캠페인 구분'] == 'BSA') & (df['매체'].isin(['네이버BSA', '카카오BSA'])) & (df['지면/상품'].isin(['네이버BSA_M', '네이버BSA_P', '카카오BSA_P'])),'키워드 구분'] = 'BSA'
+    df.loc[(df['파트 구분'] == 'SIVILLAGE') & (df['캠페인 구분'] == 'SA') & (df['매체'].isin(['네이버SA', '카카오SA', '구글SA'])) & (df['세트'].isin(ref.shoppingsa_index['일반키워드 세트'])), '키워드 구분'] = '일반KW'
+    df.loc[(df['파트 구분'] == 'SIVILLAGE') & (df['캠페인 구분'] == 'SA') & (df['매체'].isin(['네이버SA', '카카오SA', '구글SA'])) & (df['세트'].isin(ref.shoppingsa_index['메인키워드 세트'])), '키워드 구분'] = '메인KW'
+
+    report_col = ['키워드 구분','파트 구분', '연도', '월'] + day +[ '매체', '지면/상품', '캠페인 구분', 'KPI', '캠페인', '세트', '키워드', '캠페인 라벨', 'OS', '노출', '도달', '클릭', '조회','비용', 'SPEND_AGENCY','세션(GA)', 'UA(GA)', '구매(GA)', '매출(GA)',
        '브랜드구매(GA)', '브랜드매출(GA)', '가입(GA)','유입(AF)', 'UV(AF)', 'appopen(AF)','구매(AF)', '매출(AF)', '주문취소(AF)', '주문취소매출(AF)', '총주문건(AF)', '총매출(AF)', '첫구매(AF)', '첫구매매출(AF)', '설치(AF)', '재설치(AF)','가입(AF)','브랜드구매(AF)','브랜드매출(AF)']
 
     df = df[report_col]
-
     df[['브랜드구매(GA)', '브랜드매출(GA)','브랜드구매(AF)','브랜드매출(AF)']] = 0
 
     df.to_csv(dr.download_dir + f'keyword_report/keyword_report_{ref.r_date.yearmonth}_{day}.csv', index=False,encoding='utf-8-sig')
@@ -208,4 +212,3 @@ def indexing(day):
 
 week_df = indexing(['주차'])
 day_df = indexing(['주차','날짜'])
-

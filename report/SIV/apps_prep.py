@@ -183,13 +183,22 @@ def brand_order():
     merge['인덱스'] = '-'
     merge.index = range(len(merge))
 
+    armani_dict = {'EMPORIO ARMANI':'GIORGIO ARMANI','EMPORIO ARMANI JUNIOR':'GIORGIO ARMANI','ARMANI EXCHANGE':'GIORGIO ARMANI','EMPORIO ARMANI UNDERWEAR':'GIORGIO ARMANI'}
+
     for i in range(len(merge)):
         orbr = merge['구매브랜드'][i]
         result =[]
+        code = merge['머징코드'][i]
+        code_list = ['SVFK0123', 'SVFK0122']
 
-        for x in orbr:
-            temp = x.replace('GAP Kids','GAP Adults')
-            result.append(temp)
+        if code in code_list:
+            for x in orbr:
+                temp = x.replace(x,armani_dict[x]) if x in armani_dict.keys() else x
+                result.append(temp)
+        else :
+            for x in orbr:
+                temp = x.replace('GAP Kids', 'GAP Adults')
+                result.append(temp)
 
         orbr = numpy.array(result)
         br = merge['브랜드'][i]
