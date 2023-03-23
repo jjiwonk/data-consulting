@@ -50,12 +50,12 @@ def get_info_from_s3(owner_id, product_id):
     return info
 
 
-def build_partition_s3(default_s3_path, standard_date: datetime=datetime.now(), s3_bucket=DEFAULT_S3_PUBLIC_BUCKET):
+def build_partition_s3(default_s3_path, standard_date: datetime=datetime.now(), s3_bucket=DEFAULT_S3_PUBLIC_BUCKET, start_day=1):
     s3 = boto3.client('s3')
     year = standard_date.strftime('%Y')
     month = standard_date.strftime('%m')
     num_days = calendar.monthrange(standard_date.year, standard_date.month)[1]
-    days = [date(standard_date.year, standard_date.month, day) for day in range(1, num_days + 1)]
+    days = [date(standard_date.year, standard_date.month, day) for day in range(start_day, num_days + 1)]
     for day in days:
         day = day.strftime('%d')
         for hour in list(range(0, 24, 1)):
