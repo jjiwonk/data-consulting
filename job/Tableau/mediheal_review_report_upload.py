@@ -54,8 +54,8 @@ if __name__ == "__main__":
     info = dict(
         hyper_name ='mediheal_review_report.hyper',
         project_name = 'RD',
-        success_alert_channel = 'dc_민정수_test',
-        error_slack_channel='dc_민정수_test',
+        success_alert_channel = 'gl_메디힐_모니터링_alert',
+        error_slack_channel='gl_메디힐_모니터링_alert',
         num_list = ['rating', 'count', 'review_length'],
         text_list = ['사이트 구분', '제조사 구분', '제조사', '제품명', 'user_name',
                      'review_text', 'review_id', 'sentiment', 'review_text_prep',
