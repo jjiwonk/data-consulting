@@ -56,17 +56,18 @@ class columns :
         'sub_param_2' : pa.string(),
         'sub_param_3' : pa.string(),
         'sub_param_4' : pa.string(),
+        'sub_param_5' : pa.string(),
         'partner' : pa.string(),
         'platform' : pa.string(),
         'original_url' : pa.string()
     }
 
     apps_pivot_columns = ['date','partner', 'media_source', 'campaign', 'adset', 'ad',
-                          'sub_param_1', 'sub_param_2', 'sub_param_3', 'sub_param_4', 'platform', 'original_url', 'keywords']
+                          'sub_param_1', 'sub_param_2', 'sub_param_3', 'sub_param_4', 'sub_param_5', 'platform', 'original_url', 'keywords']
     apps_index_columns = ['date', 'campaign', 'adset', 'ad']
     apps_metric_columns = ['Installs', 're-install', 're-open', 'Register', 'Add to Cart_app', 'Purchases_app', 'Revenue_app', 'Open']
     apps_result_columns = ['date', 'partner', 'media_source', 'campaign', 'adset', 'ad', 'sub_param_1', 'sub_param_2',
-                           'sub_param_3', 'sub_param_4', 'platform', 'original_url', 'keywords', 'Installs', 're-install',
+                           'sub_param_3', 'sub_param_4', 'sub_param_5', 'platform', 'original_url', 'keywords', 'Installs', 're-install',
                            're-open', 'Register', 'Add to Cart_app', 'Purchases_app', 'Revenue_app', 'Open']
 
     index_columns = ['랜딩2', '캠페인 목표', 'OS', '디바이스', 'Part', 'Promotion', 'Promotion Name', '매체 구분자', '소재설명1', '소재설명2', '소재설명3',
