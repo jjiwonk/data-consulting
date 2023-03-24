@@ -13,4 +13,6 @@ if __name__ == "__main__":
     )
 
     info = s3.get_info_from_s3(attr['owner_id'], attr['product_id'])
+    info['slack_channel'] = 'gl_메디힐_모니터링_alert'
+    info['error_slack_channel'] = 'gl_메디힐_모니터링_alert'
     worker.work(attr=attr, info=info)
