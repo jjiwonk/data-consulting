@@ -285,16 +285,18 @@ def na_smch_prep() -> pd.DataFrame:
     df = df.loc[df['캠페인'].isin(camp_list)]
     group_list = ref.index_df.loc[ref.index_df['매체(표기)'] == 'Naver_스마트채널', '광고그룹'].unique().tolist()
     df = df.loc[df['광고그룹'].isin(group_list)]
-
-    df2 = get_basic_data('Naver_NOSP')
-    camp_list = ref.index_df.loc[ref.index_df['매체(표기)'] == 'Naver_스마트채널', '캠페인'].unique().tolist()
-    df2 = df2.loc[df2['캠페인'].isin(camp_list)]
-    group_list = ref.index_df.loc[ref.index_df['매체(표기)'] == 'Naver_스마트채널', '광고그룹'].unique().tolist()
-    df2 = df2.loc[df2['광고그룹'].isin(group_list)]
-    df2['ad'] = df2['ad'].apply(lambda x: str(x)[9:])
-
-    df = pd.concat([df, df2], sort=False, ignore_index=True)
     df['매체'] = 'Naver_스마트채널'
+    return df
+
+
+def na_smch_nosp_prep():
+    df = get_basic_data('Naver_NOSP')
+    camp_list = ref.index_df.loc[ref.index_df['매체(표기)'] == 'Naver_스마트채널_보장형', '캠페인'].unique().tolist()
+    df = df.loc[df['캠페인'].isin(camp_list)]
+    group_list = ref.index_df.loc[ref.index_df['매체(표기)'] == 'Naver_스마트채널_보장형', '광고그룹'].unique().tolist()
+    df = df.loc[df['광고그룹'].isin(group_list)]
+    df['ad'] = df['ad'].apply(lambda x: str(x)[9:])
+    df['매체'] = 'Naver_스마트채널_보장형'
     return df
 
 
