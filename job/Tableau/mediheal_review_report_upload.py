@@ -48,9 +48,8 @@ if __name__ == "__main__":
 
         return data
 
-    attr = dict(
-        owner_id="mediheal"
-    )
+    attr = s3.get_info_from_s3('tableau','hyper_upload_solution')
+    attr['owner_id'] = 'mediheal'
 
     info = dict(
         hyper_name ='mediheal_review_report.hyper',
