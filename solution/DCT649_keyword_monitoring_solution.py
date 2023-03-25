@@ -234,6 +234,11 @@ class KeywordMonitoring(Worker):
             setting_df = gd.sheet_to_df(sheet)
             setting_df = setting_df.iloc[:, :11]
             keywords_df = setting_df.drop(setting_df.loc[setting_df.iloc[:, 0] == ''].index) # 빈행 제거
+            if len(keywords_df) == 0:
+                return {
+                    "result_code": ResultCode.SUCCESS,
+                    "msg": "No keywords on the list.",
+                }
             column_names = setting_df.columns.values
 
             for device in devices:
