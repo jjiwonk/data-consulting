@@ -292,7 +292,7 @@ class KeywordMonitoring(Worker):
             raise e
 
         finally:
-            if self.driver.service.is_connectable():
+            if self.driver is not None:
                 self.driver.quit()
                 self.logger.info("크롬 브라우저 종료")
 
