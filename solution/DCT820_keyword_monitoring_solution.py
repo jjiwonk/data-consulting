@@ -264,6 +264,12 @@ class KeywordMonitoring(Worker):
         self.result_msg = [f"{media_info} 키워드 검색 순위 모니터링 결과"]
         try:
             keywords_df = self.get_keyword_df(file_name)
+            if len(keywords_df) == 0:
+                return {
+                    "result_code": ResultCode.SUCCESS,
+                    "msg": "No keywords on the list.",
+                }
+
             column_names = keywords_df.columns.values
 
             for device in devices:
