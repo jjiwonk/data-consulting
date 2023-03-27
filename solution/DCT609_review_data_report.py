@@ -12,7 +12,6 @@ import pandas as pd
 import re
 import numpy as np
 
-from hanspell import spell_checker
 from konlpy.tag import Okt
 from collections import Counter
 
@@ -40,11 +39,6 @@ class word_preprocessor :
         result = korean_pat.sub(' ', text)
         return result
 
-    def fix_spell(self, text):
-        spelled_sent = spell_checker.check(text)
-        hanspell_sent = spelled_sent.checked
-
-        return hanspell_sent
 
     def text_normalize(self, text):
         return self.okt.normalize(text)
