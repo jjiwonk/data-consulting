@@ -288,13 +288,9 @@ class KeywordMonitoring(Worker):
             self.logger.info(f"{media_info} 모니터링 완료")
 
         except Exception as e:
+            self.driver.quit()
             self.logger.error(e)
             raise e
-
-        finally:
-            if self.driver is not None:
-                self.driver.quit()
-                self.logger.info("크롬 브라우저 종료")
 
         if not info.get("send_result_msg", True):
             result_msg = ['Keyword Monitoring Job complete.']

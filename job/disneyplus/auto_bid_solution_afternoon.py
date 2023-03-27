@@ -14,7 +14,7 @@ if __name__ == "__main__":
         ad_names='["디즈니플러스", "disneyplus"]',
         customer_id=2384006,
         bid_downgrade=True,
-        error_slack_channel='gl_글로벌_디즈니플러스'
+        error_slack_channel='gl_글로벌_디즈니플러스_alert'
     )
 
     worker.work(attr=attr, info=info)
