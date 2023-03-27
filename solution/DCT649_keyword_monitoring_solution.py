@@ -234,6 +234,11 @@ class KeywordMonitoring(Worker):
             setting_df = gd.sheet_to_df(sheet)
             setting_df = setting_df.iloc[:, :11]
             keywords_df = setting_df.drop(setting_df.loc[setting_df.iloc[:, 0] == ''].index) # 빈행 제거
+            if len(keywords_df) == 0:
+                return {
+                    "result_code": ResultCode.SUCCESS,
+                    "msg": "No keywords on the list.",
+                }
             column_names = setting_df.columns.values
 
             for device in devices:
@@ -283,13 +288,9 @@ class KeywordMonitoring(Worker):
             self.logger.info(f"{media_info} 모니터링 완료")
 
         except Exception as e:
+            self.driver.quit()
             self.logger.error(e)
             raise e
-
-        finally:
-            if self.driver.service.is_connectable():
-                self.driver.quit()
-                self.logger.info("크롬 브라우저 종료")
 
         if not info.get("send_result_msg", True):
             result_msg = ['Keyword Monitoring Job complete.']
