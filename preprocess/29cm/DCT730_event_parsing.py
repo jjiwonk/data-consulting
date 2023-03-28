@@ -9,10 +9,11 @@ import datetime
 class Key :
     media_list = ['rtbhouse_int', 'naver_gfa', 'kakao_int', 'Facebook Ads','fbig','restricted']
     itet_limit = 7
+    ctet_limit = 7
 
 
 def get_prism_data() :
-    prism_dir = dr.download_dir + '/2301_230319'
+    prism_dir = dr.download_dir + '/2301_230222'
     prism_files = os.listdir(prism_dir)
 
     dtypes = {
@@ -82,7 +83,13 @@ raw_data_filtered = raw_data.loc[(raw_data['media_source'].isin(Key.media_list))
 raw_data_filtered[['attributed_touch_time', 'install_time', 'event_time']] = raw_data_filtered[['attributed_touch_time', 'install_time', 'event_time']].apply(lambda x : pd.to_datetime(x))
 raw_data_filtered['event_revenue'] = pd.to_numeric(raw_data_filtered['event_revenue'])
 raw_data_filtered['ITET'] = raw_data_filtered['event_time'] - raw_data_filtered['install_time']
-raw_data_filtered = raw_data_filtered.loc[raw_data_filtered['ITET']<datetime.timedelta(Key.itet_limit)]
+raw_data_filtered['CTET'] = raw_data_filtered['event_time'] - raw_data_filtered['attributed_touch_time']
+
+raw_data_filtered_restricted = raw_data_filtered.loc[(raw_data_filtered['media_source'] == 'restricted')&(raw_data_filtered['ITET']<datetime.timedelta(Key.itet_limit))]
+raw_data_filtered = raw_data_filtered.loc[(raw_data_filtered['media_source'] != 'restricted')&(raw_data_filtered['CTET']<datetime.timedelta(Key.ctet_limit))]
+
+raw_data_filtered = pd.concat([raw_data_filtered_restricted,raw_data_filtered])
+
 raw_data_filtered['event_value'] = raw_data_filtered['event_value'].str.replace('null', '')
 raw_data_filtered['event_value'] = raw_data_filtered['event_value'].apply(lambda x : eval(str(x)))
 
