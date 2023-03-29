@@ -140,7 +140,7 @@ class AutoBidSolution(KeywordMonitoring):
                     if cur_rank == 30:
                         cur_rank = '-'
                     max_bid_msg.append(f"{keyword}: {cur_rank}위({goal_rank}위) / 현재 {cur_bid}원, 최대 {max_bid}원 /// {campaign}, {adgroup}")
-                    bid_amt = max_bid
+                    bid_amt = int(round(max_bid / 10) * 10)
                     data = dict(nccKeywordId=keyword_id, nccAdgroupId=group_id, bidAmt=bid_amt, useGroupBidAmt=use_gbamt)
                     self.data_list.append(data)
                 elif cur_bid == max_bid:
@@ -151,19 +151,19 @@ class AutoBidSolution(KeywordMonitoring):
                 else:
                     bid_amt = int(round(cur_bid * (1 + bid_degree) / 10) * 10)
                     if bid_amt > max_bid:
-                        bid_amt = max_bid
+                        bid_amt = int(round(max_bid / 10) * 10)
                     elif bid_amt < min_bid:
-                        bid_amt = min_bid
+                        bid_amt = int(round(min_bid / 10) * 10)
                     data = dict(nccKeywordId=keyword_id, nccAdgroupId=group_id, bidAmt=bid_amt, useGroupBidAmt=use_gbamt)
                     self.data_list.append(data)
             elif goal_rank > cur_rank:
                 if self.bid_downgrade is False:
-                    bid_amt = min_bid
+                    bid_amt = cur_bid
                 # 현재 순위가 목표 순위 보다 높은 경우
                 else:
                     if cur_bid < min_bid:
                         min_bid_msg.append(f"{keyword}: {cur_rank}위({goal_rank}위) / 현재 {cur_bid}원, 최소 {min_bid}원 /// {campaign}, {adgroup}")
-                        bid_amt = cur_bid
+                        bid_amt = int(round(min_bid / 10) * 10)
                         data = dict(nccKeywordId=keyword_id, nccAdgroupId=group_id, bidAmt=bid_amt, useGroupBidAmt=use_gbamt)
                         self.data_list.append(data)
                     elif cur_bid == min_bid:
@@ -172,20 +172,20 @@ class AutoBidSolution(KeywordMonitoring):
                     else:
                         bid_amt = int(round(cur_bid * (1 - bid_degree) / 10) * 10)
                         if bid_amt < min_bid:
-                            bid_amt = min_bid
+                            bid_amt = int(round(min_bid / 10) * 10)
                         elif bid_amt > max_bid:
-                            bid_amt = max_bid
+                            bid_amt = int(round(max_bid / 10) * 10)
                         data = dict(nccKeywordId=keyword_id, nccAdgroupId=group_id, bidAmt=bid_amt, useGroupBidAmt=use_gbamt)
                         self.data_list.append(data)
             else:
                 # 현재 순위가 목표 순위와 같은 경우
                 bid_amt = cur_bid
                 if bid_amt > max_bid:
-                    bid_amt = max_bid
+                    bid_amt = int(round(max_bid / 10) * 10)
                     data = dict(nccKeywordId=keyword_id, nccAdgroupId=group_id, bidAmt=bid_amt, useGroupBidAmt=use_gbamt)
                     self.data_list.append(data)
                 elif bid_amt < min_bid:
-                    bid_amt = min_bid
+                    bid_amt = int(round(min_bid / 10) * 10)
                     data = dict(nccKeywordId=keyword_id, nccAdgroupId=group_id, bidAmt=bid_amt, useGroupBidAmt=use_gbamt)
                     self.data_list.append(data)
             self.bid_adjust_df.loc[index, 'next_bid'] = bid_amt
