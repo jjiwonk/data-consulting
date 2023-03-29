@@ -13,7 +13,7 @@ class Key :
 
 
 def get_prism_data() :
-    prism_dir = dr.download_dir + '/2301_230222'
+    prism_dir = dr.download_dir + '/2301_230319'
     prism_files = os.listdir(prism_dir)
 
     dtypes = {
@@ -78,7 +78,7 @@ def get_dashboard_data():
 
 raw_data= get_prism_data()
 raw_data_filtered = raw_data.loc[(raw_data['media_source'].isin(Key.media_list))&
-                                 (raw_data['event_name']=='af_purchase')]
+                                 (raw_data['event_name'].isin(['af_purchase','new_purchaser']))]
 
 raw_data_filtered[['attributed_touch_time', 'install_time', 'event_time']] = raw_data_filtered[['attributed_touch_time', 'install_time', 'event_time']].apply(lambda x : pd.to_datetime(x))
 raw_data_filtered['event_revenue'] = pd.to_numeric(raw_data_filtered['event_revenue'])
@@ -93,9 +93,15 @@ raw_data_filtered = pd.concat([raw_data_filtered_restricted,raw_data_filtered])
 raw_data_filtered['event_value'] = raw_data_filtered['event_value'].str.replace('null', '')
 raw_data_filtered['event_value'] = raw_data_filtered['event_value'].apply(lambda x : eval(str(x)))
 
-values_keys = ['af_order_id', 'af_revenue', 'af_content_id']
+values_keys = ['af_order_id', 'af_revenue', 'af_content_id','order_id']
 for key in values_keys :
     raw_data_filtered[key] = raw_data_filtered['event_value'].apply(lambda x: x.get(key))
+
+cont_dict = dict(zip(raw_data_filtered['af_order_id'] , raw_data_filtered['af_content_id']))
+
+raw_data_filtered.loc[raw_data_filtered['af_order_id'].isna() == True,'af_order_id' ] = raw_data_filtered['order_id']
+raw_data_filtered.loc[raw_data_filtered['af_content_id'].isna() == True,'af_content_id' ] = raw_data_filtered['af_order_id'].apply(lambda x : cont_dict[x] if x in cont_dict.keys() else '-')
+raw_data_filtered = raw_data_filtered.drop(columns='order_id')
 
 raw_data_parsed = raw_data_filtered.copy()
 raw_data_parsed['media_source'].value_counts()
@@ -106,6 +112,7 @@ raw_data_parsed.index = range(0, len(raw_data_parsed))
 
 raw_data_parsed.to_csv(dr.download_dir + '/raw_data_unique.csv', encoding = 'utf-8-sig', index=False)
 
+values_keys = ['af_order_id', 'af_revenue', 'af_content_id']
 raw_data_values = raw_data_parsed[values_keys]
 
 row_list = []
