@@ -9,7 +9,7 @@ if __name__ == "__main__":
         media_info='네이버SA',
         use_headless=True,
         spread_sheet_url="https://docs.google.com/spreadsheets/d/1pQg63dqpCGBcQAi4wTaqr_2xV4OWcnBEbDUCj4TZ7cE/edit#gid=2116326160",
-        keyword_sheet="브랜드_금~일요일",
+        keyword_sheet="브랜드_금~일요일_12시~00시",
         keyword_column="키워드",
         ad_names='["디즈니플러스", "disneyplus"]',
         customer_id=2384006,
