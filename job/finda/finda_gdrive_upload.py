@@ -5,7 +5,7 @@ from utils import athena
 from utils import s3
 from utils import const
 from utils import google_drive
-from datetime import datetime
+import datetime
 
 class raw_data :
     gdrive = google_drive.GoogleDrive()
@@ -22,7 +22,7 @@ class raw_data :
         query = str(f.read())
 
         del f
-        df = athena.get_table_data_from_athena('dmp_athena', query)
+        df = athena.get_table_data_from_athena('dmp_athena', query, 's3')
         os.remove(f_path)
         return df
 
@@ -51,7 +51,8 @@ if __name__ == "__main__":
     merge_df = raw_data().prep(df, index_df, keyword_index_df)
 
     attr = dict(
-        owner_id="finda", schedule_time=datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        owner_id="finda",
+        schedule_time=(datetime.datetime.now() - datetime.timedelta(1)).strftime('%Y-%m-%d %H:%M:%S')
     )
     info = dict(
         df = merge_df,
