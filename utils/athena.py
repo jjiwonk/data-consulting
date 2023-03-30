@@ -1,10 +1,13 @@
 import boto3
 import time
+from datetime import datetime, timedelta
+import calendar
 import pandas as pd
 from utils import s3
 from utils import const
 from utils.path_util import get_tmp_path
 import os
+
 
 def execute_query(athena, res):
     while True :
@@ -26,6 +29,7 @@ def execute_query(athena, res):
 
         return result
 
+
 def athena_table_refresh(database, table_name):
     athena = boto3.client('athena', region_name = 'ap-northeast-2')
     res = athena.start_query_execution(
@@ -39,6 +43,64 @@ def athena_table_refresh(database, table_name):
     )
 
     return execute_query(athena, res)
+
+
+def athena_table_manually_refresh(database, table_name, table_s3_path, owner_id, channel, start_date:str):
+    athena = boto3.client('athena', region_name='ap-northeast-2')
+    start_date = datetime.strptime(start_date, "%Y-%m-%d")
+    queries = []
+    table = f"{database}.{table_name}"
+    queries.extend(get_partitions(table, table_s3_path, owner_id, channel, start_date))
+    try:
+        # one query takes 20 to 500ms and queued queries limit is 25.
+        for query in queries:
+            res = athena.start_query_execution(
+                QueryString=query,
+                QueryExecutionContext={
+                    'Database': database
+                },
+                ResultConfiguration={
+                    'OutputLocation': 's3://data-consulting-private/athena_refresh_result/'
+                }
+            )
+            time.sleep(0.005)
+    except Exception as e:
+        raise e
+
+    return 'OK'
+
+
+def get_partitions(table, path, owner_id, channel, start_date):
+    num_days = calendar.monthrange(start_date.year, start_date.month)[1]
+    num_days = num_days - start_date.day + 1
+    return map(
+        lambda d: " ".join(
+            """
+            ALTER TABLE {table} ADD IF NOT EXISTS
+            PARTITION (owner_id='{owner_id}', channel='{channel}', year={year}, month={month}, day={day}, hour={hour}, minute={minute})
+            LOCATION 's3://{path}/owner_id={owner_id}/channel={channel}/year={year}/month={month_zf}/day={day_zf}/hour={hour_zf}/minute={minute_zf}/'
+            """.format(
+                table=table,
+                path=path,
+                owner_id=owner_id,
+                channel=channel,
+                year=d.year,
+                month=d.month,
+                month_zf=str(d.month).zfill(2),
+                day=d.day,
+                day_zf=str(d.day).zfill(2),
+                hour=d.hour,
+                hour_zf=str(d.hour).zfill(2),
+                minute=d.minute,
+                minute_zf=str(d.minute).zfill(2)
+            ).split()
+        ),
+        map(
+            lambda i: (start_date + timedelta(minutes=i)),
+            range(0, num_days*24*60, 5)
+        )
+    )
+
 
 def get_table_data_from_athena(database, query, source= 'result'):
     athena = boto3.client('athena', region_name = 'ap-northeast-2')
