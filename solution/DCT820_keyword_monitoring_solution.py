@@ -188,7 +188,7 @@ class KeywordMonitoring(Worker):
                 self.driver.get(url)
                 date = str(time_stamp).replace('-', '').replace(' ', '').split(':')
                 date = date[0] + '시' + date[1] + '분' + date[2] + '초'
-                filename = f'/{keyword}_{date}.png'
+                filename = f'/{date}.png'
                 screenshot_url = self.save_screenshot(filename)
                 html_source = self.driver.page_source
                 soup = BeautifulSoup(html_source, 'html.parser')
