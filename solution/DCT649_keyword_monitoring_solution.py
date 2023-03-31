@@ -9,7 +9,7 @@ from pytz import timezone
 from utils.google_drive import (
     GoogleDrive,
 )
-from utils.selenium_util import get_chromedriver
+import requests
 from bs4 import BeautifulSoup
 import math
 from utils.s3 import upload_file
@@ -132,12 +132,11 @@ class KeywordMonitoring(Worker):
             'date': "",
             'ad_keyword': "",
             'ad_rank': "",
-            'screenshot_url': ""
         }
         self.s3_path = ''
         self.s3_folder = 'keyword_monitoring'
         self.tmp_path = ''
-        self.result_df = pd.DataFrame(columns=['collected_at', 'pc_mobile_type', 'weekday', 'ad_keyword', 'ad_rank', 'date', 'screenshot_url'])
+        self.result_df = pd.DataFrame(columns=['collected_at', 'pc_mobile_type', 'weekday', 'ad_keyword', 'ad_rank', 'date'])
 
     def get_search_infos(self, media_info) -> dict:
         if media_info == '네이버SA':
@@ -173,13 +172,12 @@ class KeywordMonitoring(Worker):
         for i in range(Key.CRAWLING_RETRY_CNT):
             try:
                 url = device.search_url + keyword
-                self.driver.get(url)
-                date = str(time_stamp).replace('-', '').replace(' ', '').split(':')
-                date = date[0] + '시' + date[1] + '분' + date[2] + '초'
-                filename = f'/{keyword}_{date}.png'
-                screenshot_url = self.save_screenshot(filename)
-                html_source = self.driver.page_source
-                soup = BeautifulSoup(html_source, 'html.parser')
+                res = requests.get(url)
+                if res.status_code == 200:
+                    html_source = res.text
+                    soup = BeautifulSoup(html_source, 'html.parser')
+                else:
+                    raise crawling_exception
                 # selector를 사용해 상품에 해당하는 부분을 선택함.
                 ads = soup.select_one(device.selector)
                 if ads is None:
@@ -190,7 +188,6 @@ class KeywordMonitoring(Worker):
                     # ad_element가 광고주의 광고라면 row에 등수를 기록함.
                     if ad_element and is_ad(ad_element, ad_names):
                         self.row['ad_rank'] = str(index + 1)
-                        self.row['screenshot_url'] = screenshot_url
                         break
                 return
             except Exception as e:
@@ -251,14 +248,6 @@ class KeywordMonitoring(Worker):
                     device.keywords = keywords
 
             for device in devices:
-                # user-agent 5종류 랜덤 배정
-                num = random.randrange(0, 5)
-                if device.device_type == 'MO':
-                    user_agent = Key.USER_AGENTS[num]['MO']
-                    self.driver = get_chromedriver(headless=Key.USE_HEADLESS, mobile=True, user_agent=user_agent)
-                else:
-                    user_agent = Key.USER_AGENTS[num]['PC']
-                    self.driver = get_chromedriver(headless=Key.USE_HEADLESS, mobile=False, user_agent=user_agent)
                 # 키워드 별로 검색 후에 순위를 확인함.
                 for keyword in device.keywords:
                     # 키워드 별로 랭킹 초기화. 랭킹이 없는 경우 "-"를 반환.
@@ -282,13 +271,13 @@ class KeywordMonitoring(Worker):
                         result_msg.append(error_msg)
                     # 키워드마다 대기 시간을 줌.
                     time.sleep(self.searching_waiting_time)
-                self.driver.quit()
+                # self.driver.quit()
                 self.logger.info("크롬 브라우저 종료")
                 self.logger.info(f"{device.device_type} 키워드 검색 완료.")
             self.logger.info(f"{media_info} 모니터링 완료")
 
         except Exception as e:
-            self.driver.quit()
+            # self.driver.quit()
             self.logger.error(e)
             raise e
 
