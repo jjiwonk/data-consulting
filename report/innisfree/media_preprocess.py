@@ -270,6 +270,15 @@ def na_rolling_prep() -> pd.DataFrame:
     return df
 
 
+def na_weather_prep() -> pd.DataFrame:
+    df = get_basic_data('Naver_NOSP')
+    camp_list = ref.index_df.loc[ref.index_df['매체(표기)'] == 'Naver_날씨DA', '캠페인'].unique().tolist()
+    df = df.loc[df['캠페인'].isin(camp_list)]
+    df['ad'] = df['ad'].apply(lambda x: str(x)[9:])
+    df['매체'] = 'Naver_날씨DA'
+    return df
+
+
 def na_gfa_prep() -> pd.DataFrame:
     df = get_basic_data('Naver_GFA')
     camp_list = ref.index_df.loc[ref.index_df['매체(표기)'] == 'Naver_GFA', '캠페인'].unique().tolist()

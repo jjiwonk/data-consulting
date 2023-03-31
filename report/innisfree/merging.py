@@ -85,9 +85,7 @@ def index_mapping(df, data_type, source, medium, right_on, index_source, index_d
     key_columns = ['캠페인', 'campaign_id', '광고그룹', 'group_id', 'ad']
 
     if data_type == 'media':
-        media_col = '매체'
         metric_cols = ref.columns.metric_cols
-        df = df.loc[df[media_col].isin(source)]
         df['raw_source'] = ''
         df['raw_medium'] = ''
         df['매체'] = index_source
@@ -304,9 +302,9 @@ def integrate_data():
             df = load.gg_youtube_prep()
             df['ad'] = df['광고그룹']
             right_on_media = ['캠페인', '광고그룹']
-            right_on_ga = ['campaign_id', 'group_id']
-            ga_df['utm_trg'] = ga_df['광고콘텐츠']
-            index_df['group_id'] = index_df['광고그룹']
+            right_on_ga = ['campaign_id', 'group_id', 'ad']
+            index_df['ad'] = index_df['광고그룹']
+            index_df = pd.concat([index_df, temp])
             apps_camp_list = ref.index_df.loc[ref.index_df['매체(표기)'] == media, '캠페인'].unique().tolist()
             apps_df = apps_df.loc[apps_df['campaign'].isin(apps_camp_list)]
             df = data_merge(merging_info, df, apps_df, ga_df, index_df, False, right_on_media=right_on_media,
@@ -384,6 +382,9 @@ def integrate_data():
             df = data_merge(merging_info, df, apps_df, ga_df, index_df, False)
         elif media == 'Naver_롤링보드':
             df = load.na_rolling_prep()
+            df = data_merge(merging_info, df, apps_df, ga_df, index_df, False)
+        elif media == 'Naver_날씨':
+            df = load.na_weather_prep()
             df = data_merge(merging_info, df, apps_df, ga_df, index_df, False)
         elif media == 'Naver_GFA':
             df = load.na_gfa_prep()
@@ -718,6 +719,13 @@ def get_no_index_data():
             index_df = index_df.loc[index_df['매체(표기)'] == media].reset_index(drop=True)
             df = data_merge(merging_info, df, apps_df, ga_df, index_df, True)
         elif media == 'Naver_롤링보드':
+            df = load.get_basic_data(source)
+            camp_list = index_df.loc[index_df['매체(표기)'] != media, '캠페인'].unique().tolist()
+            df = df.loc[~(df['캠페인'].isin(camp_list))]
+            df['매체'] = media
+            index_df = index_df.loc[index_df['매체(표기)'] == media].reset_index(drop=True)
+            df = data_merge(merging_info, df, apps_df, ga_df, index_df, True)
+        elif media == 'Naver_날씨':
             df = load.get_basic_data(source)
             camp_list = index_df.loc[index_df['매체(표기)'] != media, '캠페인'].unique().tolist()
             df = df.loc[~(df['캠페인'].isin(camp_list))]
