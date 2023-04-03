@@ -77,7 +77,7 @@ def sa_merging(day):
 
     # 인덱스 (다음달에 raw 추가하기)
     merge_index = media_df[['머징코드', '캠페인', '세트', '키워드']]
-    merge_index2 = pd.read_csv(dr.download_dir + f'keyword_raw/keyword_media_raw_{ref.r_date.index_date}.csv')
+    merge_index2 = pd.read_csv(dr.download_dir + f'keyword_raw/keyword_media_raw_{ref.r_date.index_date}_{day}.csv')
     merge_index2 = merge_index2[['머징코드', '캠페인', '세트', '키워드']]
     merge_index = pd.concat([merge_index,merge_index2])
 
