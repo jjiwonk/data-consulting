@@ -1,8 +1,8 @@
 import pandas as pd
-import setting.directory as dir
+import setting.directory as dr
 
-raw_dir = 'C:/Users/MADUP/downloads/(라티브)22_23 매출데이터_데이터팀전달용_230309.xlsx'
-download_dir = dir.download_dir
+raw_dir = dr.dropbox_dir + '/데이터컨설팅/데이터 분석 프로젝트/Robyn/raw_data/(라티브)22_23 매출데이터_데이터팀전달용_230309.xlsx'
+download_dir = dr.dropbox_dir + '/데이터컨설팅/데이터 분석 프로젝트/Robyn/result_data'
 rename_dict = {
     '채널': 'channel',
     '일자': 'date',
@@ -65,6 +65,11 @@ def event_schedule_prep():
         else:
             weight += 1
             final_event_df.loc[i, 'event_weight'] = 0
+    final_event_df.loc[final_event_df['date'] == '2022-01-06', 'event_weight'] = 30  # 인수 후 오픈 일자 가중치 plus
+    final_event_df['sold_out'] = final_event_df.apply(lambda x: 1 if x['date'] in ['2022-03-05', '2022-03-06', '2022-03-07',
+                                                                                   '2022-03-08', '2022-03-09', '2022-03-10',
+                                                                                   '2022-09-14', '2022-09-15', '2022-09-16',
+                                                                                   '2022-09-17', '2022-09-18'] else 0, axis=1)
     return final_event_df
 
 
