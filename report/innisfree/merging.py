@@ -309,6 +309,19 @@ def integrate_data():
             apps_df = apps_df.loc[apps_df['campaign'].isin(apps_camp_list)]
             df = data_merge(merging_info, df, apps_df, ga_df, index_df, False, right_on_media=right_on_media,
                             right_on_ga=right_on_ga)
+        elif media == 'ACe':
+            df = load.gg_ace_prep()
+            right_on_media = ['캠페인', '광고그룹']
+            right_on_apps = ['group_id']
+            apps_camp_list = ref.index_df.loc[ref.index_df['매체(표기)'] == media, '캠페인'].unique().tolist()
+            apps_df = apps_df.loc[apps_df['campaign'].isin(apps_camp_list)]
+            ga_camp_list = ref.index_df.loc[ref.index_df['매체(표기)'] == media, 'campaign_id'].unique().tolist()
+            ga_df = ga_df.loc[ga_df['캠페인'].isin(ga_camp_list)]
+            df = data_merge(merging_info, df, apps_df, ga_df, index_df, False, right_on_media=right_on_media, right_on_apps=right_on_apps)
+            df['source'] = 'google'
+            df['medium'] = 'uac'
+            df['ad'] = df['group_id']
+            df['group_id'] = df['캠페인']
         elif media == 'Kakao_Moment':
             df = load.kkm_prep()
             right_on_ga = ['campaign_id', 'group_id', 'ad']
@@ -601,6 +614,25 @@ def get_no_index_data():
             index_df = index_df.loc[index_df['매체(표기)'] == media].reset_index(drop=True)
             df = data_merge(merging_info, df, apps_df, ga_df, index_df, True, right_on_media=right_on_media,
                             right_on_apps=right_on_apps)
+        elif media == 'ACe':
+            df = load.get_basic_data(source)
+            camp_list = index_df.loc[index_df['매체(표기)'] != media, '캠페인'].unique().tolist()
+            df = df.loc[~(df['캠페인'].isin(camp_list))]
+            # Google_PMAX 캠페인 임의 제외 예외처리
+            camp_list = ref.index_df.loc[ref.index_df['매체(표기)'] == 'Google_PMAX', '캠페인'].unique().tolist()
+            df = df.loc[~(df['캠페인'].isin(camp_list))]
+            df['매체'] = media
+            apps_df = apps_df.loc[~(apps_df['campaign'].isin(camp_list))]
+            except_camp_list = ref.index_df.loc[ref.index_df['매체(표기)'] == 'Google_PMAX', 'campaign_id'].unique().tolist()
+            ga_df = ga_df.loc[~(ga_df['캠페인'].isin(except_camp_list))]
+            except_camp_list = index_df.loc[index_df['매체(표기)'] != media, '캠페인'].unique().tolist()
+            apps_df = apps_df.loc[~(apps_df['campaign'].isin(except_camp_list))]
+            except_camp_list = index_df.loc[index_df['매체(표기)'] != media, 'campaign_id'].unique().tolist()
+            ga_df = ga_df.loc[~(ga_df['캠페인'].isin(except_camp_list))]
+            right_on_media = ['캠페인', '광고그룹']
+            right_on_apps = ['group_id']
+            index_df = index_df.loc[index_df['매체(표기)'] == media].reset_index(drop=True)
+            df = data_merge(merging_info, df, apps_df, ga_df, index_df, True, right_on_media=right_on_media, right_on_apps=right_on_apps)
         elif media == 'Kakao_Moment':
             df = load.get_basic_data(source)
             camp_list = index_df.loc[index_df['매체(표기)'] != media, '캠페인'].unique().tolist()

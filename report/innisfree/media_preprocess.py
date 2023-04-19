@@ -158,6 +158,14 @@ def gg_youtube_prep() -> pd.DataFrame:
     return df
 
 
+def gg_ace_prep() -> pd.DataFrame:
+    df = get_basic_data('Google_SA')
+    gg_ac_camp_list = ref.index_df.loc[ref.index_df['매체(표기)'] == 'ACe', '캠페인'].unique().tolist()
+    df = df.loc[df['캠페인'].isin(gg_ac_camp_list)]
+    df['매체'] = 'ACe'
+    return df
+
+
 def pmax_prep() -> pd.DataFrame:
     df = get_basic_data('Google_PMAX')
     pmax_camp_list = ref.index_df.loc[ref.index_df['매체(표기)'] == 'Google_PMAX', '캠페인'].unique().tolist()
