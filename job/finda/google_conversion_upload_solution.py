@@ -15,8 +15,8 @@ if __name__ == "__main__":
         tmp_path = get_tmp_path() + f"/{owner_id}/"
 
         os.makedirs(tmp_path, exist_ok=True)
-
-        s3_path = f'query/{owner_id}/gclid_query.txt'
+        # 수정
+        s3_path = f'query/{owner_id}/gclid_query_revenue.txt'
         f_path = s3.download_file(s3_path=s3_path, s3_bucket=const.DEFAULT_S3_PRIVATE_BUCKET, local_path=tmp_path)
 
         f = open(f_path, 'r', encoding='utf-8-sig')
@@ -69,13 +69,18 @@ if __name__ == "__main__":
         df = df.loc[~df['event_name'].str.contains('Viewed LA Home')]
         df = pd.concat([df, limit_df])
 
-        # API 양식에 맞게 가공
+        #revenue 가공 #수정
+        df.loc[df['event_name'] != 'loan_contract_completed','event_value'] = 0
+        df['event_value'] = df['event_value'].astype(float)
+        df['event_value'] = df['event_value'].apply(lambda x: x/1300)
+
+        # API 양식에 맞게 가공 #수정 이벤트 벨류 추가
         prep_df = df[['sub_param_1', 'sub_param_2', 'sub_param_3', 'conversion_action_id',
-                      'attributed_touch_time']].drop_duplicates()
+                      'attributed_touch_time','event_value']].drop_duplicates()
         prep_df['attributed_touch_time'] = prep_df['attributed_touch_time'].apply(
             lambda x: x.strftime('%Y-%m-%d %H:%M:%S+00:00'))
         prep_df = prep_df.rename(columns={'sub_param_1': 'gclid', 'sub_param_2': 'gbraid', 'sub_param_3': 'wbraid',
-                                          'attributed_touch_time': 'conversion_date_time'})
+                                          'attributed_touch_time': 'conversion_date_time','event_value': 'conversion_value'})
         prep_df.index = range(len(prep_df))
 
         return prep_df
