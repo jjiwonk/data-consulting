@@ -63,7 +63,7 @@ if __name__ == "__main__":
 
         df = df.loc[df['conversion_action_id'] != '-']
 
-        # 한도 조회 유저 중복제거
+        # 한도 조회 유저 중복제거 #
         limit_df = df.loc[df['event_name'].str.contains('Viewed LA Home')]
         limit_df = limit_df.drop_duplicates(['appsflyer_id'], keep='first')
         df = df.loc[~df['event_name'].str.contains('Viewed LA Home')]

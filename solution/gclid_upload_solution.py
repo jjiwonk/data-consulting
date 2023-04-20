@@ -34,7 +34,7 @@ class clickconversion_upload(Worker):
                 click_conversion.gbraid = gbraid
             else:
                 click_conversion.wbraid = wbraid
-            # 수정
+            # 수정 #
             click_conversion.conversion_value = float(conversion_value)
             click_conversion.currency_code = "USD"
 
