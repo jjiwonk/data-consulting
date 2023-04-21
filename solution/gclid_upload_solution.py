@@ -17,8 +17,6 @@ class clickconversion_upload(Worker):
             gbraid = key[i].get('gbraid')
             wbraid = key[i].get('wbraid')
             conversion_date_time = key[i].get('conversion_date_time')
-            #수정
-            conversion_value = key[i].get('conversion_value')
 
             click_conversion = client.get_type("ClickConversion")
             conversion_upload_service = client.get_service("ConversionUploadService")
@@ -34,9 +32,6 @@ class clickconversion_upload(Worker):
                 click_conversion.gbraid = gbraid
             else:
                 click_conversion.wbraid = wbraid
-            # 수정 #
-            click_conversion.conversion_value = float(conversion_value)
-            click_conversion.currency_code = "USD"
 
             click_conversion.conversion_date_time = conversion_date_time
 
