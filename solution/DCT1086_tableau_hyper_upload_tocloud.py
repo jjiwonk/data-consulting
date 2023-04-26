@@ -10,14 +10,18 @@ from worker.abstract_worker import Worker
 
 class hyper_file_upload(Worker):
 
-    def table_type_definition(self, num_list , text_list , date_list):
+    def table_type_definition(self, num_list , double_list, text_list , date_list):
 
     # 테이블 타입 지정해주기
         table_definition = []
 
         for i in num_list:
-            num_td = TableDefinition.Column(name= i, type=SqlType.numeric(precision=1, scale=0), nullability=NOT_NULLABLE)
+            num_td = TableDefinition.Column(name= i, type=SqlType.numeric(precision=1,scale=0), nullability=NOT_NULLABLE)
             table_definition.append(num_td)
+
+        for i in double_list:
+            doub_td = TableDefinition.Column(name= i, type=SqlType.double(), nullability=NOT_NULLABLE)
+            table_definition.append(doub_td)
 
         for i in text_list:
             text_td = TableDefinition.Column(name=i, type=SqlType.text(), nullability=NOT_NULLABLE)
@@ -116,11 +120,12 @@ class hyper_file_upload(Worker):
         project_name = info['project_name']
 
         num_list = info['num_list']
+        double_list = info['double_list']
         date_list = info['date_list']
         text_list = info['text_list']
         data = info['data']
 
-        table_definition = self.table_type_definition(num_list,text_list,date_list)
+        table_definition = self.table_type_definition(num_list,double_list,text_list,date_list)
         self.insert_data(hyper_name, table_definition ,data ,tableau_token_name, tableau_token, tableau_sever, project_name)
 
         return "Tableau Hyper File Upload Success"

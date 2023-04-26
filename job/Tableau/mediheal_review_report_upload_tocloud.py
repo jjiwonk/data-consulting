@@ -57,6 +57,7 @@ if __name__ == "__main__":
         success_alert_channel = 'gl_메디힐_모니터링_alert',
         error_slack_channel='gl_메디힐_모니터링_alert',
         num_list = ['rating', 'count', 'review_length'],
+        double_list =[],
         text_list = ['사이트 구분', '제조사 구분', '제조사', '제품명', 'user_name',
                      'review_text', 'review_id', 'sentiment', 'review_text_prep',
                      'nouns_list', 'keyword'],
