@@ -88,11 +88,12 @@ if __name__ == "__main__":
         success_alert_channel = 'pjt_dc_success',
         error_slack_channel='pjt_dc_erro',
         num_list = ['ad_rank','year', 'month', 'day', 'hour', 'minute'],
+        double_list = [],
         text_list = ['collected_at','pc_mobile_type', 'weekday', 'ad_name','ad_keyword','screenshot_url','url_dict', 'owner_id', 'channel'],
         date_list = ['date']
     )
 
-    info['report_col'] =  info['num_list'] + info['text_list'] + info['date_list']
+    info['report_col'] =  info['num_list'] + info['double_list'] + info['text_list'] + info['date_list']
     info['data'] = data_prep('tableau',info['num_list'], info['text_list'], info['report_col'])
 
     worker.work(attr=attr, info=info)
