@@ -131,7 +131,7 @@ class KeywordMonitoring(Worker):
             'weekday': Key.WEEK_DAYS[self.now_time.weekday()],
             'date': "",
             'ad_keyword': "",
-            'ad_rank': "",
+            'ad_rank': "-",
         }
         self.s3_path = ''
         self.s3_folder = 'keyword_monitoring'
