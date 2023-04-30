@@ -1,0 +1,127 @@
+from utils import s3
+from utils import const
+
+from worker.abstract_worker import Worker
+
+import datetime
+import os
+import pandas as pd
+import re
+import numpy as np
+
+from konlpy.tag import Okt
+from collections import Counter
+
+
+class Key:
+    file_name = None
+    result_s3_path = None
+    raw_data = None
+    replace_word_list = None
+    file_path = None
+
+def Key_initiallize(owner_id, schedule_time, tmp_path, raw_data, replace_word_list):
+    schedule_date = datetime.datetime.strptime(schedule_time, '%Y-%m-%d %H:%M:%S')
+    yearmonth = schedule_date.strftime('%Y%m')
+
+    Key.raw_data = raw_data
+    Key.replace_word_list = replace_word_list
+
+    Key.file_name = f'{owner_id}_Review_Data_Report_{yearmonth}.csv'
+    Key.file_path = tmp_path + Key.file_name
+    Key.result_s3_path = f'review_data_report/owner_id={owner_id}/{Key.file_name}'
+
+class word_preprocessor :
+    okt = Okt()
+    def remain_korean_words(self, text):
+        korean_pat = re.compile('[^가-힣]')
+        result = korean_pat.sub(' ', text)
+        return result
+
+
+    def text_normalize(self, text):
+        return self.okt.normalize(text)
+
+    def nouns_extraction(self, text):
+        return self.okt.nouns(text)
+
+    def stop_words(self, text):
+
+        STOPWORDS = ['다음', '사용', '정도', '일', '경우', '이상', '생각', '요즘', '요새','사람', '자리', '이번', '구매', '마다', '동안', '제품', '구입', '감사', '상품', '주문','대비', '물건',
+                     '너무', '아주', '매우', '완전', '약간', '조금','일단','그리고', '정말', '근데', '이거', '엄청', '많이','그냥', '느낌', '계속', '현재', '아무래도', '일반', '마침', '얘기',
+                     '진짜', '우리', '저희', '따라', '의해', '으로', '에게', '뿐이다','기준으로', '예를 들면', '저희', '지말고', '하지마', '하지마라', '다른', '물론', '또한', '그리고', '뿐만 아니라',
+                     '관계없이','그치지 않고','그러나', '그런데', '하지만','든간에', '따지지 않고', '설사', '비록', '더라도', '아니면', '불문하고', '틈타', '제외하고', '이 외에', '이 밖에', '한다면 몰라도',
+                     '외에도','이곳', '여기', '부터', '따라서', '할 생각이다', '하려고하다', '하지만', '일때', '할때', '앞에서', '중에서', '보는데서', '으로써', '로써', '까지', '반드시',
+                     '할수있어', '한다면', '등등','겨우', '단지', '다만', '할뿐', '대해서', '훨씬', '얼마나', '얼마만큼', '얼마큼','남짓', '얼마간', '약간', '다소', '조금', '다수', '얼마', '지만', '하물며', '또한',
+                     '그러나', '그렇지만','하지만', '이외에도', '대해 말하자면', '다음에', '반대로', '만약', '그렇지않으면', '각각', '여러분', '각종', '각자', '제각기', '그러므로', '그래서', '고로','하기 때문에', '거니와',
+                     '이지만', '대하여', '관하여', '관한', '과연', '아니나다를까','생각한대로', '진짜로', '거바','어째서', '무엇때문에', '무슨', '어디', '어느곳', '하물며', '어느때', '언제','그래도', '그리고', '바꾸어말하면',
+                     '할지라도', '일지라도', '지든지', '거의', '하마터면', '이젠', '된바에야','된이상', '만큼', '어찌됏든', '그위에','게다가', '점에서 보아','고려하면','사면','사려','중이','역시']
+
+        result = [x for x in text if not x in STOPWORDS]
+
+        return result
+
+    WORD_LIST = [" "]
+    REPLACE_WORDS = {"조아": "좋아"}
+    pos_tags = ["NNG", "VV", "VA", "VCN", "VCP", "XR", "IC"]
+
+class ReviewDataReport(Worker):
+    def review_analyze(self):
+        self.logger.info('리뷰 리포트 생성을 시작합니다.')
+
+        review_data = Key.raw_data
+        review_data_dedup = review_data.drop_duplicates('review_id')
+
+        word_prep = word_preprocessor()
+
+        review_data_dedup['review_text'] = review_data_dedup['review_text'].astype('str')
+
+        review_data_dedup['review_text_prep'] = review_data_dedup['review_text'].copy()
+        for kwd in Key.replace_word_list :
+            review_data_dedup['review_text_prep'] = review_data_dedup['review_text_prep'].str.replace(kwd, '', regex=True)
+
+        review_data_dedup['review_text_prep'] = review_data_dedup['review_text_prep'].apply(lambda x : word_prep.remain_korean_words(x))
+        review_data_dedup['review_text_prep'] = review_data_dedup['review_text_prep'].apply(lambda x : word_prep.text_normalize(x))
+
+        review_data_dedup['nouns_list'] = review_data_dedup['review_text_prep'].apply(lambda x : word_prep.nouns_extraction(x))
+        review_data_dedup['nouns_list'] = review_data_dedup['nouns_list'].apply(lambda x: word_prep.stop_words(x))
+
+        review_id_array = np.array(review_data_dedup['review_id'])
+        nouns_list_array = np.array(review_data_dedup['nouns_list'])
+
+        count_df_list = []
+        for idx, nouns_list in enumerate(nouns_list_array):
+            review_id = review_id_array[idx]
+
+            count_df = pd.DataFrame(dict(Counter(nouns_list)), index=['-', 'count']).transpose()
+            count_df.drop('-', axis=1, inplace=True)
+            count_df.reset_index(inplace=True)
+            count_df['review_id'] = review_id
+
+            count_df_list.append(count_df)
+
+        total_count_df = pd.concat(count_df_list)
+
+        df_count_merge = review_data_dedup.merge(total_count_df, on = 'review_id', how = 'left')
+        df_count_merge = df_count_merge.rename(columns = {'index' : 'keyword'})
+        df_count_merge['review_length'] = df_count_merge['review_text_prep'].str.len()
+        df_count_merge = df_count_merge.loc[df_count_merge['keyword'].str.len()>1]
+        df_count_merge.to_csv(Key.file_path, index=False, encoding = 'utf-8-sig')
+
+        s3.upload_file(Key.file_path, Key.result_s3_path, const.DEFAULT_S3_PRIVATE_BUCKET)
+        os.remove(Key.file_path)
+
+        return df_count_merge
+
+    def do_work(self, info:dict, attr:dict):
+        owner_id = attr['owner_id']
+        schedule_time = attr['schedule_time']
+
+        tmp_path = info['tmp_path']
+        raw_data = info['raw_data']
+        replace_word_list = info['replace_word_list']
+
+        Key_initiallize(owner_id, schedule_time, tmp_path, raw_data, replace_word_list)
+        self.review_analyze()
+
+        return "Review Data Report Success"
