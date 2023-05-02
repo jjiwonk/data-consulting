@@ -92,7 +92,7 @@ if __name__ == "__main__":
         hyper_name ='musinsa_report.hyper',
         project_name = 'RD',
         success_alert_channel = 'pjt_dc_success',
-        error_slack_channel='pjt_dc_erro',
+        error_slack_channel='pjt_dc_error',
         num_list = [],
         double_list = ['노출', '링크 클릭','광고비_Fee포함','BZ_GGMV(1D)',  'GA_세션', '통합첫구매', '통합구매', '통합매출', '통합사용자', '통합신규사용자', '통합가입'],
         text_list = ['계정 이름', '캠페인 이름', '매체',  '파트', '계정','캠페인/구분', '상세구분','KPI','week', 'day','year', 'month', 'date'],
