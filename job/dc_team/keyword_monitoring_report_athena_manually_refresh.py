@@ -13,7 +13,7 @@ if __name__ == "__main__":
         table_s3_path="data-consulting-private/keyword_monitoring/",
         owner_ids=['heum'],
         channel='네이버SA',
-        start_date='2023-04-25',
+        start_date='2023-05-02',
     )
 
     worker.work(attr=attr, info=info)
