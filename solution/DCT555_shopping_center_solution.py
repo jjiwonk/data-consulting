@@ -16,7 +16,7 @@ import datetime
 
 class Key:
     LOGIN_URL = "https://center.shopping.naver.com/login"
-    USE_HEADLESS = True
+    USE_HEADLESS = False
     tmp_path = None
     USE_LOGGING = True
     login_id = None
@@ -136,7 +136,7 @@ class SpcDownload(Worker):
             for i in range(down_num):
                 try :
                     download_btn = wait_for_element(driver=driver, by=By.CSS_SELECTOR,
-                                                    value=f'#downloadList > tr:nth-child({i + 1}) > td.last > a', max_retry_cnt=5)
+                                                    value=f'#downloadList > tr:nth-child({i + 1}) > td.last > a', max_retry_cnt=10)
                 except Exception as e :
                     if i == down_num - 1 :
                         break
