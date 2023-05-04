@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import re
 
 
 class SessionDataGenerator():
@@ -79,6 +80,77 @@ class SessionDataGenerator():
                 self.discriminator()
 
         self.data = pd.DataFrame(data=self.data, columns=self.column_names)
+
+class SankeyModeling():
+    def __init__(self, raw_data, funnel_list, end_sequence, sequence_column_name, destination, file_name = 'sankey_data.xlsx', sep = ' > '):
+        self.data = raw_data
+        self.model = None
+
+        self.funnel_list = funnel_list
+        self.end_sequence = end_sequence
+        self.sequence_column_name = sequence_column_name
+
+        self.destination = destination
+        self.file_name = file_name
+        self.sep = sep
+        self.step_column_list = ['Step ' + str(i + 1) for i in range(len(self.funnel_list))]
+
+    def define_pat_list(self):
+        pat_list = []
+        for i in range(len(self.funnel_list)) :
+            pat = re.compile('.*'.join(self.funnel_list[:i+1]))
+            pat_list.append(pat)
+        pat_list.reverse()
+        return pat_list
+
+    def sankey_data(self):
+        pat_list = self.define_pat_list()
+        sequence_column_name = self.sequence_column_name
+        raw_data = self.data.loc[self.data[sequence_column_name].str.contains(self.funnel_list[0])]
+        step_column_list = self.step_column_list
+
+        raw_data[step_column_list] = np.nan
+
+        for idx, pat in enumerate(pat_list):
+            max_depth = len(self.funnel_list)-idx
+
+            if len((pd.isnull(raw_data[step_column_list[0]]) == True)) == 0:
+                break
+
+            match_index = (pd.isnull(raw_data[step_column_list[0]]))&(raw_data[sequence_column_name].str.contains(pat=pat, regex=True))
+
+            for i in range(max_depth):
+                raw_data.loc[match_index, step_column_list[i]] = self.funnel_list[i]
+
+            if idx!=0:
+                exit_pat = self.funnel_list[max_depth-1] + self.sep + self.end_sequence
+                raw_data.loc[match_index &
+                             (raw_data[sequence_column_name].str.contains(pat=exit_pat)), step_column_list[max_depth]] = 'Bound'
+                raw_data.loc[match_index &
+                             (pd.isnull(raw_data[step_column_list[max_depth]])), step_column_list[max_depth]] = 'Other Events'
+        raw_data['Link'] = 'link'
+        raw_data['Size'] = 1
+
+        return raw_data
+
+    def sankey_model(self):
+        path_series = pd.Series(range(98))
+        data = pd.DataFrame(path_series, columns = ['Path'])
+        data['Link'] = 'link'
+        data['Min or Max'] = data['Path'].apply(lambda x : 'Min' if x <= 48 else 'Max')
+        data['t'] = data['Path'].apply(lambda x : -6 + (0.25) * x if x <= 48 else 6 - (0.25) * (x-49))
+
+        return data
+
+    def do_work(self):
+        self.data = self.sankey_data()
+        self.model = self.sankey_model()
+    def sankey_to_excel(self):
+        writer = pd.ExcelWriter(self.destination + '/' + self.file_name, engine='xlsxwriter')
+        self.data.to_excel(writer, sheet_name='Data',index=False)
+        self.model.to_excel(writer, sheet_name='Model',index=False)
+        writer.close()
+
 def user_identifier(df, platform_id, user_id):
     df = df.loc[df[user_id].str.len()>0]
     df = df.drop_duplicates([platform_id, user_id])
