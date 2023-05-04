@@ -124,7 +124,7 @@ def get_total_raw_data(event_folder='both', df=None):
         total_raw = pd.concat([organic_raw, paid_raw]).drop_duplicates().reset_index(drop=True)
 
     # event_value 내 af_member_id 기준 member_id 정규화
-    total_raw.loc[total_raw['event_value'] == ''] = '{}'
+    total_raw.loc[total_raw['event_value'] == '', 'event_value'] = '{}'
     total_raw['member_id'] = get_event_from_values(np.array(total_raw['event_value']), 'af_member_id')
 
     # member_id 기준으로 member_id 통합
