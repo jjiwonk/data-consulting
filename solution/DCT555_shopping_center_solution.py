@@ -16,7 +16,7 @@ import datetime
 
 class Key:
     LOGIN_URL = "https://center.shopping.naver.com/login"
-    USE_HEADLESS = False
+    USE_HEADLESS = True
     tmp_path = None
     USE_LOGGING = True
     login_id = None
