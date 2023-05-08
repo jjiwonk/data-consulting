@@ -98,7 +98,7 @@ class SankeyModeling():
     def define_pat_list(self):
         pat_list = []
         for i in range(len(self.funnel_list)) :
-            pat = re.compile('.*'.join(self.funnel_list[:i+1]))
+            pat = re.compile('^' + '.*'.join(self.funnel_list[:i+1]) + '$')
             pat_list.append(pat)
         pat_list.reverse()
         return pat_list
