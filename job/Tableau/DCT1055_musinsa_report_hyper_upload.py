@@ -75,6 +75,7 @@ if __name__ == "__main__":
         df[text_list] = df[text_list].astype(str)
 
         df['일'] = pd.to_datetime(df['일'])
+        df = df.dropna(subset=['일'])
         df = df[report_col]
 
         df.index = range(len(df))
