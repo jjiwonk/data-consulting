@@ -1,30 +1,35 @@
 from analysis.DCT1088_thehandsome.data_prep import *
+from workers import func
 
 
 # raw 데이터 로드 및 가공
 total_raw = get_total_raw_data()
+user_id_dict = func.user_identifier(total_raw, 'appsflyer_id', 'member_id')
+total_raw['uniquer_user_id'] = total_raw['appsflyer_id'].apply(lambda x : user_id_dict.get(x))
 purchase_df = prep_purchase_raw_data(total_raw)
-purchase_df.event_revenue_krw.sum()
-purchase_df = purchase_df.loc[purchase_df['member_id'] != '']
-purchase_df.to_csv(dr.download_dir + '/purchase_log.csv', index=False, encoding='utf-8-sig')
-rfm_segment_df = prep_rfm_segment_df(purchase_df)
-# 유저 세그먼트 분류 누락 확인
-# rfm_segment_df.loc[rfm_segment_df['user_segment'].isnull(), ['recency_score', 'frequency_score', 'monetary_score']].drop_duplicates()
-# rfm_segment_df.to_csv(dr.download_dir + '/rfm_user_segment.csv', index=False, encoding='utf-8-sig')
 
+purchase_df = purchase_df.loc[purchase_df['uniquer_user_id'] != '']
+purchase_df = purchase_df.rename(columns={'member_id': 'real_member_id', 'uniquer_user_id': 'member_id'})
+purchase_df.to_csv(dr.download_dir + '/purchase_log.csv', index=False, encoding='utf-8-sig')
+# 태블로 RFM 대시보드 생성 시 위 데이터 활용
+
+
+
+
+################ EDA backlog ################
 # 첫 구매 유저 리스트
 af_first_purchase_df = purchase_df.loc[purchase_df['event_name'] == 'af_first_purchase']
-# af_first_purchase_df.is_paid.value_counts()
-
 organic_af_first_purchase_user_list = set(af_first_purchase_df.loc[af_first_purchase_df['is_paid'] == False, 'member_id'])
 paid_af_first_purchase_user_list = set(af_first_purchase_df.loc[af_first_purchase_df['is_paid'] == True, 'member_id'])
 organic_paid_af_first_purchase_user_list = set(af_first_purchase_df.loc[af_first_purchase_df['is_paid'] == '', 'member_id'])
-
 
 # 총 구매 유저 리스트 및 로그
 total_user_list = set(purchase_df['member_id'])  # rfm_segment_df 행수와 동일
 total_user_log = total_raw.loc[total_raw['member_id'].isin(list(total_user_list))].sort_values(['member_id', 'event_time'], ignore_index=True)
 len(total_user_list)
+
+# 진성 유저 판별
+rfm_segment_df = prep_rfm_segment_df(purchase_df)
 
 # 운영팀 제공 진성 유저
 quality_user_list = set(rfm_segment_df.loc[rfm_segment_df['is_quality_user'] == 1, 'member_id'])
@@ -33,7 +38,6 @@ quality_user_log = total_raw.loc[total_raw['member_id'].isin(list(quality_user_l
 # 진성 구매 유저
 purchase_df['is_quality_user'] = purchase_df['member_id'].apply(lambda x: True if x in quality_user_list else False)
 purchase_df.pivot_table(index='is_quality_user', aggfunc='sum')
-
 
 # 오가닉 구매 & 진성 구매 유저 로그
 organic_purchase_user_list = set(purchase_df.loc[purchase_df['is_paid'] == False, 'member_id'])
@@ -59,46 +63,8 @@ organic_paid_cross_user_list = organic_paid_user_list & quality_user_list
 len(organic_paid_cross_user_list)
 organic_paid_quality_user_log = quality_user_log.loc[quality_user_log['member_id'].isin(list(organic_paid_cross_user_list))].sort_values(['member_id', 'event_time'], ignore_index=True)
 
-
 # 진성 구매 유저 로그 추출(오가닉, 광고 유저 여부 컬럼 추가)
 quality_user_log['is_paid_user'] = ''
 quality_user_log.loc[quality_user_log['member_id'].isin(organic_cross_user_list), 'is_paid_user'] = False
 quality_user_log.loc[quality_user_log['member_id'].isin(paid_cross_user_list), 'is_paid_user'] = True
-
 quality_user_log.to_csv(dr.download_dir + '/quality_user_log.csv', index=False, encoding='utf-8-sig')
-
-
-
-
-
-
-########### backlog #############
-
-# # 첫 구매 유저 리스트
-# af_first_purchase_user_list = set(purchase_df.loc[(purchase_df['event_name'] == 'af_first_purchase')&(purchase_df['is_first_purchase'] == True), 'member_id'])
-# af_first_purchase_user_log = total_user_log.loc[total_user_log['member_id'].isin(list(af_first_purchase_user_list))].sort_values(['member_id', 'event_time'], ignore_index=True)
-# af_first_purchase_user_log.drop_duplicates(['member_id']).is_paid.value_counts()
-#
-# paid_af_first_purchase_user_log = af_first_purchase_user_log.query("is_paid == True")
-# organic_af_first_purchase_user_log = af_first_purchase_user_log.query("is_paid == False")
-#
-# # 광고를 통해 유입된 유저
-# temp1 = af_first_purchase_user_log.drop_duplicates(['member_id']).query("is_paid == True").member_id.unique().tolist()
-# # 광고를 통해 첫 유입되진 않았으나 광고를 통해 re-engage된 유저
-# check1 = paid_af_first_purchase_user_log.loc[~(paid_af_first_purchase_user_log['member_id'].isin(temp1))]
-#
-# # 첫 구매가 아닌 유저 리스트
-# non_first_purchase_user_log = total_user_log.loc[~(total_user_log['member_id'].isin(list(af_first_purchase_user_list)))].sort_values(['member_id', 'event_time'], ignore_index=True)
-# non_first_purchase_user_log.drop_duplicates(['member_id']).is_paid.value_counts()
-# non_first_purchase_user_list = set(non_first_purchase_user_log.loc[:, 'member_id'])
-# cross_non_user_list = non_first_purchase_user_list & quality_user_list
-# cross_non_user_log = total_user_log.loc[total_user_log['member_id'].isin(list(cross_non_user_list))].sort_values(['member_id', 'event_time'], ignore_index=True)
-# cross_non_user_log.drop_duplicates(['member_id']).is_paid.value_counts()
-#
-#
-# # RFM 스코어 진성 유저 & 첫 구매 유저 교집합
-# rfm_quality_user_list = set(rfm_segment_df.loc[rfm_segment_df['user_segment'].isin(['The Star 등급 고객', 'VIP 고객']), 'member_id'])
-# rfm_cross_user_list = [x for x in af_first_purchase_user_list if x in rfm_quality_user_list]
-# rfm_cross_user_log = total_raw.loc[total_raw['member_id'].isin(rfm_cross_user_list)]
-# rfm_cross_user_log = rfm_cross_user_log.sort_values(['member_id', 'event_time'])
-
