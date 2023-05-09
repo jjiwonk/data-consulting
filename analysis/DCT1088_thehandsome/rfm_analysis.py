@@ -4,10 +4,7 @@ from workers import func
 
 # raw 데이터 로드 및 가공
 total_raw = get_total_raw_data()
-user_id_dict = func.user_identifier(total_raw, 'appsflyer_id', 'member_id')
-total_raw['uniquer_user_id'] = total_raw['appsflyer_id'].apply(lambda x : user_id_dict.get(x))
 purchase_df = prep_purchase_raw_data(total_raw)
-
 purchase_df = purchase_df.loc[purchase_df['uniquer_user_id'] != '']
 purchase_df = purchase_df.rename(columns={'member_id': 'real_member_id', 'uniquer_user_id': 'member_id'})
 purchase_df.to_csv(dr.download_dir + '/purchase_log.csv', index=False, encoding='utf-8-sig')
