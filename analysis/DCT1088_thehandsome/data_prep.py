@@ -6,6 +6,7 @@ import datetime
 import setting.directory as dr
 from workers.read_data import pyarrow_csv
 import json
+import workers.func as func
 
 
 def get_raw_data(event_folder):
@@ -111,63 +112,62 @@ def get_total_raw_data(event_folder='both', df=None):
     elif event_folder == 'organic':
         organic_raw = get_raw_data('organic')
         organic_raw['is_paid'] = False
+        organic_raw.loc[organic_raw['event_value'] == '', 'event_value'] = '{}'
+        organic_raw['member_id'] = get_event_from_values(np.array(organic_raw['event_value']), 'af_member_id')
+        organic_raw['order_id'] = get_event_from_values(np.array(organic_raw['event_value']), 'af_order_id')
         total_raw = organic_raw
     elif event_folder == 'paid':
         paid_raw = get_raw_data('paid')
         paid_raw['is_paid'] = True
+        paid_raw.loc[paid_raw['event_value'] == '', 'event_value'] = '{}'
+        paid_raw['member_id'] = get_event_from_values(np.array(paid_raw['event_value']), 'af_member_id')
+        paid_raw['order_id'] = get_event_from_values(np.array(paid_raw['event_value']), 'af_order_id')
         total_raw = paid_raw
     else:
         organic_raw = get_raw_data('organic')
         organic_raw['is_paid'] = False
+        organic_raw.loc[organic_raw['event_value'] == '', 'event_value'] = '{}'
+        organic_raw['member_id'] = get_event_from_values(np.array(organic_raw['event_value']), 'af_member_id')
+        organic_raw['order_id'] = get_event_from_values(np.array(organic_raw['event_value']), 'af_order_id')
         paid_raw = get_raw_data('paid')
         paid_raw['is_paid'] = True
+        paid_raw.loc[paid_raw['event_value'] == '', 'event_value'] = '{}'
+        paid_raw['member_id'] = get_event_from_values(np.array(paid_raw['event_value']), 'af_member_id')
+        paid_raw['order_id'] = get_event_from_values(np.array(paid_raw['event_value']), 'af_order_id')
         total_raw = pd.concat([organic_raw, paid_raw]).drop_duplicates().reset_index(drop=True)
 
-    # event_value 내 af_member_id 기준 member_id 정규화
-    total_raw.loc[total_raw['event_value'] == '', 'event_value'] = '{}'
-    total_raw['member_id'] = get_event_from_values(np.array(total_raw['event_value']), 'af_member_id')
-
-    # member_id 기준으로 member_id 통합
-    # total_raw = total_raw.sort_values(['member_id', 'event_time'], ascending=False)
-    # member_df = total_raw.loc[:, ['member_id', 'member_id']].drop_duplicates('member_id')
-    # member_df = member_df.loc[member_df['member_id'] != '']
-    # merged_df = pd.merge(total_raw, member_df, how='left', on='member_id')
-    # merged_df['member_id'] = merged_df['appsflyer_id_x']
-    # merged_df.loc[merged_df['appsflyer_id_y'].isna(), 'appsflyer_id_y'] = merged_df['appsflyer_id_x']
-    # merged_df.loc[merged_df['appsflyer_id_x'] != merged_df['appsflyer_id_y'], 'member_id'] = merged_df['appsflyer_id_y']
-    # total_raw = merged_df.drop(['appsflyer_id_x', 'appsflyer_id_y'], axis=1)
-
-    # 주문번호 기준 중복제거
-    total_raw['order_id'] = get_event_from_values(np.array(total_raw['event_value']), 'af_order_id')
-    total_raw.sort_values('event_time', inplace=True)
-    non_purchase_df = total_raw.loc[~(total_raw['event_name'].isin(['af_purchase', 'af_first_purchase']))]
-    purchase_df = total_raw.loc[total_raw['event_name'].isin(['af_purchase', 'af_first_purchase'])]
-    purchase_df = purchase_df.drop_duplicates('order_id')
-    final_df = pd.concat([non_purchase_df, purchase_df])
+    # uniquer_user_id로 유저 정규화
+    user_id_dict = func.user_identifier(total_raw, 'appsflyer_id', 'member_id')
+    total_raw['uniquer_user_id'] = total_raw['appsflyer_id'].apply(lambda x: user_id_dict.get(x))
+    final_df = total_raw.reset_index(drop=True)
     return final_df
 
 
 def prep_purchase_raw_data(df):
     purchase_raw = df.loc[df['event_name'].isin(['af_purchase', 'af_first_purchase'])]
+    purchase_raw.sort_values('event_time', inplace=True)
+    purchase_raw = purchase_raw.drop_duplicates('order_id')
 
     # 이벤트 시간 기준 유저의 첫 구매 여부 확인
-    # purchase_raw = purchase_raw.sort_values(['member_id', 'event_time']).reset_index(drop=True)
-    # temp_id = pd.concat([pd.Series(['']), purchase_raw['member_id']])[:-1].reset_index(drop=True)
+    # purchase_raw = purchase_raw.sort_values(['uniquer_user_id', 'event_time']).reset_index(drop=True)
+    # temp_id = pd.concat([pd.Series(['']), purchase_raw['uniquer_user_id']])[:-1].reset_index(drop=True)
     # purchase_raw['compare_id'] = temp_id
-    # purchase_raw['is_first_purchase'] = purchase_raw.apply(lambda x: True if x['member_id'] != x['compare_id'] else False, axis=1)
+    # purchase_raw['is_first_purchase'] = purchase_raw.apply(lambda x: True if x['uniquer_user_id'] != x['compare_id'] else False, axis=1)
     # purchase_raw = purchase_raw.drop('compare_id', axis=1)
     purchase_raw['event_revenue_krw'] = purchase_raw['event_revenue_krw'].apply(pd.to_numeric).astype(int)
     purchase_raw[['attributed_touch_time', 'install_time', 'event_time']] = purchase_raw[['attributed_touch_time', 'install_time', 'event_time']].apply(pd.to_datetime, axis=1)
 
     # 첫 구매 유저 여부
-    af_first_purchase_user_list = set(purchase_raw.loc[purchase_raw['event_name'] == 'af_first_purchase', 'member_id'])
+    af_first_purchase_user_list = set(purchase_raw.loc[purchase_raw['event_name'] == 'af_first_purchase', 'uniquer_user_id'])
     purchase_raw['is_first_purchase_user'] = False
-    purchase_raw.loc[purchase_raw['member_id'].isin(af_first_purchase_user_list), 'is_first_purchase_user'] = True
+    purchase_raw.loc[purchase_raw['uniquer_user_id'].isin(af_first_purchase_user_list), 'is_first_purchase_user'] = True
 
-    # 오가닉, 페이드 모두 있는 유저 is_paid 공백 처리
-    temp = purchase_raw.drop_duplicates(['member_id', 'is_paid']).member_id.value_counts()
+    # 오가닉, 페이드 모두 있는 유저 is_paid both 처리
+    temp = purchase_raw.drop_duplicates(['member_id', 'is_paid']).uniquer_user_id.value_counts()
     dup_user_list = temp[temp >= 2].index.tolist()
-    purchase_raw.loc[purchase_raw['member_id'].isin(dup_user_list), 'is_paid'] = ''
+    purchase_raw.loc[purchase_raw['is_paid'] == True, 'is_paid'] = 'paid'
+    purchase_raw.loc[purchase_raw['is_paid'] == False, 'is_paid'] = 'organic'
+    purchase_raw.loc[purchase_raw['uniquer_user_id'].isin(dup_user_list), 'is_paid'] = 'both'
     purchase_raw = purchase_raw.reset_index(drop=True)
 
     return purchase_raw
@@ -175,12 +175,12 @@ def prep_purchase_raw_data(df):
 
 def prep_rfm_segment_df(df):
     # RFM 스코어 가공
-    rfm_segment_raw = df.pivot_table(index=['member_id'],
+    rfm_segment_raw = df.pivot_table(index=['uniquer_user_id'],
                                      values=['event_time', 'event_revenue_krw', 'event_name'],
                                      aggfunc=['last', 'sum', 'count'])
     rfm_segment_raw = rfm_segment_raw.reset_index().reset_index(drop=True)
     rfm_segment_raw = rfm_segment_raw.iloc[:, [0, 3, 4, 5]]
-    rfm_segment_raw.columns = ['member_id', 'recent_purchase_time', 'monetary', 'frequency']
+    rfm_segment_raw.columns = ['uniquer_user_id', 'recent_purchase_time', 'monetary', 'frequency']
     rfm_segment_raw['recency'] = rfm_segment_raw['recent_purchase_time'].apply(
         lambda x: (datetime.datetime.today() - x).total_seconds())
     rfm_segment_raw.loc[
