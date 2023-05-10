@@ -10,7 +10,7 @@ info_df = spreadsheet.spread_sheet(doc, '매체 전처리', 0, 3).reset_index(dr
 setting_df = spreadsheet.spread_sheet(doc, '매체 전처리', 0, 0).reset_index(drop=True)
 index_df = spreadsheet.spread_sheet(doc, '광고 인덱스').reset_index(drop=True)
 index_df = index_df.loc[index_df['매체(표기)'] != '']
-merging_df = spreadsheet.spread_sheet(doc, '자동화 머징 정보', 0, 1).reset_index(drop=True)
+merging_df = spreadsheet.spread_sheet(doc, '자동화 머징 정보', 0, 0).reset_index(drop=True)
 handi_df = spreadsheet.spread_sheet(doc, '수기 데이터').reset_index(drop=True)
 
 

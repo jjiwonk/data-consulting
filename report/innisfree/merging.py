@@ -52,6 +52,8 @@ def integrate_media_data():
             df = load.na_rolling_prep()
         elif media == 'SNOW':
             df = load.na_snow_prep()
+        elif media == 'Naver_날씨DA':
+            df = load.na_weather_prep()
         elif media == 'Naver_GFA':
             df = load.na_gfa_prep()
         elif media == 'Naver_스마트채널':
@@ -396,7 +398,7 @@ def integrate_data():
         elif media == 'Naver_롤링보드':
             df = load.na_rolling_prep()
             df = data_merge(merging_info, df, apps_df, ga_df, index_df, False)
-        elif media == 'Naver_날씨':
+        elif media == 'Naver_날씨DA':
             df = load.na_weather_prep()
             df = data_merge(merging_info, df, apps_df, ga_df, index_df, False)
         elif media == 'Naver_GFA':
@@ -757,7 +759,7 @@ def get_no_index_data():
             df['매체'] = media
             index_df = index_df.loc[index_df['매체(표기)'] == media].reset_index(drop=True)
             df = data_merge(merging_info, df, apps_df, ga_df, index_df, True)
-        elif media == 'Naver_날씨':
+        elif media == 'Naver_날씨DA':
             df = load.get_basic_data(source)
             camp_list = index_df.loc[index_df['매체(표기)'] != media, '캠페인'].unique().tolist()
             df = df.loc[~(df['캠페인'].isin(camp_list))]
