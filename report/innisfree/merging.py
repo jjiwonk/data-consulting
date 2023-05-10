@@ -64,6 +64,8 @@ def integrate_media_data():
             df = load.na_dpa_prep()
         elif media == 'Naver_쇼핑알람':
             df = load.na_shoppingalarm_prep()
+        elif media == 'Naver_Timebanner':
+            df = load.na_shoppingalarm_prep()
         elif media == 'Remerge':
             df = load.remerge_prep()
         elif media == 'RTBhouse':
@@ -401,6 +403,9 @@ def integrate_data():
         elif media == 'Naver_날씨DA':
             df = load.na_weather_prep()
             df = data_merge(merging_info, df, apps_df, ga_df, index_df, False)
+        elif media == 'Naver_스마트채널_보장형':
+            df = load.na_smch_nosp_prep()
+            df = data_merge(merging_info, df, apps_df, ga_df, index_df, False)
         elif media == 'Naver_GFA':
             df = load.na_gfa_prep()
             right_on_ga = ['campaign_id', 'group_id', 'ad']
@@ -411,13 +416,13 @@ def integrate_data():
             right_on_ga = ['campaign_id', 'group_id', 'ad']
             index_df = pd.concat([index_df, temp])
             df = data_merge(merging_info, df, apps_df, ga_df, index_df, False, right_on_ga=right_on_ga)
-        elif media == 'Naver_스마트채널_보장형':
-            df = load.na_smch_nosp_prep()
-            df = data_merge(merging_info, df, apps_df, ga_df, index_df, False)
         elif media == 'Naver_DPA':
             df = load.na_dpa_prep()
             df = data_merge(merging_info, df, apps_df, ga_df, index_df, False)
         elif media == 'Naver_쇼핑알람':
+            df = load.na_shoppingalarm_prep()
+            df = data_merge(merging_info, df, apps_df, ga_df, index_df, False)
+        elif media == 'Naver_Timebanner':
             df = load.na_shoppingalarm_prep()
             df = data_merge(merging_info, df, apps_df, ga_df, index_df, False)
         elif media == 'Remerge':
@@ -766,6 +771,13 @@ def get_no_index_data():
             df['매체'] = media
             index_df = index_df.loc[index_df['매체(표기)'] == media].reset_index(drop=True)
             df = data_merge(merging_info, df, apps_df, ga_df, index_df, True)
+        elif media == 'Naver_스마트채널_보장형':
+            df = load.get_basic_data(source)
+            camp_list = index_df.loc[index_df['매체(표기)'] != media, '캠페인'].unique().tolist()
+            df = df.loc[~(df['캠페인'].isin(camp_list))]
+            df['매체'] = media
+            index_df = index_df.loc[index_df['매체(표기)'] == media].reset_index(drop=True)
+            df = data_merge(merging_info, df, apps_df, ga_df, index_df, True)
         elif media == 'Naver_GFA':
             df = load.get_basic_data(source)
             camp_list = index_df.loc[index_df['매체(표기)'] != media, '캠페인'].unique().tolist()
@@ -784,13 +796,6 @@ def get_no_index_data():
             index_df = pd.concat([index_df, temp])
             right_on_ga = ['campaign_id', 'group_id', 'ad']
             df = data_merge(merging_info, df, apps_df, ga_df, index_df, True, right_on_ga=right_on_ga)
-        elif media == 'Naver_스마트채널_보장형':
-            df = load.get_basic_data(source)
-            camp_list = index_df.loc[index_df['매체(표기)'] != media, '캠페인'].unique().tolist()
-            df = df.loc[~(df['캠페인'].isin(camp_list))]
-            df['매체'] = media
-            index_df = index_df.loc[index_df['매체(표기)'] == media].reset_index(drop=True)
-            df = data_merge(merging_info, df, apps_df, ga_df, index_df, True)
         elif media == 'Naver_DPA':
             df = load.get_basic_data(source)
             camp_list = index_df.loc[index_df['매체(표기)'] != media, '캠페인'].unique().tolist()
@@ -799,6 +804,13 @@ def get_no_index_data():
             index_df = index_df.loc[index_df['매체(표기)'] == media].reset_index(drop=True)
             df = data_merge(merging_info, df, apps_df, ga_df, index_df, True)
         elif media == 'Naver_쇼핑알람':
+            df = load.get_basic_data(source)
+            camp_list = index_df.loc[index_df['매체(표기)'] != media, '캠페인'].unique().tolist()
+            df = df.loc[~(df['캠페인'].isin(camp_list))]
+            df['매체'] = media
+            index_df = index_df.loc[index_df['매체(표기)'] == media].reset_index(drop=True)
+            df = data_merge(merging_info, df, apps_df, ga_df, index_df, True)
+        elif media == 'Naver_Timebanner':
             df = load.get_basic_data(source)
             camp_list = index_df.loc[index_df['매체(표기)'] != media, '캠페인'].unique().tolist()
             df = df.loc[~(df['캠페인'].isin(camp_list))]
