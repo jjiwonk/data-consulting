@@ -57,7 +57,7 @@ class columns:
     code_campaign = ['네이버SA','네이버BSA','카카오SA','카카오BSA','구글SA','naver','kakao','google','googleadwords_int']
     code_set = ['구글','AppleSA','google','googleadwords_int','Apple Search Ads']
 
-    apps_media = ['Apple Search Ads','Facebook Ads','adisonofferwall_int','criteonew_int','googleadwords_int','naver','buzzvil','kakao','kakao_plus_channel','meta','kakao_int','doohub_int','buzzad_int','naver_int','adisonofferwall_int','blind']
+    apps_media = ['Apple Search Ads','Facebook Ads','adisonofferwall_int','criteonew_int','googleadwords_int','naver','buzzvil','kakao','kakao_plus_channel','meta','kakao_int','doohub_int','buzzad_int','naver_int','adisonofferwall_int','blind','rtbhouse_int', 'tiktok', 'snow', 'smartscore']
     google_media = ['구글SA', '구글DA','Pmax']
 
     # 앱스 데이터 컬럼
@@ -146,7 +146,7 @@ class columns:
     apps_metric =[ '유입(AF)', 'UV(AF)', 'appopen(AF)','구매(AF)', '매출(AF)', '주문취소(AF)', '주문취소매출(AF)', '총주문건(AF)', '총매출(AF)','브랜드구매(AF)', '브랜드매출(AF)', '첫구매(AF)', '첫구매매출(AF)', '설치(AF)', '재설치(AF)','가입(AF)']
 
     #ga 데이터 컬럼
-    ga1_media = ['naver','google','kakao','criteo','meta','kakao_plus_channel','buzzvil','kakao_int','naver_int','buzzad_int','doohub_int','adisonofferwall_int','blind','navershoppingsa']
+    ga1_media = ['naver','google','kakao','criteo','meta','kakao_plus_channel','buzzvil','kakao_int','naver_int','buzzad_int','doohub_int','adisonofferwall_int','blind','navershoppingsa','rtbhouse_int', 'tiktok', 'snow', 'smartscore']
 
     ga1_dtype = {
         '﻿dataSource': pa.string(),
