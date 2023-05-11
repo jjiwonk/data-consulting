@@ -12,7 +12,7 @@ class info :
     result_dir = dr.dropbox_dir + '/광고사업부/4. 광고주/핀다_7팀/2. 업무/RE_디타겟점검/RAW_FIN'
 
     # 돌리고자 하는 데이터의 당월 기준을 적어주세요! (ex. 3,4 월 데이터 뽑고 싶으면 5 기재)
-    month = 5
+    month = 6
 
     today = datetime.date(2023, month , 1)
     yearmonth = today.strftime('%Y%m')
@@ -94,12 +94,11 @@ class prep :
         df = raw.loc[raw['attributed_touch_type'] == 'click']
         df['event_time'] = pd.to_datetime(df['event_time'])
         df['year_month'] = df['event_time'].apply(lambda x: x.strftime('%Y%m'))
-
         if file_name == 'conversion_data':
             # conversion_data 정의
             conversion_data = df.loc[df['year_month'] == info.one_yearmonth]
             conversion_data = conversion_data.loc[conversion_data['event_name'].isin(['re-engagement', 're-attribution'])]
-            conversion_data = conversion_data.loc[conversion_data['is_retargeting'] == 'True']
+            conversion_data = conversion_data.loc[conversion_data['is_retargeting'].isin(['True','TRUE'])]
             conversion_data = conversion_data.loc[conversion_data['media_source'].isin(info.re_media)]
 
             conversion_data['구분'] = conversion_data['campaign'].apply(
@@ -238,4 +237,3 @@ media_df_merge_final.loc[media_df_merge_final[['open_14', 'loan_30',  'noresult_
 media_df_merge_final['result'] = media_df_merge_final['result'].fillna(0)
 
 media_df_merge_final.to_csv(info.result_dir + '/' + info.result_file_name, index=False, encoding = 'utf-8-sig')
-
