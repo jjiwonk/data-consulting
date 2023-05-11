@@ -163,7 +163,7 @@ def prep_purchase_raw_data(df):
     purchase_raw.loc[purchase_raw['uniquer_user_id'].isin(af_first_purchase_user_list), 'is_first_purchase_user'] = True
 
     # 오가닉, 페이드 모두 있는 유저 is_paid both 처리
-    temp = purchase_raw.drop_duplicates(['member_id', 'is_paid']).uniquer_user_id.value_counts()
+    temp = purchase_raw.drop_duplicates(['uniquer_user_id', 'is_paid']).uniquer_user_id.value_counts()
     dup_user_list = temp[temp >= 2].index.tolist()
     purchase_raw.loc[purchase_raw['is_paid'] == True, 'is_paid'] = 'paid'
     purchase_raw.loc[purchase_raw['is_paid'] == False, 'is_paid'] = 'organic'
