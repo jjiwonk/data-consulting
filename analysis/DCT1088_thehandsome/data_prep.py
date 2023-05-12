@@ -136,9 +136,9 @@ def get_total_raw_data(event_folder='both', df=None):
         paid_raw['order_id'] = get_event_from_values(np.array(paid_raw['event_value']), 'af_order_id')
         total_raw = pd.concat([organic_raw, paid_raw]).drop_duplicates().reset_index(drop=True)
 
-    # uniquer_user_id로 유저 정규화
+    # unique_user_id로 유저 정규화
     user_id_dict = func.user_identifier(total_raw, 'appsflyer_id', 'member_id')
-    total_raw['uniquer_user_id'] = total_raw['appsflyer_id'].apply(lambda x: user_id_dict.get(x))
+    total_raw['unique_user_id'] = total_raw['appsflyer_id'].apply(lambda x: user_id_dict.get(x))
     final_df = total_raw.reset_index(drop=True)
     return final_df
 
@@ -149,25 +149,25 @@ def prep_purchase_raw_data(df):
     purchase_raw = purchase_raw.drop_duplicates('order_id')
 
     # 이벤트 시간 기준 유저의 첫 구매 여부 확인
-    # purchase_raw = purchase_raw.sort_values(['uniquer_user_id', 'event_time']).reset_index(drop=True)
-    # temp_id = pd.concat([pd.Series(['']), purchase_raw['uniquer_user_id']])[:-1].reset_index(drop=True)
+    # purchase_raw = purchase_raw.sort_values(['unique_user_id', 'event_time']).reset_index(drop=True)
+    # temp_id = pd.concat([pd.Series(['']), purchase_raw['unique_user_id']])[:-1].reset_index(drop=True)
     # purchase_raw['compare_id'] = temp_id
-    # purchase_raw['is_first_purchase'] = purchase_raw.apply(lambda x: True if x['uniquer_user_id'] != x['compare_id'] else False, axis=1)
+    # purchase_raw['is_first_purchase'] = purchase_raw.apply(lambda x: True if x['unique_user_id'] != x['compare_id'] else False, axis=1)
     # purchase_raw = purchase_raw.drop('compare_id', axis=1)
     purchase_raw['event_revenue_krw'] = purchase_raw['event_revenue_krw'].apply(pd.to_numeric).astype(int)
     purchase_raw[['attributed_touch_time', 'install_time', 'event_time']] = purchase_raw[['attributed_touch_time', 'install_time', 'event_time']].apply(pd.to_datetime, axis=1)
 
     # 첫 구매 유저 여부
-    af_first_purchase_user_list = set(purchase_raw.loc[purchase_raw['event_name'] == 'af_first_purchase', 'uniquer_user_id'])
+    af_first_purchase_user_list = set(purchase_raw.loc[purchase_raw['event_name'] == 'af_first_purchase', 'unique_user_id'])
     purchase_raw['is_first_purchase_user'] = False
-    purchase_raw.loc[purchase_raw['uniquer_user_id'].isin(af_first_purchase_user_list), 'is_first_purchase_user'] = True
+    purchase_raw.loc[purchase_raw['unique_user_id'].isin(af_first_purchase_user_list), 'is_first_purchase_user'] = True
 
     # 오가닉, 페이드 모두 있는 유저 is_paid both 처리
-    temp = purchase_raw.drop_duplicates(['uniquer_user_id', 'is_paid']).uniquer_user_id.value_counts()
+    temp = purchase_raw.drop_duplicates(['unique_user_id', 'is_paid']).unique_user_id.value_counts()
     dup_user_list = temp[temp >= 2].index.tolist()
     purchase_raw.loc[purchase_raw['is_paid'] == True, 'is_paid'] = 'paid'
     purchase_raw.loc[purchase_raw['is_paid'] == False, 'is_paid'] = 'organic'
-    purchase_raw.loc[purchase_raw['uniquer_user_id'].isin(dup_user_list), 'is_paid'] = 'both'
+    purchase_raw.loc[purchase_raw['unique_user_id'].isin(dup_user_list), 'is_paid'] = 'both'
     purchase_raw = purchase_raw.reset_index(drop=True)
 
     return purchase_raw
@@ -175,12 +175,12 @@ def prep_purchase_raw_data(df):
 
 def prep_rfm_segment_df(df):
     # RFM 스코어 가공
-    rfm_segment_raw = df.pivot_table(index=['uniquer_user_id'],
+    rfm_segment_raw = df.pivot_table(index=['unique_user_id'],
                                      values=['event_time', 'event_revenue_krw', 'event_name'],
                                      aggfunc=['last', 'sum', 'count'])
     rfm_segment_raw = rfm_segment_raw.reset_index().reset_index(drop=True)
     rfm_segment_raw = rfm_segment_raw.iloc[:, [0, 3, 4, 5]]
-    rfm_segment_raw.columns = ['uniquer_user_id', 'recent_purchase_time', 'monetary', 'frequency']
+    rfm_segment_raw.columns = ['unique_user_id', 'recent_purchase_time', 'monetary', 'frequency']
     rfm_segment_raw['recency'] = rfm_segment_raw['recent_purchase_time'].apply(
         lambda x: (datetime.datetime.today() - x).total_seconds())
     rfm_segment_raw.loc[

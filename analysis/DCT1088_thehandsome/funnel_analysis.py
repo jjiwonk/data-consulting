@@ -23,9 +23,11 @@ purchase_df['order_id'] = purchase_df['event_value'].apply(lambda x: json.loads(
 purchase_df['event_name'] = 'purchase'
 purchase_df_dedup = purchase_df.drop_duplicates('order_id')
 
-non_purchase_df = total_df_identified.loc[~total_df_identified['event_name'].isin(['af_purchase','af_first_purchase'])]
+non_purchase_df = total_df_identified.loc[~total_df_identified['event_name'].isin(['af_purchase', 'af_first_purchase'])]
 non_purchase_df.loc[non_purchase_df['event_name']=='장바구니 담기', 'event_name'] = 'af_add_to_cart'
 non_purchase_df.loc[non_purchase_df['event_name']=='상세페이지 조회', 'event_name'] = 'af_content_view'
+non_purchase_df.loc[non_purchase_df['event_name']=='찜한 목록 추가', 'event_name'] = 'af_add_to_wishlist'
+non_purchase_df.loc[non_purchase_df['event_name']=='상품 검색', 'event_name'] = 'af_search'
 non_purchase_df_dedup = non_purchase_df.drop_duplicates(['event_name', 'event_time'])
 
 first_purchase_user_list = list(total_df.loc[total_df['event_name']=='af_first_purchase', 'unique_user_id'])
@@ -77,6 +79,15 @@ sankey_purchase = sankey_purchase[['session_id', 'first_purchase_in_period']]
 sankey_data_merge = sankey_data.merge(sankey_purchase, on = 'session_id', how = 'left')
 sankey_data_merge['first_purchase_in_period'] = sankey_data_merge['first_purchase_in_period'].fillna(False)
 
+# 진성유저 매핑
+purchase_df_dedup[['attributed_touch_time', 'install_time', 'event_time']] = purchase_df_dedup[['attributed_touch_time', 'install_time', 'event_time']].apply(pd.to_datetime)
+purchase_df_dedup[['event_revenue', 'event_revenue_krw']] = purchase_df_dedup[['event_revenue', 'event_revenue_krw']].astype(float)
+rfm_segment_df = prep.prep_rfm_segment_df(purchase_df_dedup)
+quality_user_list = set(rfm_segment_df.loc[rfm_segment_df['is_quality_user'] == 1, 'unique_user_id'])
+sankey_data_merge['quality_user'] = sankey_data_merge['user_id'].apply(lambda x: True if x in quality_user_list else False)
+
+
+sankey.data = sankey_data_merge
 sankey.sankey_to_excel()
 
 
