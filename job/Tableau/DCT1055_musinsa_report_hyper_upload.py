@@ -1,5 +1,5 @@
 from utils import s3
-from utils.path_util import get_tmp_path
+from utils.path_util import get_tmp_path , get_root_directory
 
 import pandas as pd
 import dropbox
@@ -98,9 +98,11 @@ if __name__ == "__main__":
         double_list = ['노출', '링크 클릭','광고비_Fee포함','BZ_GGMV(1D)',  'GA_세션', '통합첫구매', '통합구매', '통합매출', '통합사용자', '통합신규사용자', '통합가입'],
         text_list = ['계정 이름', '캠페인 이름', '매체',  '파트', '계정','캠페인/구분', '상세구분','KPI','week', 'day','year', 'month', 'date'],
         date_list = ['일'],
-        dropbox_path = '/광고사업부/4. 광고주/무신사/★ 무신사 통합/AWS raw'
+        dropbox_path = '/광고사업부/4. 광고주/무신사/★ 무신사 통합/AWS raw',
     )
 
+    info['os_path'] =  get_root_directory() + '/'+ info['hyper_name']
+    info['rd_path'] =  get_root_directory() + '/hyperd.log'
     info['report_col'] =  info['num_list'] + info['double_list'] + info['text_list'] + info['date_list']
     info['data'] = data_prep('musinsa',info['dropbox_path'],info['num_list'],info['double_list'], info['text_list'], info['report_col'])
 

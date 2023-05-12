@@ -1,5 +1,5 @@
 from utils import s3
-from utils.path_util import get_tmp_path
+from utils.path_util import get_tmp_path , get_root_directory
 from utils import const
 from utils import athena
 import os
@@ -93,6 +93,8 @@ if __name__ == "__main__":
         date_list = ['date']
     )
 
+    info['os_path'] =  get_root_directory() + '/'+ info['hyper_name']
+    info['rd_path'] =  get_root_directory() + '/hyperd.log'
     info['report_col'] =  info['num_list'] + info['double_list'] + info['text_list'] + info['date_list']
     info['data'] = data_prep('tableau',info['num_list'], info['text_list'], info['report_col'])
 
