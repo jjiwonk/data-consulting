@@ -1,4 +1,6 @@
 from pathlib import Path
+import os
+import path
 import tableauserverclient as TSC
 from tableauhyperapi import HyperProcess, Telemetry, \
     Connection, CreateMode, \
@@ -7,6 +9,7 @@ from tableauhyperapi import HyperProcess, Telemetry, \
     escape_name, escape_string_literal, \
     TableName
 from worker.abstract_worker import Worker
+
 
 class hyper_file_upload(Worker):
 
@@ -33,7 +36,7 @@ class hyper_file_upload(Worker):
 
         return table_definition
 
-    def insert_data(self, hyper_name, table_definition ,data ,tableau_token_name , tableau_token , tableau_sever, project_name):
+    def insert_data(self, hyper_name, table_definition ,data ,tableau_token_name , tableau_token , tableau_sever, project_name , os_path , rd_path):
 
         path_to_database = Path(hyper_name)
 
@@ -109,7 +112,10 @@ class hyper_file_upload(Worker):
             datasource = server.datasources.publish(datasource, path_to_database, publish_mode)
             print("Datasource published. Datasource ID: {0}".format(datasource.id))
 
-            return print('Tableau Hyper Upload Success')
+        os.remove(os_path)
+        os.remove(rd_path)
+
+        return print('Tableau Hyper Upload Success')
 
     def do_work(self ,info:dict, attr:dict):
 
@@ -125,7 +131,10 @@ class hyper_file_upload(Worker):
         text_list = info['text_list']
         data = info['data']
 
+        os_path = info['os_path']
+        rd_path = info['rd_path']
+
         table_definition = self.table_type_definition(num_list,double_list,text_list,date_list)
-        self.insert_data(hyper_name, table_definition ,data ,tableau_token_name, tableau_token, tableau_sever, project_name)
+        self.insert_data(hyper_name, table_definition ,data ,tableau_token_name, tableau_token, tableau_sever, project_name, os_path , rd_path)
 
         return "Tableau Hyper File Upload Success"
