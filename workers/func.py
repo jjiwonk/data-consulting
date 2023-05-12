@@ -4,7 +4,7 @@ import re
 
 
 class SessionDataGenerator():
-    def __init__(self, user_array, event_array, event_time_array, time_gap_array):
+    def __init__(self, user_array, event_array, event_time_array, time_gap_array, value_array):
         self.num = 0
         self.session_id = 'session ' + str(self.num)
 
@@ -12,7 +12,8 @@ class SessionDataGenerator():
             'user': user_array,
             'event': event_array,
             'event_time': event_time_array,
-            'time_gap': time_gap_array
+            'time_gap': time_gap_array,
+            'value' : value_array
         }
 
         self.first_session_time = self.array_list['event_time'][0]
@@ -20,6 +21,11 @@ class SessionDataGenerator():
 
         self.current_event_time = None
         self.before_event_time = self.array_list['event_time'][0]
+
+        self.current_event_value = None
+        self.before_event_value = self.array_list['value'][0]
+
+        self.total_value = self.before_event_value
 
         self.time_gap = self.array_list['time_gap'][0]
 
@@ -30,20 +36,21 @@ class SessionDataGenerator():
         self.before_event = self.array_list['event'][0]
         self.session_sequence = [self.before_event]
         self.data = []
-        self.column_names = ['user_id', 'session_id', 'session_sequence', 'first_session_time', 'last_session_time']
+        self.column_names = ['user_id', 'session_id', 'session_sequence', 'first_session_time', 'last_session_time', 'value']
 
     def start_new_session(self):
         self.num += 1
         self.session_sequence = []
         self.session_id = 'session ' + str(self.num)
         self.session_sequence.append(self.current_event)
+        self.total_value = self.current_event_value
         self.first_session_time = self.current_event_time
 
     def append_row(self):
         self.session_sequence.append('session_end')
         self.last_session_time = self.before_event_time
         row = [self.before_user, self.session_id, self.session_sequence,
-               self.first_session_time, self.last_session_time]
+               self.first_session_time, self.last_session_time, self.total_value]
         self.data.append(row)
 
     def discriminator(self):
@@ -56,6 +63,7 @@ class SessionDataGenerator():
 
             else:  # 현재 유저와 이전 유저가 같으면서 time_gap이 30분을 넘지 않았기 때문에 시퀀스 정보만 추가
                 self.session_sequence.append(self.current_event)
+                self.total_value = self.total_value + self.current_event_value
 
         else:
             # 유저 정보가 같지 않다면 새로운 세션이 시작된 것
@@ -76,7 +84,8 @@ class SessionDataGenerator():
                 self.before_user = self.array_list['user'][i - 1]
 
                 self.current_event = self.array_list['event'][i]
-                self.before_event = self.array_list['event'][i - 1]
+                self.current_event_value = int(self.array_list['value'][i])
+
                 self.discriminator()
 
         self.data = pd.DataFrame(data=self.data, columns=self.column_names)
@@ -98,7 +107,7 @@ class SankeyModeling():
     def define_pat_list(self):
         pat_list = []
         for i in range(len(self.funnel_list)) :
-            pat = re.compile('^' + '.*'.join(self.funnel_list[:i+1]) + '$')
+            pat = re.compile('^' + '.*'.join(self.funnel_list[:i+1]))
             pat_list.append(pat)
         pat_list.reverse()
         return pat_list
@@ -129,7 +138,7 @@ class SankeyModeling():
                 raw_data.loc[match_index &
                              (pd.isnull(raw_data[step_column_list[max_depth]])), step_column_list[max_depth]] = 'Other Events'
         raw_data['Link'] = 'link'
-        raw_data['Size'] = 1
+        raw_data = raw_data.loc[raw_data['Step 1'] == self.funnel_list[0]]
 
         return raw_data
 

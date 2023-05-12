@@ -28,6 +28,7 @@ non_purchase_df.loc[non_purchase_df['event_name']=='장바구니 담기', 'event
 non_purchase_df.loc[non_purchase_df['event_name']=='상세페이지 조회', 'event_name'] = 'af_content_view'
 non_purchase_df.loc[non_purchase_df['event_name']=='찜한 목록 추가', 'event_name'] = 'af_add_to_wishlist'
 non_purchase_df.loc[non_purchase_df['event_name']=='상품 검색', 'event_name'] = 'af_search'
+non_purchase_df['event_revenue'] = 0
 non_purchase_df_dedup = non_purchase_df.drop_duplicates(['event_name', 'event_time'])
 
 first_purchase_user_list = list(total_df.loc[total_df['event_name']=='af_first_purchase', 'unique_user_id'])
@@ -52,11 +53,13 @@ user_arr = np.array(concat_df_compare['unique_user_id'])
 event_arr = np.array(concat_df_compare['event_name'])
 event_time_arr= np.array(concat_df_compare['event_time'])
 time_gap_arr = np.array(concat_df_compare['time_gap'])
+value_arr = np.array(concat_df_compare['event_revenue'])
 
 session_generator = func.SessionDataGenerator(user_array = user_arr, event_array = event_arr,
-                                         event_time_array = event_time_arr, time_gap_array = time_gap_arr)
+                                         event_time_array = event_time_arr, time_gap_array = time_gap_arr, value_array = value_arr)
 session_generator.do_work()
 session_data = session_generator.data
+session_data['Cnt'] = 1
 session_data['session_sequence_string'] = session_data['session_sequence'].apply(lambda x: ' > '.join(x))
 
 sankey = func.SankeyModeling(raw_data = session_data.copy(),
@@ -88,9 +91,8 @@ sankey_data_merge['quality_user'] = sankey_data_merge['user_id'].apply(lambda x:
 
 
 sankey.data = sankey_data_merge
+sankey.data = sankey.data.rename(columns = {'cnt' : 'Cnt'})
 sankey.sankey_to_excel()
-
-
 
 
 
