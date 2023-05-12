@@ -95,10 +95,8 @@ if __name__ == "__main__":
         date_list = ['date']
     )
 
-    os.chdir('..')
-    current_path  = os.getcwd()
-    info['os_path'] =  current_path + '/'+ info['hyper_name']
-    info['rd_path'] =  current_path + '/hyperd.log'
+    info['os_path'] =  get_root_directory() + '/'+ info['hyper_name']
+    info['rd_path'] =  get_root_directory() + '/hyperd.log'
     info['report_col'] =  info['num_list'] + info['double_list'] + info['text_list'] + info['date_list']
     info['data'] = data_prep('tableau',info['num_list'], info['text_list'], info['report_col'])
 
