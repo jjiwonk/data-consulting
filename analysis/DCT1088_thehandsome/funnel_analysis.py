@@ -26,8 +26,8 @@ purchase_df_dedup = purchase_df.drop_duplicates('order_id')
 non_purchase_df = total_df_identified.loc[~total_df_identified['event_name'].isin(['af_purchase', 'af_first_purchase'])]
 non_purchase_df.loc[non_purchase_df['event_name']=='장바구니 담기', 'event_name'] = 'af_add_to_cart'
 non_purchase_df.loc[non_purchase_df['event_name']=='상세페이지 조회', 'event_name'] = 'af_content_view'
-non_purchase_df.loc[non_purchase_df['event_name']=='찜한 목록 추가', 'event_name'] = 'af_add_to_wishlist'
-non_purchase_df.loc[non_purchase_df['event_name']=='상품 검색', 'event_name'] = 'af_search'
+# non_purchase_df.loc[non_purchase_df['event_name']=='찜한 목록 추가', 'event_name'] = 'af_add_to_wishlist'
+# non_purchase_df.loc[non_purchase_df['event_name']=='상품 검색', 'event_name'] = 'af_search'
 non_purchase_df_dedup = non_purchase_df.drop_duplicates(['event_name', 'event_time'])
 
 first_purchase_user_list = list(total_df.loc[total_df['event_name']=='af_first_purchase', 'unique_user_id'])
