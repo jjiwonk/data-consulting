@@ -36,7 +36,7 @@ class hyper_file_upload(Worker):
 
         return table_definition
 
-    def insert_data(self, hyper_name, table_definition ,data ,tableau_token_name , tableau_token , tableau_sever, project_name , os_path , rd_path):
+    def insert_data(self, hyper_name, table_definition ,data ,tableau_token_name , tableau_token , tableau_sever, project_name):
         hyper_dir = get_tmp_path() + '/tableau'
         hyper_file = hyper_dir + '/' + hyper_name
         path_to_database = Path(hyper_file)
@@ -131,10 +131,7 @@ class hyper_file_upload(Worker):
         text_list = info['text_list']
         data = info['data']
 
-        os_path = info['os_path']
-        rd_path = info['rd_path']
-
         table_definition = self.table_type_definition(num_list,double_list,text_list,date_list)
-        self.insert_data(hyper_name, table_definition ,data ,tableau_token_name, tableau_token, tableau_sever, project_name, os_path , rd_path)
+        self.insert_data(hyper_name, table_definition ,data ,tableau_token_name, tableau_token, tableau_sever, project_name)
 
         return "Tableau Hyper File Upload Success"
