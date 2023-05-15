@@ -1,6 +1,6 @@
 from pathlib import Path
+from utils.path_util import get_tmp_path, get_root_directory
 import os
-import path
 import tableauserverclient as TSC
 from tableauhyperapi import HyperProcess, Telemetry, \
     Connection, CreateMode, \
@@ -37,8 +37,9 @@ class hyper_file_upload(Worker):
         return table_definition
 
     def insert_data(self, hyper_name, table_definition ,data ,tableau_token_name , tableau_token , tableau_sever, project_name , os_path , rd_path):
-
-        path_to_database = Path(hyper_name)
+        hyper_dir = get_tmp_path() + '/tableau'
+        hyper_file = hyper_dir + '/' + hyper_name
+        path_to_database = Path(hyper_file)
 
         # The table is called "Extract" and will be created in the "Extract" schema
         # and contains four columns.
@@ -56,7 +57,7 @@ class hyper_file_upload(Worker):
 
         # Starts the Hyper Process with telemetry enabled to send data to Tableau.
         # To opt out, simply set telemetry=Telemetry.DO_NOT_SEND_USAGE_DATA_TO_TABLEAU.
-        with HyperProcess(telemetry=Telemetry.SEND_USAGE_DATA_TO_TABLEAU) as hyper:
+        with HyperProcess(telemetry=Telemetry.SEND_USAGE_DATA_TO_TABLEAU, parameters={"log_config": ""}) as hyper:
             # Creates new Hyper file "customer.hyper".
             # Replaces file with CreateMode.CREATE_AND_REPLACE if it already exists.
             with Connection(endpoint=hyper.endpoint,
@@ -112,8 +113,7 @@ class hyper_file_upload(Worker):
             datasource = server.datasources.publish(datasource, path_to_database, publish_mode)
             print("Datasource published. Datasource ID: {0}".format(datasource.id))
 
-        os.remove(os_path)
-        os.remove(rd_path)
+        os.remove(hyper_file)
 
         return print('Tableau Hyper Upload Success')
 
