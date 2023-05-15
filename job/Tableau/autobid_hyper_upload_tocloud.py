@@ -1,5 +1,5 @@
 from utils import s3
-from utils.path_util import get_tmp_path
+from utils.path_util import get_tmp_path , get_root_directory
 from utils import const
 from utils import athena
 import os
