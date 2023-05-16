@@ -8,7 +8,7 @@ if __name__ == "__main__":
     info = dict(
         media_info='네이버SA',
         use_headless=True,
-        spread_sheet_url="https://docs.google.com/spreadsheets/d/1NCSCSOKMDN624H7M-M3Rhf9Rw90CWiJNgPnh_Mmg_OM/edit#gid=0",
+        spread_sheet_url="https://docs.google.com/spreadsheets/d/14FseYRB61hp-uqvmFpcrX1IdxhjHjgB8Ol094fHWEKI/edit#gid=0",
         keyword_sheet="키워드 설정(주간)",
         keyword_column="키워드",
         ad_names='["닥터그루트", "drgroot"]',
