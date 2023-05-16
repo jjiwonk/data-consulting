@@ -56,6 +56,8 @@ if __name__ == "__main__":
         # 변수 처리 필요
         df = raw_file_download(owner_id,dropbox_path)
 
+        df[['year', 'month', 'date']] = df[['year', 'month', 'date']].fillna(0)
+        df[['year','month','date']] = df[['year','month','date']].astype(int)
         # data type 정하기
         df[num_list] = df[num_list].fillna(0)
         df[double_list] = df[double_list].fillna(0)
