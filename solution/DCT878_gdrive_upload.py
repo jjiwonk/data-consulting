@@ -1,3 +1,5 @@
+import os
+
 from worker.abstract_worker import Worker
 from utils import google_drive
 from utils.path_util import get_tmp_path
@@ -27,5 +29,6 @@ class GdriveUpload(Worker):
             print('지원하지 않는 파일 포맷입니다')
             raise Exception
         google_drive.GoogleDriveClient().file_upload(file_paths = local_path, name = file_name, folder_id = folder_id)
+        os.remove(local_path)
 
         return "Gdrive Upload Success"
