@@ -143,6 +143,12 @@ def get_NOSP():
 
     return df
 
+def get_RTB():
+    df = media_prep('RTB')
+    df['캠페인'] = '2305_RTB_retargeting'
+    df['세트'] = '-'
+    return df
+
 def get_버티컬():
     df = ref.vertical_df
     df[ref.columns.media_dimension] = df[ref.columns.media_dimension].astype(str)
