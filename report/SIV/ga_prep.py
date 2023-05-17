@@ -40,7 +40,7 @@ def ga_exception(df):
 
     df = df.loc[df['source'].isin(ref.columns.ga1_media)]
     df = df.loc[df['﻿dataSource'] == 'web']
-
+    df['source'].unique()
     #예외처리(크리테오)
     df.loc[df['medium'] == 'da_app_If', 'medium'] = 'da_app_lf'
 
@@ -74,12 +74,13 @@ def ga_exception(df):
     df.loc[(df['campaign'] == 'jaju') & (df['medium'] == 'da_pc_lf') & (df['browser'] == 'Edge'), 'campaign'] = 'LF - Desktop'
 
     #예외처리(시트 + 브검)
-
+    dic =ref.exc_ga_adict
     c_media = ['google','naver','navershoppingsa']
     df.loc[df['source'].isin(c_media), 'campaign'] = df['campaign'].apply(lambda x: x.replace(x, ref.exc_cdict[x]) if x in ref.exc_cdict.keys() else x)
 
-    df.loc[df['source'] == 'criteo', 'adContent'] = df['adContent'].apply(lambda x: x.replace(x, ref.exc_ga_adict[x]) if x in ref.exc_ga_adict.keys() else x)
-
+    a_media = ['criteo','rtbhouse_int']
+    df.loc[df['source'].isin(a_media), 'adContent'] = df['adContent'].apply(lambda x: x.replace(x, ref.exc_ga_adict[x]) if x in ref.exc_ga_adict.keys() else x)
+    check = df.loc[df['source'] == 'rtbhouse_int']
     df['브검구분'] = df['adContent'].apply(lambda x : x.replace(x, '브랜드') if x.find('브랜드') != -1 else '-')
     df.loc[df['브검구분'] == '-','브검구분'] = df['adContent'].apply(lambda x: x.replace(x, '일반') if x.find('일반') != -1 else '-')
 

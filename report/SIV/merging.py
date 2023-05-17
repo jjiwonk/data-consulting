@@ -113,7 +113,3 @@ def merge_indexing() :
     print('데일리 리포트 추출 완료')
 
     return merge
-
-merge = merge_indexing()
-
-merge.to_csv(dr.download_dir +f'daily_report/daily_report_{ref.r_date.yearmonth}.csv', index= False , encoding= 'utf-8-sig')

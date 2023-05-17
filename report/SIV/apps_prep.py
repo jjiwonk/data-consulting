@@ -58,9 +58,11 @@ def apps_prep():
     # 시트 활용
     c_media = ['googleadwords_int','Apple Search Ads','naver']
     g_media = ['googleadwords_int', 'Apple Search Ads']
+    a_media = ['rtbhouse_int']
 
     df.loc[df['media_source'].isin(c_media), 'campaign'] = df['campaign'].apply(lambda x: x.replace(x, ref.exc_cdict[x]) if x in ref.exc_cdict.keys() else x)
     df.loc[df['media_source'].isin(g_media), 'adset'] = df['adset'].apply(lambda x: x.replace(x, ref.exc_gdict[x]) if x in ref.exc_gdict.keys() else x)
+    df.loc[df['media_source'].isin(a_media), 'ad'] = df['ad'].apply(lambda x: x.replace(x, ref.exc_adict[x]) if x in ref.exc_adict.keys() else x)
 
     #키워드 구하기
     df['original_url'] = df['original_url'].apply(lambda x: urllib.parse.unquote(x))
@@ -259,5 +261,3 @@ def apps_concat():
     apps.to_csv(dr.download_dir + f'appsflyer_raw/appsflyer_raw_{ref.r_date.yearmonth}.csv', index=False, encoding='utf-8-sig')
 
     return apps
-
-apps = apps_concat()
