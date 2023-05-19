@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import re
+import json
 
 
 class SessionDataGenerator():
@@ -159,6 +160,29 @@ class SankeyModeling():
         self.data.to_excel(writer, sheet_name='Data',index=False)
         self.model.to_excel(writer, sheet_name='Model',index=False)
         writer.close()
+
+class EventValueParser():
+    def __init__(self, data, value_column):
+        self.keys = []
+        self.data = data
+        self.value_column = value_column
+        self.row_list = []
+
+    def data_parse(self):
+        data = self.data.copy()
+        data.index = range(len(data))
+        data = data.reset_index()
+
+        value_array = np.array(data[self.value_column])
+
+        for value in value_array :
+            try :
+                row = json.loads(value)
+                self.row_list.append(row)
+            except :
+                pass
+        value_data = pd.DataFrame(self.row_list)
+        return value_data
 
 def user_identifier(df, platform_id, user_id):
     df = df.loc[df[user_id].str.len()>0]
