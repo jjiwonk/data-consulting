@@ -6,18 +6,14 @@ import numpy as np
 import json
 import setting.directory as dr
 
+
 # raw 데이터 로드 및 가공
 total_df = prep.get_total_raw_data()
-total_df['member_id'] = prep.get_event_from_values(np.array(total_df['event_value']), 'af_member_id')
-total_df['event_name'].unique() 
-
-user_id_dict = func.user_identifier(total_df, 'appsflyer_id', 'member_id')
-total_df['unique_user_id'] = total_df['appsflyer_id'].apply(lambda x : user_id_dict.get(x))
-
-total_df_identified = total_df.loc[(total_df['unique_user_id'].str.len()>0)]
+total_df_identified = prep.prep_df(total_df)
 total_df_identified = total_df_identified.sort_values(['unique_user_id', 'event_time'])
 total_df_identified['event_name'].value_counts()
 
+# 데이터 중복 제거
 purchase_df = total_df_identified.loc[total_df_identified['event_name'].isin(['af_purchase','af_first_purchase'])]
 purchase_df['order_id'] = purchase_df['event_value'].apply(lambda x: json.loads(x)['af_order_id'] if 'af_order_id' in json.loads(x).keys() else '-')
 purchase_df['event_name'] = 'purchase'
@@ -29,13 +25,12 @@ non_purchase_df.loc[non_purchase_df['event_name']=='상세페이지 조회', 'ev
 non_purchase_df.loc[non_purchase_df['event_name']=='찜한 목록 추가', 'event_name'] = 'af_add_to_wishlist'
 non_purchase_df.loc[non_purchase_df['event_name']=='상품 검색', 'event_name'] = 'af_search'
 non_purchase_df['event_revenue'] = 0
-non_purchase_df_dedup = non_purchase_df.drop_duplicates(['event_name', 'event_time'])
+non_purchase_df_dedup = non_purchase_df.drop_duplicates(['unique_user_id', 'event_name', 'event_time'])
 
-first_purchase_user_list = list(total_df.loc[total_df['event_name']=='af_first_purchase', 'unique_user_id'])
+first_purchase_user_list = list(total_df_identified.loc[total_df_identified['event_name']=='af_first_purchase', 'unique_user_id'])
 paid_user_list = list(total_df_identified.loc[total_df_identified['is_paid']==True, 'unique_user_id'])
 concat_df = pd.concat([purchase_df_dedup, non_purchase_df_dedup], sort=False, ignore_index=True)
 concat_df = concat_df.sort_values(['unique_user_id', 'event_time'])
-concat_df = concat_df.loc[concat_df['unique_user_id'].isin(paid_user_list)]
 concat_df.index = range(len(concat_df))
 
 compare_df = concat_df.iloc[1:].append(concat_df.iloc[0])
@@ -48,6 +43,7 @@ concat_df_compare['time_gap'] = pd.to_datetime(concat_df_compare['event_time_com
 concat_df_compare['time_gap'] = concat_df_compare['time_gap'].apply(lambda x : x.total_seconds())
 concat_df_compare['event_name'].value_counts()
 concat_df_compare['event_name'].unique()
+concat_df_compare = concat_df_compare.append(concat_df_compare.iloc[0])  # 마지막 세션 추출을 위해 한행 주가
 
 user_arr = np.array(concat_df_compare['unique_user_id'])
 event_arr = np.array(concat_df_compare['event_name'])
@@ -55,13 +51,18 @@ event_time_arr= np.array(concat_df_compare['event_time'])
 time_gap_arr = np.array(concat_df_compare['time_gap'])
 value_arr = np.array(concat_df_compare['event_revenue'])
 
+
+# 세션 raw 데이터 추출
 session_generator = func.SessionDataGenerator(user_array = user_arr, event_array = event_arr,
                                          event_time_array = event_time_arr, time_gap_array = time_gap_arr, value_array = value_arr)
 session_generator.do_work()
 session_data = session_generator.data
 session_data['Cnt'] = 1
 session_data['session_sequence_string'] = session_data['session_sequence'].apply(lambda x: ' > '.join(x))
+session_data.to_csv(dr.download_dir + '/session_data.csv', index=False, encoding='utf-8-sig')
 
+
+# Sankey raw 데이터 추출
 sankey = func.SankeyModeling(raw_data = session_data.copy(),
                         funnel_list=['install', 'af_content_view', 'af_add_to_cart', 'purchase'],
                         end_sequence='session_end',
@@ -83,19 +84,25 @@ sankey_data_merge = sankey_data.merge(sankey_purchase, on = 'session_id', how = 
 sankey_data_merge['first_purchase_in_period'] = sankey_data_merge['first_purchase_in_period'].fillna(False)
 
 # 진성유저 매핑
-purchase_df_dedup[['attributed_touch_time', 'install_time', 'event_time']] = purchase_df_dedup[['attributed_touch_time', 'install_time', 'event_time']].apply(pd.to_datetime)
+purchase_df_dedup[['event_time']] = purchase_df_dedup[['event_time']].apply(pd.to_datetime)
 purchase_df_dedup[['event_revenue', 'event_revenue_krw']] = purchase_df_dedup[['event_revenue', 'event_revenue_krw']].astype(float)
 rfm_segment_df = prep.prep_rfm_segment_df(purchase_df_dedup)
 quality_user_list = set(rfm_segment_df.loc[rfm_segment_df['is_quality_user'] == 1, 'unique_user_id'])
 sankey_data_merge['quality_user'] = sankey_data_merge['user_id'].apply(lambda x: True if x in quality_user_list else False)
-
 
 sankey.data = sankey_data_merge
 sankey.data = sankey.data.rename(columns = {'cnt' : 'Cnt'})
 sankey.sankey_to_excel()
 
 
+final_total_df = concat_df.sort_values(['unique_user_id', 'event_time']).reset_index(drop=True)
+final_total_df['is_first_purchase_user'] = False
+final_total_df.loc[final_total_df['unique_user_id'].isin(first_purchase_user_list), 'is_first_purchase_user'] = True
+final_total_df['is_quality_user'] = False
+final_total_df.loc[final_total_df['unique_user_id'].isin(quality_user_list), 'is_quality_user'] = True
 
-
-
-
+purchase_df_dedup['is_first_purchase_user'] = False
+purchase_df_dedup.loc[purchase_df_dedup['unique_user_id'].isin(first_purchase_user_list), 'is_first_purchase_user'] = True
+purchase_df_dedup['is_quality_user'] = False
+purchase_df_dedup.loc[purchase_df_dedup['unique_user_id'].isin(quality_user_list), 'is_quality_user'] = True
+purchase_df_dedup.rename(columns={'member_id':'real_member_id', 'unique_user_id':'member_id'}).to_csv(dr.download_dir + '/purchase_log.csv', index=False, encoding='utf-8-sig')
