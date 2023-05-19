@@ -286,3 +286,53 @@ def prep_rfm_segment_df(df):
     return rfm_segment_raw
 
 
+def prep_df(df):
+    temp_df = df.loc[df['unique_user_id'].notnull()]
+    temp_df.loc[temp_df['event_name']=='af_content_view', 'content_type'] = \
+        get_event_from_values(np.array(temp_df.loc[temp_df['event_name']=='af_content_view', 'event_value']), 'af_content_type')
+    temp_df.loc[temp_df['event_name'] == 'af_add_to_cart', 'content_type'] = \
+        get_event_from_values(np.array(temp_df.loc[temp_df['event_name'] == 'af_add_to_cart', 'event_value']), 'af_content_type')
+    temp_df['content_type'] = temp_df['content_type'].fillna('')
+    temp_df['content_type'] = temp_df['content_type'].apply(lambda x: '/'.join(str(x).split('/')[:2]))
+
+    temp_df.loc[temp_df['event_name']=='af_content_view', 'content'] = \
+        get_event_from_values(np.array(temp_df.loc[temp_df['event_name']=='af_content_view', 'event_value']), 'af_content')
+    temp_df.loc[temp_df['event_name'] == 'af_add_to_cart', 'content'] = \
+        get_event_from_values(np.array(temp_df.loc[temp_df['event_name'] == 'af_add_to_cart', 'event_value']), 'af_content')
+    temp_df['is_outlet_product'] = temp_df['content'].fillna('').str.slice(start=3, stop=4).apply(
+        lambda x: True if x == 'C' else x).apply(lambda x: False if (x != '') & (x != True) else x)
+    brand_dict = {
+        '10': '오에라',
+        'BA': '발리',
+        'CM': '더캐시미어',
+        'FL': '더캐시미어(잡화)',
+        'IL': 'LATT',
+        'LB': '랑방블랑',
+        'LC': '랑방컬렉션',
+        'LP': 'Liquides Perfume Bar',
+        'LV': '랑방파리',
+        'MN': '마인',
+        'O2': '오즈세컨',
+        'OB': 'OBZEE',
+        'ON': 'H : SCENE',
+        'PL': '3.1필립림',
+        'RO': '로샤스',
+        'SH': '시스템옴므',
+        'SJ': 'SJSJ',
+        'SY': '시스템',
+        'TH': '타임옴므',
+        'TM': '타임',
+        'MW': '확인불가',
+        'MM': '확인불가',
+        'TG': '확인불가',
+        'TN': '확인불가',
+        'YN': '확인불가',
+        'CS': '확인불가',
+        'CN': '확인불가',
+        'MU': '확인불가',
+        'HS': '확인불가',
+        '': ''
+    }
+    temp_df['brand_name'] = temp_df['content'].fillna('').str.slice(stop=2).apply(lambda x: brand_dict[x])
+    temp_df = temp_df.drop(columns=['content'])
+    return temp_df
