@@ -17,40 +17,37 @@ def get_raw_data(event_folder):
         if 'csv' in file:
             csv_list.append(file)
     dtypes = {
-            'Attributed Touch Type': pa.string(),
-            'Attributed Touch Time': pa.string(),
-            'Install Time': pa.string(),
             'Event Time': pa.string(),
             'Event Name': pa.string(),
             'Event Value': pa.string(),
             'Event Revenue': pa.string(),
             'Event Revenue KRW': pa.string(),
-            'Event Source': pa.string(),
+            # 'Event Source': pa.string(),
             # 'Partner': pa.string(),
-            'Media Source': pa.string(),
-            'Channel': pa.string(),
-            'Campaign': pa.string(),
+            # 'Media Source': pa.string(),
+            # 'Channel': pa.string(),
+            # 'Campaign': pa.string(),
             # 'Campaign ID': pa.string(),
             # 'Adset': pa.string(),
             # 'Adset ID': pa.string(),
             # 'Ad': pa.string(),
             # 'Ad ID': pa.string(),
             # 'Ad Type': pa.string(),
-            'Region': pa.string(),
-            'Country Code': pa.string(),
+            # 'Region': pa.string(),
+            # 'Country Code': pa.string(),
             # 'State': pa.string(),
-            'City': pa.string(),
-            'Language': pa.string(),
+            # 'City': pa.string(),
+            # 'Language': pa.string(),
             'AppsFlyer ID': pa.string(),
             # 'Advertising ID': pa.string(),
-            'IDFA': pa.string(),
-            'Android ID': pa.string(),
-            'Customer User ID': pa.string(),
+            # 'IDFA': pa.string(),
+            # 'Android ID': pa.string(),
+            # 'Customer User ID': pa.string(),
             # 'IMEI': pa.string(),
             # 'IDFV': pa.string(),
-            'Platform': pa.string(),
+            # 'Platform': pa.string(),
             # 'Device Type': pa.string(),
-            'Is Retargeting': pa.string(),
+            # 'Is Retargeting': pa.string(),
             # 'Retargeting Conversion Type': pa.string(),
             # 'User Agent': pa.string(),
             # 'Keyword ID': pa.string(),
@@ -66,7 +63,6 @@ def get_raw_data(event_folder):
     for col in cols:
         rename_cols[col] = col.lower().replace(' ', '_')
     df = df.rename(columns=rename_cols)
-    df.loc[df['is_retargeting'] == '', 'is_retargeting'] = False
 
     return df
 
@@ -105,10 +101,6 @@ def get_event_from_values(event_values, col_name):
 
 
 def get_total_raw_data(event_folder='both', df=None):
-    # re_engagement_raw = get_raw_data('리인게이지먼트')
-    # install_raw = get_raw_data('설치')
-    # uninstall_raw = get_raw_data('앱삭제')
-    # in_app_raw = get_raw_data('인앱이벤트')
     if df is not None:
         total_raw = df
     elif 'organic' in event_folder:
@@ -155,14 +147,9 @@ def prep_purchase_raw_data(df):
     purchase_raw.sort_values('event_time', inplace=True)
     purchase_raw = purchase_raw.drop_duplicates('order_id')
 
-    # 이벤트 시간 기준 유저의 첫 구매 여부 확인
-    # purchase_raw = purchase_raw.sort_values(['unique_user_id', 'event_time']).reset_index(drop=True)
-    # temp_id = pd.concat([pd.Series(['']), purchase_raw['unique_user_id']])[:-1].reset_index(drop=True)
-    # purchase_raw['compare_id'] = temp_id
-    # purchase_raw['is_first_purchase'] = purchase_raw.apply(lambda x: True if x['unique_user_id'] != x['compare_id'] else False, axis=1)
     # purchase_raw = purchase_raw.drop('compare_id', axis=1)
     purchase_raw['event_revenue_krw'] = purchase_raw['event_revenue_krw'].apply(pd.to_numeric).astype(int)
-    purchase_raw[['attributed_touch_time', 'install_time', 'event_time']] = purchase_raw[['attributed_touch_time', 'install_time', 'event_time']].apply(pd.to_datetime, axis=1)
+    purchase_raw[['event_time']] = purchase_raw[['event_time']].apply(pd.to_datetime, axis=1)
 
     # 첫 구매 유저 여부
     af_first_purchase_user_list = set(purchase_raw.loc[purchase_raw['event_name'] == 'af_first_purchase', 'unique_user_id'])
