@@ -173,11 +173,8 @@ class ReviewDataReport(Worker):
         df_count_merge = df_count_merge.loc[df_count_merge['keyword'].str.len()>1]
         df_count_merge.to_csv(Key.file_path, index=False, encoding = 'utf-8-sig')
         s3.upload_file(Key.file_path, Key.result_s3_path, const.DEFAULT_S3_PRIVATE_BUCKET)
-        os.remove(Key.file_path)
 
         return df_count_merge
-
-
 
     def file_deliver(self, upload_path):
         dropbox_path = upload_path + '/' + Key.file_name
@@ -187,8 +184,6 @@ class ReviewDataReport(Worker):
 
         msg = '드롭박스 업로드 완료'
         self.logger.info(msg)
-
-        os.remove(Key.file_path)
 
     def do_work(self, info:dict, attr:dict):
         owner_id = attr['owner_id']
@@ -201,5 +196,5 @@ class ReviewDataReport(Worker):
         self.data_concat()
         if Key.file_upload_checker == True :
             self.file_deliver(upload_path)
-
+        os.remove(Key.file_path)
         return "Review Data Report Success"
