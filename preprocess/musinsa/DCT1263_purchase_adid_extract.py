@@ -1,7 +1,6 @@
 import os
 import setting.directory as dr
 import pyarrow as pa
-import pyarrow.csv as pacsv
 import pandas as pd
 from workers import read_data
 
@@ -39,3 +38,6 @@ dropbox_data = read_dropbox()
 
 adid_data = pd.concat([dmp_data,dropbox_data])
 adid_data = adid_data.drop_duplicates()
+adid_data = adid_data.loc[adid_data['adid'] != '00000000-0000-0000-0000-000000000000']
+
+adid_data.to_csv(dr.dropbox_dir + '/광고사업부/4. 광고주/무신사/★ 무신사 통합/ADID/af_purchase_202201-202304.csv')
