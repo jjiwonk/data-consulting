@@ -205,7 +205,7 @@ def user_identifier(df, platform_id, user_id):
             else :
                 user_name = 'user ' + str(num)
                 pid_dict[pid] = user_name
-                uid_dict[pid] = user_name
+                uid_dict[uid] = user_name
                 num += 1
 
     return pid_dict
