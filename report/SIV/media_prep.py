@@ -78,7 +78,7 @@ def get_Pmax():
 def get_구글DA():
     df = media_prep('구글DA')
     df = pd.merge(df, ref.media_index, on='캠페인', how='left').fillna('no_index')
-    df = df.loc[df['지면/상품'].isin(['GDN_P','GDN_M','YT디스커버리','YT인스트림','AC'])].drop(columns=['지면/상품'])
+    df = df.loc[df['지면/상품'].isin(['GDN_P','GDN_M','YT디스커버리','YT인스트림','AC','쇼핑검색'])].drop(columns=['지면/상품'])
     return df
 
 def get_구글SA():
