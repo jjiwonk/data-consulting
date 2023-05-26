@@ -2,6 +2,7 @@ import pandas as pd
 from workers import read_data
 from setting import directory as dr
 import pyarrow as pa
+import json
 import numpy as np
 from workers import func
 
@@ -10,72 +11,38 @@ dtypes = {
     'event_time' : pa.string(),
     'event_value' : pa.string()
 }
-data = read_data.pyarrow_csv(dtypes=dtypes,
-                             directory=raw_dir,
-                             file_list=['appsflyer_ua_purchase.csv',
-                                        'appsflyer_re_purchase.csv',
-                                        'organic_purchase.csv',
-                                        'paid_purcahse_2206_2207.csv',
-                                        'organic_purchase_2209.csv'])
+data = read_data.pyarrow_csv(dtypes=dtypes,directory=raw_dir,file_list=['appsflyer_ua_purchase.csv', 'appsflyer_re_purchase.csv'])
+data['order_id'] = data['event_value'].apply(lambda x : json.loads(x)['af_order_id'] if 'af_order_id' in json.loads(x).keys() else '')
 
-mutan_data = data.loc[data['event_value'].str.contains('musinsastandard')]
-mutan_data.index = range(len(mutan_data))
-del data
+data_dedup = data.loc[data['order_id']!=''].drop_duplicates('order_id')
 
-value_parser = func.EventValueParser(mutan_data, 'event_value')
+value_parser = func.EventValueParser(data_dedup, 'event_value')
 parsed_data = value_parser.data_parse()
+parsed_data = parsed_data.loc[pd.notnull(parsed_data['af_brand'])]
 
-concat_data = pd.concat([mutan_data, parsed_data], axis=1)
-concat_data_dedup = concat_data.drop_duplicates('af_order_id')
-concat_data_dedup = concat_data_dedup.loc[pd.notnull(concat_data_dedup['af_brand'])]
+mutan_data = parsed_data.copy()
+mutan_data['af_brand_str'] = mutan_data['af_brand'].apply(lambda x : str(x))
+mutan_data = mutan_data.loc[mutan_data['af_brand_str'].str.contains('musinsastandard')]
 
-# brand_set = set()
-# for brand_list in concat_data_dedup['af_brand'] :
-#     brand_set = brand_set | set(brand_list)
-#
-# print(brand_set)
+price_array = np.array(mutan_data['af_price'])
+brand_array = np.array(mutan_data['af_brand'])
 
-price_array = np.array(concat_data_dedup['af_price'])
-brand_array = np.array(concat_data_dedup['af_brand'])
-
-target_brand_list = ['musinsastandard', 'musinsastandardkids', 'musinsastandardbt', 'musinsastandardsp']
-target_brand_revenue_dict = dict()
-target_brand_value_dict = dict()
-for target_brand in target_brand_list :
-    target_brand_revenue_dict[target_brand] = []
-    target_brand_value_dict[target_brand] = 0
-
-for i, brand_list in enumerate(brand_array[:50]) :
+val_list = []
+for i, brand_list in enumerate(brand_array) :
     price_list = price_array[i]
-    for brand_idx, brand in enumerate(brand_list):
-        for target_brand in target_brand_list:
-            if brand == target_brand:
-                target_brand_value_dict[target_brand] += int(price_list[brand_idx])
-                break
+    value = 0
 
-    for target_brand in target_brand_list :
-        target_brand_revenue_dict[target_brand] = target_brand_revenue_dict[target_brand] + [target_brand_value_dict[target_brand]]
-        target_brand_value_dict[target_brand] = 0
+    for brand_idx, brand in enumerate(brand_list) :
+        if brand == 'musinsastandard' :
+            value += int(price_list[brand_idx])
+    val_list.append(value)
 
+mutan_data['target_value'] = val_list
 
-def get_total_price(brand_list_array, price_list_array, target_brand_list):
-    result = {brand : [0] * len(brand_list_array) for brand in target_brand_list}
+purchase_table=  data_dedup[['order_id', 'event_time']]
+mutan_data_merge = mutan_data.merge(purchase_table, left_on = 'af_order_id', right_on='order_id')
+mutan_data_merge['date'] = pd.to_datetime(mutan_data_merge['event_time']).dt.date
 
-    for i, (brand_list, price_list) in enumerate(zip(brand_list_array, price_list_array)):
-        for brand, price in zip(brand_list, price_list):
-            if brand in target_brand_list:
-                result[brand][i] += float(price)
-
-    return result
-
-
-result_dict = get_total_price(brand_array, price_array, target_brand_list)
-for target_brand in result_dict.keys():
-    concat_data_dedup[target_brand] = result_dict[target_brand]
-
-concat_data_dedup['date'] = pd.to_datetime(concat_data_dedup['event_time']).dt.date
-concat_data_dedup.to_csv(raw_dir + '/purchase_log_data.csv', index=False, encoding='utf-8-sig')
-
-revenue_pivot = concat_data_dedup.pivot_table(index = 'date', values = result_dict.keys(), aggfunc = 'sum').reset_index()
-revenue_pivot.to_csv(raw_dir + '/total_revenue_data.csv', index=False, encoding='utf-8-sig')
+revenue_pivot = pd.pivot_table(data = mutan_data_merge, index = 'date', values = 'target_value', aggfunc = 'sum').reset_index()
+revenue_pivot.to_csv(raw_dir + '/paid_revenu_data.csv', index=False, encoding='utf-8-sig')
 
