@@ -1,42 +1,48 @@
 import pandas as pd
+from workers import read_data
 from setting import directory as dr
+import pyarrow as pa
+import json
+import numpy as np
+from workers import func
 
 raw_dir = dr.dropbox_dir + '/광고사업부/데이터컨설팅/데이터 분석 프로젝트/무신사/MMM/RD'
-result_dir = dr.dropbox_dir + '/광고사업부/데이터컨설팅/데이터 분석 프로젝트/무신사/MMM/result_data'
-rename = {
-    '일' : 'date',
-    '(MT_BZ)7d 매출' : 'paid_revenue',
-    '노출' : 'I',
-    '링크 클릭' : 'C',
-    '광고비_Fee포함' : 'S',
-    '매체' : 'media',
-    '캠페인명' : 'category',
-    'KPI' : 'campaign_type'}
+dtypes = {
+    'event_time' : pa.string(),
+    'event_value' : pa.string()
+}
+data = read_data.pyarrow_csv(dtypes=dtypes,directory=raw_dir,file_list=['appsflyer_ua_purchase.csv', 'appsflyer_re_purchase.csv'])
+data['order_id'] = data['event_value'].apply(lambda x : json.loads(x)['af_order_id'] if 'af_order_id' in json.loads(x).keys() else '')
 
-def data_prep():
-    data = pd.read_excel(raw_dir + '/무신사스탠다드_캠페인 리포트_MMM_분석용.xlsx', sheet_name='Sheet1',usecols= rename.keys())
-    data = data.rename(columns=rename)
+data_dedup = data.loc[data['order_id']!=''].drop_duplicates('order_id')
 
-    data['date'] = pd.to_datetime(data['date'])
-    data['date'] = data['date'].dt.date
+value_parser = func.EventValueParser(data_dedup, 'event_value')
+parsed_data = value_parser.data_parse()
+parsed_data = parsed_data.loc[pd.notnull(parsed_data['af_brand'])]
 
-    data.loc[data['category'] == '상시세일즈' , 'category'] = 'sales'
-    data.loc[data['category'] == '여성유입', 'category'] = 'female'
-    data['media'].unique()
-    # 미디어 정제
-    brand_click = data.loc[data['media'] == 'naver_brandsearch']
-    brand_click = brand_click.pivot_table(index='date', columns=['media'], values=['C'],
-                                  aggfunc='sum').reset_index().fillna(0)
-    brand_click.columns  = ['date','naverbs_click']
-    data = data.loc[data['media'].isin(['Facebook','KAKAO', 'Criteo'])]
-    revenue_data = data.groupby(['date'])[['paid_revenue']].sum().reset_index()
+mutan_data = parsed_data.copy()
+mutan_data['af_brand_str'] = mutan_data['af_brand'].apply(lambda x : str(x))
+mutan_data = mutan_data.loc[mutan_data['af_brand_str'].str.contains('musinsastandard')]
 
-    media_data = data.pivot_table(index='date', columns= ['media','category'], values=['I', 'S'], aggfunc='sum').reset_index().fillna(0)
-    media_data.columns = [media + '_' + category + '_' + value for value, media , category in media_data.columns]
-    media_data = media_data.rename(columns = {'__date' : 'date'})
+price_array = np.array(mutan_data['af_price'])
+brand_array = np.array(mutan_data['af_brand'])
 
-    result_data = pd.merge(revenue_data , media_data , on ='date', how = 'left')
-    result_data = pd.merge(result_data, brand_click, on='date', how='left')
-    result_data.to_csv(result_dir + '/MT_MMM_RD.csv', index =False, encoding = 'utf-8-sig')
+val_list = []
+for i, brand_list in enumerate(brand_array) :
+    price_list = price_array[i]
+    value = 0
 
-    return result_data
+    for brand_idx, brand in enumerate(brand_list) :
+        if brand == 'musinsastandard' :
+            value += int(price_list[brand_idx])
+    val_list.append(value)
+
+mutan_data['target_value'] = val_list
+
+purchase_table=  data_dedup[['order_id', 'event_time']]
+mutan_data_merge = mutan_data.merge(purchase_table, left_on = 'af_order_id', right_on='order_id')
+mutan_data_merge['date'] = pd.to_datetime(mutan_data_merge['event_time']).dt.date
+
+revenue_pivot = pd.pivot_table(data = mutan_data_merge, index = 'date', values = 'target_value', aggfunc = 'sum').reset_index()
+revenue_pivot.to_csv(raw_dir + '/paid_revenu_data.csv', index=False, encoding='utf-8-sig')
+
