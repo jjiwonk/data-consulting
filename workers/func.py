@@ -209,3 +209,36 @@ def user_identifier(df, platform_id, user_id):
                 num += 1
 
     return pid_dict
+
+
+def get_event_from_values(event_values, col_name):
+    result_array = np.zeros(len(event_values)).astype(str)
+    for i, data in enumerate(event_values):
+        if len(data) >= 2000:
+            if '"%s":' % col_name in data:
+                split_data = data.split('"%s":' % col_name)[1]
+                if split_data == '':
+                    data = '{}'
+                else:
+                    if '}' in split_data:
+                        data = '{"%s":' % col_name + split_data.split(',"')[0]
+                        if data[-1:] == '"':
+                            data = data + '}'
+                        elif data[-1:] == '}':
+                            pass
+                    else:
+                        data = '{"%s":' % col_name + split_data.split(',"')[0]
+                        if data[-1:] == '"':
+                            data = data + '}'
+                        else:
+                            data = data + '..."}'
+            else:
+                data = '{}'
+        elif len(data) == 0:
+            data = '{}'
+        if col_name in json.loads(data.replace(">", '/').replace("'", ''), strict=False).keys():
+            result_array[i] = json.loads(data)[col_name]
+        else:
+            result_array[i] = ''
+
+    return result_array
