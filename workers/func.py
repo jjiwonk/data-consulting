@@ -326,3 +326,40 @@ def get_event_from_values(event_values, col_name):
             result_array[i] = ''
 
     return result_array
+
+def date_diff(df, user_id, date):
+    df.sort_values(by=[user_id, date], inplace=True)
+    df[date] = pd.to_datetime(df[date])
+    df['diff_days'] = df.groupby(user_id)[date].diff().dt.days
+
+    user_id_array = np.array(df[user_id])
+    date_diff_array = np.array(df['diff_days'])
+
+    before_user_id = user_id_array[0]
+    total_date_diff = 0
+    group_id = 0
+    group_array = np.array(range(len(user_id_array)))
+    result_array = np.array(range(len(user_id_array)))
+
+    for idx, (user_id, date_diff) in enumerate(zip(user_id_array, date_diff_array)):
+        if pd.isnull(date_diff):
+            date_diff = 0
+
+        total_date_diff += date_diff
+
+        if before_user_id == user_id:
+            if total_date_diff >= 30:
+                group_id += 1
+                total_date_diff = 0
+        else:
+            total_date_diff = 0
+            group_id = 0
+
+        group_array[idx] = group_id
+        result_array[idx] = total_date_diff
+        before_user_id = user_id
+
+    df['group'] = group_array
+    df['result'] = result_array
+
+    return df
