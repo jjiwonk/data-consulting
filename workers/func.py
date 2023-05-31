@@ -249,7 +249,7 @@ def date_diff(df, user_id, date):
     df['diff_days'] = df.groupby(user_id)[date].diff().dt.days
 
     user_id_array = np.array(df[user_id])
-    date_diff_array = np.array(df[date])
+    date_diff_array = np.array(df['diff_days'])
 
     before_user_id = user_id_array[0]
     total_date_diff = 0
