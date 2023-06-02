@@ -327,7 +327,7 @@ def get_event_from_values(event_values, col_name):
 
     return result_array
 
-def date_diff(df, user_id, date):
+def date_diff(df, user_id, date, day):
     df.sort_values(by=[user_id, date], inplace=True)
     df[date] = pd.to_datetime(df[date])
     df['diff_days'] = df.groupby(user_id)[date].diff().dt.days
@@ -348,7 +348,7 @@ def date_diff(df, user_id, date):
         total_date_diff += date_diff
 
         if before_user_id == user_id:
-            if total_date_diff >= 30:
+            if total_date_diff >= day:
                 group_id += 1
                 total_date_diff = 0
         else:
