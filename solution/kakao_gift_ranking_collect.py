@@ -108,6 +108,8 @@ class KakaoGiftRankingCollect(Worker):
                 occasion_tag = tag.text.strip()
                 retry_cnt = 0
                 while True:
+                    if i == 0:
+                        break
                     if retry_cnt == 2:
                         raise Exception(f"{occasion_tag} tab not clickable at this point")
                     try:
