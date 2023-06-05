@@ -36,15 +36,6 @@ class rename:
         'Clearpier': 'nCPI',
         'Cauly': 'nCPI',
         'Nswitch nCPA': 'nCPA',
-        'Remerge_RE': 'DSP',
-        'Criteo_RE': 'DSP',
-        'Appier': 'DSP',
-        'Appier_RE': 'DSP',
-        'Rtb house_RE': 'DSP',
-        'Moloco': 'DSP',
-        'Moloco_RE': 'DSP',
-        'Tradingworks_RE': 'DSP',
-        'Cauly_RE': 'DSP',
         'Cookie Oven': 'Reward',
         'Kakao Page': 'Reward',
         'Cauly Reward': 'Reward',
@@ -128,6 +119,7 @@ def read_media_da():
     media_data = read_data.pyarrow_csv(dtypes=dtypes, directory=file_dir, file_list=file_list)
     media_data = media_data.loc[media_data['매체 (Display)'] != 'no_index']
     media_data = media_data.rename(columns = rename.rename_dic)
+    media_data = media_data.loc[~ media_data['media'].isin(['Remerge_RE','Criteo_RE','Appier','Tradingworks_RE']) ]
 
     media_data.loc[media_data['media'].isin(rename.da_media_rename.keys()), 'media'] = media_data['media'].apply(
         lambda x: x.replace(x, rename.da_media_rename[x]) if x in rename.da_media_rename.keys() else x)
@@ -135,6 +127,7 @@ def read_media_da():
     media_data['media']  = media_data['media'].apply(lambda x: x.replace(' ','_'))
     media_data.loc[media_data['media'] =='Vertical' , 'I'] = media_data['C']
     media_data.loc[media_data['media'].isin(['nCPI','nCPA']), 'I'] = media_data['C']
+    #media_data['media'] = media_data['media'] + '_' + media_data['campaign_label']
 
     media_data = media_data.pivot_table(index='date', columns=['media'], values=['I', 'S'], aggfunc='sum').reset_index().fillna(0)
 
@@ -202,12 +195,24 @@ def data_prep():
     media_data = pd.merge(da_data, sa_data, on='date', how='left').fillna(0)
     media_data['date'] = pd.to_datetime(media_data['date'])
 
+    #rate data
+    rate_data = pd.read_csv(dr.dropbox_dir + '/광고사업부/데이터컨설팅/데이터 분석 프로젝트/핀다/DCT1268/한국은행 기준금리 및 여수신금리_05104446.csv')
+    rate_data = rate_data[['변환','원자료']].rename(columns = {'변환':'date','원자료':'rate'})
+    rate_data['date'] = pd.to_datetime(rate_data['date'])
+
     result_data = pd.merge(media_data, kpi_data, on='date', how='left').fillna(0)
+    result_data = pd.merge(result_data, rate_data, on='date', how='left').fillna(0)
+
+    for i in range(len(result_data)):
+        rate = result_data['rate'][i]
+        if rate == 0:
+            result_data['rate'][i] = result_data['rate'][i-1]
+
     result_data['date'] = result_data['date'].dt.date
     result_data.loc[result_data['GoogleSA_S'] <= 0, 'GoogleSA_S'] = 0
 
     return result_data
 
 result_data = data_prep()
-result_data.to_csv(result_dir + '/result_last.csv', index= False, encoding= 'utf-8-sig')
 
+result_data.to_csv(result_dir + '/result_rate.csv', index= False, encoding= 'utf-8-sig')
