@@ -97,7 +97,6 @@ class Cafe24SalesMonitor(Worker):
         else:
             download_dir = Key.tmp_path
         driver = get_chromedriver(headless=Key.USE_HEADLESS, download_dir=download_dir)
-        driver.maximize_window()
 
         slack_msg = f"*{store_name} cafe24 매출 모니터링*\n{schedule_date} {schedule_time}\n\n"
 
@@ -162,6 +161,9 @@ class Cafe24SalesMonitor(Worker):
             if "service-api" in driver.current_url:
                 driver.back()
                 driver.implicitly_wait(3)
+
+            driver.set_window_size(1920, 1080)
+            driver.maximize_window()
 
             if not monitor_detail:
                 cur_sales_amt = "-"
