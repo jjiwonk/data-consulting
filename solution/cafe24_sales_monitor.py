@@ -370,7 +370,6 @@ class Cafe24SalesMonitor(Worker):
             driver.quit()
             self.logger.info("크롬 브라우저 종료")
 
-        # return "Process end."
         if slack_mention_id:
             slack_msg = slack_mention_id + "\n" + slack_msg
         response = requests.post(slack_webhook_url, json={"text": slack_msg})
