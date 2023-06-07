@@ -162,8 +162,7 @@ class Cafe24SalesMonitor(Worker):
                 driver.back()
                 driver.implicitly_wait(3)
 
-            driver.set_window_size(1920, 1080)
-            driver.maximize_window()
+            driver.execute_script("window.scrollTo(1920,0)")
 
             if not monitor_detail:
                 cur_sales_amt = "-"
