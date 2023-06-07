@@ -97,6 +97,7 @@ class Cafe24SalesMonitor(Worker):
         else:
             download_dir = Key.tmp_path
         driver = get_chromedriver(headless=Key.USE_HEADLESS, download_dir=download_dir)
+        driver.maximize_window()
 
         slack_msg = f"*{store_name} cafe24 매출 모니터링*\n{schedule_date} {schedule_time}\n\n"
 
