@@ -162,8 +162,6 @@ class Cafe24SalesMonitor(Worker):
                 driver.back()
                 driver.implicitly_wait(3)
 
-            driver.execute_script("window.scrollTo(1920,0)")
-
             if not monitor_detail:
                 cur_sales_amt = "-"
                 retry_cnt = 0
@@ -185,6 +183,7 @@ class Cafe24SalesMonitor(Worker):
                     raise Exception("기간 설정 엘리먼트를 찾지 못했습니다.")
                 for date_element in date_elements:
                     if date_element.text.strip() == "오늘":
+                        driver.execute_script("window.scrollTo(0,0)")
                         date_element.click()
                         self.logger.info("'오늘'자로 기간 설정")
                         break
@@ -193,6 +192,7 @@ class Cafe24SalesMonitor(Worker):
                 self.logger.info("검색 버튼 클릭")
                 time.sleep(2)
 
+                driver.execute_script("window.scrollTo(1920,0)")
                 driver.find_element(By.CSS_SELECTOR, ".mState .gRight #eExcelDownloadBtn").click()
                 self.logger.info("엑셀 다운로드 버튼 클릭")
                 driver.implicitly_wait(2)
