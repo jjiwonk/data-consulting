@@ -105,7 +105,7 @@ class AutoBidSolution(KeywordMonitoring):
         bid_list = []
         use_gbamt_list = []
         if type(adgroup_json) == dict:
-            return adgroup_json['title']
+            return str(adgroup_json)
         for j in adgroup_json:
             id_list.append(j['nccKeywordId'])
             bid_list.append(j['bidAmt'])
