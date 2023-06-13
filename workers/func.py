@@ -254,14 +254,12 @@ class segment_analysis():
         if len(self.detarget_dict) != 0:
             for detarget in self.detarget_dict.keys():
                 detarget_df = self.detarget_dict[detarget]
-                adid_df = detarget_df[['advertising_id']]
-                adid_df[detarget] = False
-                merge_data = conversion_data.merge(adid_df, on='advertising_id', how='left')
                 date_df = detarget_df[['start_date', 'end_date']].drop_duplicates().reset_index(drop=True)
+                merge_data = conversion_data.copy()
                 for i in range(len(date_df)):
                     start_date = date_df.loc[i, 'start_date']
                     end_date = date_df.loc[i, 'end_date']
-                    adid_list = detarget_df.loc[(detarget_df['start_date'] == start_date) & (detarget_df['end_date'] == end_date), 'advertising_id']
+                    adid_list = detarget_df.loc[(detarget_df['data_type'] == detarget) & (detarget_df['start_date'] == start_date) & (detarget_df['end_date'] == end_date), 'advertising_id'].drop_duplicates().to_list()
                     merge_data.loc[(merge_data['advertising_id'].isin(adid_list) & (merge_data['conversion_date'] >= start_date)&(merge_data['conversion_date'] <= end_date)), detarget] = True
                 merge_data_dedup = merge_data[['appsflyer_id', 'conversion_time', detarget]]
 
