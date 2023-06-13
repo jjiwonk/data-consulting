@@ -70,16 +70,17 @@ def detargeting_inspection(total_data, today=None):
     # 디타겟 세그먼트 셋팅
     detarget_dir = dr.dropbox_dir + '/광고사업부/4. 광고주/핀다_7팀/2. 업무/RE_디타겟점검/RAW'
     file_path = detarget_dir + '/detarget_list.txt'
-    detarget_dict = eval(open(file_path, 'r', encoding='utf-8-sig').read())
-    media_list = detarget_dict.pop('media_list')
-    event_dict = detarget_dict.pop('event_dict')
-    for key in detarget_dict.keys():
-        attr = detarget_dict[key]
-        attr['id_df'] = pd.read_csv(detarget_dir + attr['file_name']).drop_duplicates()
+    setting_dict = eval(open(file_path, 'r', encoding='utf-8-sig').read())
+    media_list = setting_dict.pop('media_list')
+    event_dict = setting_dict.pop('event_dict')
+    detarget_df = pd.read_csv(detarget_dir + setting_dict.pop('file_name')).drop_duplicates()
+    detarget_dict = {}
+    for type in detarget_df.data_type.unique():
+        detarget_dict[type] = detarget_df.loc[detarget_df['data_type'] == type]
 
     rd_dir = dr.dropbox_dir + '/광고사업부/데이터컨설팅/Tableau/result/핀다/retargeting_inspection'
     daily_previous_df = pd.read_csv(rd_dir + '/daily_segment_analysis_df.csv', encoding='utf-8-sig')
-    monthly_previous_df = pd.read_csv(rd_dir + '/monthly_segment_analysis_df.csv', encoding='utf-8-sig')
+    # monthly_previous_df = pd.read_csv(rd_dir + '/monthly_segment_analysis_df.csv', encoding='utf-8-sig')
 
     if today is None:
         to_date = datetime.datetime.today()
@@ -87,6 +88,7 @@ def detargeting_inspection(total_data, today=None):
         to_date = today
     total_data = total_data.loc[total_data['event_time'] < to_date]
     last_day = datetime.datetime.strptime(max(daily_previous_df['conversion_date']), '%Y-%m-%d')
+    # last_day = datetime.datetime.strptime('2023-01-01', '%Y-%m-%d')
     from_date = last_day.replace(day=1) - relativedelta(months=2)
     cropped_total_data = total_data.loc[total_data['event_time'] >= from_date]
 
@@ -101,9 +103,9 @@ def detargeting_inspection(total_data, today=None):
     # monthly_for_download = pd.concat([monthly_previous_df, monthly_for_update], ignore_index=True)
     # monthly_for_download.to_csv(rd_dir + '/monthly_segment_analysis_df.csv', index=False, encoding='utf-8-sig')
 
-    daily_segment_analysis = segment_analysis(cropped_total_data, event_dict, detarget_dict, media_list, 'day')
+    daily_segment_analysis = segment_analysis(cropped_total_data, event_dict, detarget_dict, media_list)
     daily_segment_analysis_df = daily_segment_analysis.do_work()
-    daily_for_update = daily_segment_analysis_df.loc[daily_segment_analysis_df['conversion_date'] >= last_day.date()]
+    daily_for_update = daily_segment_analysis_df.loc[daily_segment_analysis_df['conversion_date'] >= last_day.strftime('%Y-%m-%d')]
     daily_previous_df = daily_previous_df.loc[daily_previous_df['conversion_date'] < last_day.strftime('%Y-%m-%d')]
     daily_for_download = pd.concat([daily_previous_df, daily_for_update], ignore_index=True)
     daily_for_download.to_csv(rd_dir + '/daily_segment_analysis_df.csv', index=False, encoding='utf-8-sig')
@@ -116,5 +118,5 @@ organic_data.columns = [col.lower().replace(' ', '_') for col in organic_data.co
 paid_data = read_paid()
 total_data = pd.concat([organic_data, paid_data]).reset_index(drop=True)
 # 업데이트 기준 날짜 (ex. 2023년 4월 30일까지 업데이트 시 > 2023-05-01 기재)
-today = datetime.datetime.strptime('2023-05-01', '%Y-%m-%d')
+today = datetime.datetime.strptime('2023-06-01', '%Y-%m-%d')
 daily_df = detargeting_inspection(total_data, today)
