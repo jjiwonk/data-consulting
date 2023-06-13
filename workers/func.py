@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import re
 import json
+import datetime
 
 
 class SessionDataGenerator():
@@ -189,10 +190,9 @@ class EventValueParser():
 
 
 class segment_analysis():
-    def __init__(self, raw_data: pd.DataFrame, event_dict: dict, detarget_dict: dict = None, media_list: list = None, standard: str = 'day'):
+    def __init__(self, raw_data: pd.DataFrame, event_dict: dict, detarget_dict: dict = None, media_list: list = None):
         self.raw_data = raw_data
         self.event_dict = event_dict
-        self.standard = standard  # day or month
         self.detarget_dict = detarget_dict
         self.media_list = media_list
         self.conversion_data = None
@@ -203,10 +203,7 @@ class segment_analysis():
 
         base_data = df.loc[df['event_name'].isin(['re-engagement', 're-attribution'])]
         base_data = base_data.rename(columns={'event_time': 'conversion_time'})
-        if self.standard == 'month':
-            base_data['conversion_date'] = pd.to_datetime(base_data['conversion_time']).dt.strftime('%Y-%m')
-        else:
-            base_data['conversion_date'] = pd.to_datetime(base_data['conversion_time']).dt.date
+        base_data['conversion_date'] = pd.to_datetime(base_data['conversion_time']).dt.strftime('%Y-%m-%d')
         base_data = base_data.drop_duplicates(['conversion_time', 'appsflyer_id', 'event_name'])
         base_data['Cnt'] = 1
         base_data = base_data.loc[base_data['media_source'].isin(self.media_list)]
@@ -254,11 +251,18 @@ class segment_analysis():
 
             self.result_data = result_data
 
-        if self.detarget_dict is not None:
+        if len(self.detarget_dict) != 0:
             for detarget in self.detarget_dict.keys():
-                detarget_df = self.detarget_dict[detarget]['id_df']
-                detarget_df[detarget] = True
-                merge_data = conversion_data.merge(detarget_df, on='advertising_id', how='left')
+                detarget_df = self.detarget_dict[detarget]
+                adid_df = detarget_df[['advertising_id']]
+                adid_df[detarget] = False
+                merge_data = conversion_data.merge(adid_df, on='advertising_id', how='left')
+                date_df = detarget_df[['start_date', 'end_date']].drop_duplicates().reset_index(drop=True)
+                for i in range(len(date_df)):
+                    start_date = date_df.loc[i, 'start_date']
+                    end_date = date_df.loc[i, 'end_date']
+                    adid_list = detarget_df.loc[(detarget_df['start_date'] == start_date) & (detarget_df['end_date'] == end_date), 'advertising_id']
+                    merge_data.loc[(merge_data['advertising_id'].isin(adid_list) & (merge_data['conversion_date'] >= start_date)&(merge_data['conversion_date'] <= end_date)), detarget] = True
                 merge_data_dedup = merge_data[['appsflyer_id', 'conversion_time', detarget]]
 
                 result_data = self.result_data.merge(merge_data_dedup, on=['appsflyer_id', 'conversion_time'], how='left')
