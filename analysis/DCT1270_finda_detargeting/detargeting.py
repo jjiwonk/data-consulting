@@ -66,6 +66,26 @@ def read_paid():
     return paid_data
 
 
+def read_addition(detarget_dir, data_list):
+    addition_data = pd.DataFrame()
+    for info_dict in data_list:
+        file_dir = detarget_dir + info_dict['file_dir']
+        file_list = os.listdir(file_dir)
+        file_list = [file for file in file_list if '.csv' in file]
+        column_dict = info_dict['column_dict']
+        dtypes = {}
+        for column in column_dict.keys():
+            dtypes[column] = pa.string()
+
+        data = read_data.pyarrow_csv(dtypes=dtypes, directory=file_dir, file_list=file_list)
+        data = data.rename(columns=column_dict).drop_duplicates()
+        data = data.sort_values('event_time')
+        data['event_time'] = pd.to_datetime(data['event_time'])
+
+        addition_data = pd.concat([addition_data, data]).reset_index(drop=True)
+    return addition_data
+
+
 def detargeting_inspection(total_data, today=None):
     # 디타겟 세그먼트 셋팅
     detarget_dir = dr.dropbox_dir + '/광고사업부/4. 광고주/핀다_7팀/2. 업무/RE_디타겟점검/RAW'
@@ -76,7 +96,10 @@ def detargeting_inspection(total_data, today=None):
     detarget_df = pd.read_csv(detarget_dir + setting_dict.pop('file_name')).drop_duplicates()
     detarget_dict = {}
     for type in detarget_df.data_type.unique():
-        detarget_dict[type] = detarget_df.loc[detarget_df['data_type'] == type]
+        detarget_dict[type] = detarget_df.loc[detarget_df['data_type'] == type].reset_index(drop=True)
+    data_list = setting_dict.pop('data_list')
+    addition_df = read_addition(detarget_dir, data_list)
+    total_data = pd.concat([total_data, addition_df]).reset_index(drop=True)
 
     rd_dir = dr.dropbox_dir + '/광고사업부/데이터컨설팅/Tableau/result/핀다/retargeting_inspection'
     daily_previous_df = pd.read_csv(rd_dir + '/daily_segment_analysis_df.csv', encoding='utf-8-sig')
@@ -118,5 +141,5 @@ organic_data.columns = [col.lower().replace(' ', '_') for col in organic_data.co
 paid_data = read_paid()
 total_data = pd.concat([organic_data, paid_data]).reset_index(drop=True)
 # 업데이트 기준 날짜 (ex. 2023년 4월 30일까지 업데이트 시 > 2023-05-01 기재)
-today = datetime.datetime.strptime('2023-06-01', '%Y-%m-%d')
+today = datetime.datetime.strptime('2023-06-11', '%Y-%m-%d')
 daily_df = detargeting_inspection(total_data, today)
