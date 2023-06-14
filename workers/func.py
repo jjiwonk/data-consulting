@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import re
 import json
+import datetime
 
 
 class SessionDataGenerator():
@@ -189,35 +190,40 @@ class EventValueParser():
 
 
 class segment_analysis():
-    def __init__(self, raw_data: pd.DataFrame, event_dict: dict, detarget_dict: dict = None, media_list: list = None):
+    def __init__(self, raw_data: pd.DataFrame, event_dict: dict, conversion_event: list, column_list: list, detarget_dict: dict = None, media_list: list = None):
         self.raw_data = raw_data
-        self.media_list = media_list
         self.event_dict = event_dict
         self.detarget_dict = detarget_dict
+        self.media_list = media_list
+        self.conversion_event = conversion_event
+        self.column_list = column_list
+        self.conversion_data = None
         self.result_data = None
 
     def update_conversion_data(self):
         df = self.raw_data.copy()
 
-        base_data = df.loc[df['event_name'].isin(['re-engagement', 're-attribution'])]
-        base_data = base_data.rename(columns={'event_date': 'conversion_date'})
-        base_data = base_data.drop_duplicates(['event_time', 'appsflyer_id', 'event_name'])
+        base_data = df.loc[df['event_name'].isin(self.conversion_event)]
+        base_data = base_data.rename(columns={'event_time': 'conversion_time'})
+        base_data['conversion_date'] = pd.to_datetime(base_data['conversion_time']).dt.strftime('%Y-%m-%d')
+        base_data = base_data.drop_duplicates(['conversion_time', 'appsflyer_id', 'event_name'])
         base_data['Cnt'] = 1
-        base_data = base_data.loc[base_data['media_source'].isin(self.media_list)]
-        base_data_pivot = base_data.pivot_table(index=['campaign', 'media_source', 'conversion_date', 'advertising_id', 'appsflyer_id', 'customer_user_id'],
+        if self.media_list is not None:
+            base_data = base_data.loc[base_data['media_source'].isin(self.media_list)]
+        base_data_pivot = base_data.pivot_table(index=self.column_list,
                                                 values='Cnt',
                                                 aggfunc='sum').reset_index()
 
         self.conversion_data = base_data_pivot
-        self.result_data = self.conversion_data
+        self.result_data = base_data_pivot
 
     def make_segment_dataset(self, target_event, seg_name):
         df = self.raw_data.copy()
 
         seg_df = df.loc[df['event_name'] == target_event]
         seg_df['segment'] = seg_name
-        seg_df = seg_df.drop_duplicates(['appsflyer_id', 'event_date'])
-        seg_df = seg_df[['event_date', 'segment', 'appsflyer_id']]
+        seg_df = seg_df.drop_duplicates(['appsflyer_id', 'event_time'])
+        seg_df = seg_df[['event_time', 'segment', 'appsflyer_id']]
 
         return seg_df
 
@@ -232,27 +238,34 @@ class segment_analysis():
             col_name = f'{seg_name}_in_{str(target_period)}_days'
 
             merge_data = conversion_data.merge(segment_df, on='appsflyer_id', how='left')
-            merge_data['time_gap'] = merge_data['conversion_date'] - merge_data['event_date']
+            merge_data['time_gap'] = merge_data['conversion_time'] - merge_data['event_time']
             merge_data['time_gap'] = merge_data['time_gap'].apply(lambda x: x.days)
 
             merge_data.loc[(merge_data['time_gap'] <= target_period) & (merge_data['time_gap'] > 0), col_name] = True
 
-            merge_data_dedup = merge_data[['appsflyer_id', 'conversion_date', col_name]]
-            merge_data_dedup = merge_data_dedup.drop_duplicates(['appsflyer_id', 'conversion_date', col_name])
+            merge_data_dedup = merge_data[['appsflyer_id', 'conversion_time', col_name]]
+            merge_data_dedup[col_name] = merge_data_dedup[col_name].fillna(False)
+            merge_data_dedup = merge_data_dedup.sort_values(['appsflyer_id', 'conversion_time', col_name], ascending=False)
+            merge_data_dedup = merge_data_dedup.drop_duplicates(['appsflyer_id', 'conversion_time'], keep='first')
 
-            result_data = self.result_data.merge(merge_data_dedup, on=['appsflyer_id', 'conversion_date'], how='left')
+            result_data = self.result_data.merge(merge_data_dedup, on=['appsflyer_id', 'conversion_time'], how='left')
             result_data[col_name] = result_data[col_name].fillna(False)
 
             self.result_data = result_data
 
-        if self.detarget_dict is not None:
+        if len(self.detarget_dict) != 0:
             for detarget in self.detarget_dict.keys():
-                detarget_df = self.detarget_dict[detarget]['id_df']
-                detarget_df[detarget] = True
-                merge_data = conversion_data.merge(detarget_df, on='advertising_id', how='left')
-                merge_data_dedup = merge_data[['advertising_id', 'conversion_date', detarget]]
+                detarget_df = self.detarget_dict[detarget]
+                date_df = detarget_df[['start_date', 'end_date']].drop_duplicates().reset_index(drop=True)
+                merge_data = conversion_data.copy()
+                for i in range(len(date_df)):
+                    start_date = date_df.loc[i, 'start_date']
+                    end_date = date_df.loc[i, 'end_date']
+                    adid_list = detarget_df.loc[(detarget_df['data_type'] == detarget) & (detarget_df['start_date'] == start_date) & (detarget_df['end_date'] == end_date), 'advertising_id'].drop_duplicates().to_list()
+                    merge_data.loc[(merge_data['advertising_id'].isin(adid_list) & (merge_data['conversion_date'] >= start_date)&(merge_data['conversion_date'] <= end_date)), detarget] = True
+                merge_data_dedup = merge_data[['appsflyer_id', 'conversion_time', detarget]]
 
-                result_data = self.result_data.merge(merge_data_dedup, on=['advertising_id', 'conversion_date'], how='left')
+                result_data = self.result_data.merge(merge_data_dedup, on=['appsflyer_id', 'conversion_time'], how='left')
                 result_data[detarget] = result_data[detarget].fillna(False)
 
                 self.result_data = result_data
@@ -264,6 +277,10 @@ class segment_analysis():
         detarget_columns = self.result_data.columns[num:]
         self.result_data.loc[self.result_data[detarget_columns].sum(axis=1) > 0, 'result'] = True
         self.result_data['result'] = self.result_data['result'].fillna(False)
+        result_columns = list(self.result_data.columns)
+        result_columns.remove('Cnt')
+        result_columns.remove('conversion_time')
+        self.result_data = self.result_data.pivot_table(index=result_columns, values='Cnt', aggfunc='sum').reset_index()
 
         return self.result_data
 
@@ -326,6 +343,7 @@ def get_event_from_values(event_values, col_name):
             result_array[i] = ''
 
     return result_array
+
 
 def date_diff(df, user_id, date, day):
     df.sort_values(by=[user_id, date], inplace=True)

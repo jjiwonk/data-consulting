@@ -77,7 +77,7 @@ def read_organic():
     organic_data = pd.concat([ios,aos])
 
     organic_data['Event Time'] = pd.to_datetime(organic_data['Event Time'])
-    organic_data = organic_data.loc[organic_data['Event Time'] >= datetime.datetime(year=2022, month=7, day=1)]
+    organic_data = organic_data.loc[(organic_data['Event Time'] >= datetime.datetime(year=2022, month=7, day=1))&(organic_data['Event Time']  <= datetime.datetime(year=2023, month=5, day=1))]
 
     return organic_data
 
@@ -196,7 +196,7 @@ def data_prep():
     media_data['date'] = pd.to_datetime(media_data['date'])
 
     #rate data
-    rate_data = pd.read_csv(dr.dropbox_dir + '/광고사업부/데이터컨설팅/데이터 분석 프로젝트/핀다/DCT1268/한국은행 기준금리 및 여수신금리_05104446.csv')
+    rate_data = pd.read_csv(dr.dropbox_dir + '/광고사업부/데이터컨설팅/데이터 분석 프로젝트/핀다/DCT1268/한국은행 기준금리 및 여수신금리_12145715.csv')
     rate_data = rate_data[['변환','원자료']].rename(columns = {'변환':'date','원자료':'rate'})
     rate_data['date'] = pd.to_datetime(rate_data['date'])
 
@@ -215,4 +215,4 @@ def data_prep():
 
 result_data = data_prep()
 
-result_data.to_csv(result_dir + '/result_rate.csv', index= False, encoding= 'utf-8-sig')
+result_data.to_csv(result_dir + '/result_forecast.csv', index= False, encoding= 'utf-8-sig')
