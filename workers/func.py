@@ -208,7 +208,8 @@ class segment_analysis():
         base_data['conversion_date'] = pd.to_datetime(base_data['conversion_time']).dt.strftime('%Y-%m-%d')
         base_data = base_data.drop_duplicates(['conversion_time', 'appsflyer_id', 'event_name'])
         base_data['Cnt'] = 1
-        base_data = base_data.loc[base_data['media_source'].isin(self.media_list)]
+        if len(self.media_list) != 0:
+            base_data = base_data.loc[base_data['media_source'].isin(self.media_list)]
         base_data_pivot = base_data.pivot_table(index=self.column_list,
                                                 values='Cnt',
                                                 aggfunc='sum').reset_index()
