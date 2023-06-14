@@ -125,8 +125,9 @@ def detargeting_inspection(total_data, today=None):
     # monthly_previous_df = monthly_previous_df.loc[monthly_previous_df['conversion_date'] < last_month]
     # monthly_for_download = pd.concat([monthly_previous_df, monthly_for_update], ignore_index=True)
     # monthly_for_download.to_csv(rd_dir + '/monthly_segment_analysis_df.csv', index=False, encoding='utf-8-sig')
-
-    daily_segment_analysis = segment_analysis(cropped_total_data, event_dict, detarget_dict, media_list)
+    conversion_event = ['re-engagement', 're-attribution']
+    column_list = ['campaign', 'media_source', 'advertising_id', 'appsflyer_id', 'customer_user_id', 'conversion_date', 'conversion_time']
+    daily_segment_analysis = segment_analysis(cropped_total_data, event_dict, conversion_event, column_list, detarget_dict, media_list)
     daily_segment_analysis_df = daily_segment_analysis.do_work()
     daily_for_update = daily_segment_analysis_df.loc[daily_segment_analysis_df['conversion_date'] >= last_day.strftime('%Y-%m-%d')]
     daily_previous_df = daily_previous_df.loc[daily_previous_df['conversion_date'] < last_day.strftime('%Y-%m-%d')]
