@@ -190,25 +190,26 @@ class EventValueParser():
 
 
 class segment_analysis():
-    def __init__(self, raw_data: pd.DataFrame, event_dict: dict, detarget_dict: dict = None, media_list: list = None):
+    def __init__(self, raw_data: pd.DataFrame, event_dict: dict, conversion_event: list, column_list: list, detarget_dict: dict = None, media_list: list = None):
         self.raw_data = raw_data
         self.event_dict = event_dict
         self.detarget_dict = detarget_dict
         self.media_list = media_list
+        self.conversion_event = conversion_event
+        self.column_list = column_list
         self.conversion_data = None
         self.result_data = None
 
     def update_conversion_data(self):
         df = self.raw_data.copy()
 
-        base_data = df.loc[df['event_name'].isin(['re-engagement', 're-attribution'])]
+        base_data = df.loc[df['event_name'].isin(self.conversion_event)]
         base_data = base_data.rename(columns={'event_time': 'conversion_time'})
         base_data['conversion_date'] = pd.to_datetime(base_data['conversion_time']).dt.strftime('%Y-%m-%d')
         base_data = base_data.drop_duplicates(['conversion_time', 'appsflyer_id', 'event_name'])
         base_data['Cnt'] = 1
         base_data = base_data.loc[base_data['media_source'].isin(self.media_list)]
-        base_data_pivot = base_data.pivot_table(index=['campaign', 'media_source', 'advertising_id', 'appsflyer_id',
-                                                       'customer_user_id', 'conversion_date', 'conversion_time'],
+        base_data_pivot = base_data.pivot_table(index=self.column_list,
                                                 values='Cnt',
                                                 aggfunc='sum').reset_index()
 
