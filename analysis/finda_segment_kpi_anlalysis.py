@@ -29,9 +29,8 @@ def read_organic():
     opened_app = read_file('Opened Finda App')
 
     organic_data = pd.concat([ios, aos, opened_app])
-
     organic_data['Event Time'] = pd.to_datetime(organic_data['Event Time'])
-    organic_data = organic_data.loc[organic_data['Event Time'] >= datetime.datetime(year=2022, month=7, day=1)]
+    organic_data = organic_data.drop_duplicates()
 
     return organic_data
 
@@ -40,10 +39,6 @@ def read_paid():
     file_dir = dr.dropbox_dir + '/광고사업부/4. 광고주/핀다_7팀/2. 리포트/자동화리포트/appsflyer_prism_2'
     file_list = os.listdir(file_dir)
     file_list = [file for file in file_list if '.csv' in file]
-    # add_file_dir = file_dir + '/(임시)Opened Finda App_0601_0607'
-    # add_file_list = os.listdir(add_file_dir)
-    # add_file_list = ['(임시)Opened Finda App_0601_0607/' + file for file in add_file_list if '.csv' in file]
-    # file_list = file_list + add_file_list
 
     dtypes = {
         'install_time': pa.string(),
@@ -93,7 +88,7 @@ def read_addition(detarget_dir, data_list):
 def kpi_analysis_prep(total_data, kpi_event, conversion_event):
     file_path = detarget_dir + '/detarget_list.txt'
     setting_dict = eval(open(file_path, 'r', encoding='utf-8-sig').read())
-    media_list = setting_dict.pop('media_list')
+    # media_list = setting_dict.pop('media_list')
     event_dict = setting_dict.pop('event_dict')
     detarget_df = pd.read_csv(detarget_dir + setting_dict.pop('file_name')).drop_duplicates()
     detarget_dict = {}
@@ -121,8 +116,7 @@ def kpi_analysis_prep(total_data, kpi_event, conversion_event):
 
     column_list = ['campaign', 'media_source', 'advertising_id', 'appsflyer_id', 'customer_user_id', 'conversion_date',
                    'conversion_time', 'is_paid', 'kpi_achievement']
-    daily_segment_analysis = segment_analysis(dedup_merged_data, event_dict, conversion_event, column_list,
-                                              detarget_dict, media_list)
+    daily_segment_analysis = segment_analysis(dedup_merged_data, event_dict, conversion_event, column_list, detarget_dict)
     kpi_analysis_df = daily_segment_analysis.do_work()
 
     return kpi_analysis_df
