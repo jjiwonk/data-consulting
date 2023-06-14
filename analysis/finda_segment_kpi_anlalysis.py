@@ -70,13 +70,8 @@ def read_addition(detarget_dir, data_list):
         dtypes = {}
         for column in column_dict.keys():
             dtypes[column] = pa.string()
-        organic_file_list = [file for file in file_list if 'non-organic' not in file]
-        organic_data = read_data.pyarrow_csv(dtypes=dtypes, directory=file_dir, file_list=organic_file_list)
-        organic_data['is_paid'] = False
-        paid_file_list = [file for file in file_list if 'non-organic' in file]
-        paid_data = read_data.pyarrow_csv(dtypes=dtypes, directory=file_dir, file_list=paid_file_list)
-        paid_data['is_paid'] = True
-        data = pd.concat([organic_data, paid_data]).reset_index(drop=True)
+        data = read_data.pyarrow_csv(dtypes=dtypes, directory=file_dir, file_list=file_list)
+        data['is_paid'] = True
         data = data.rename(columns=column_dict).drop_duplicates()
         data = data.sort_values('event_time')
         data['event_time'] = pd.to_datetime(data['event_time'])
