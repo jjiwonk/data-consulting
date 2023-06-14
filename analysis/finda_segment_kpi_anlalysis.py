@@ -90,7 +90,7 @@ def read_addition(detarget_dir, data_list):
     return addition_data
 
 
-def kpi_analysis_prep(total_data):
+def kpi_analysis_prep(total_data, kpi_event, conversion_event):
     file_path = detarget_dir + '/detarget_list.txt'
     setting_dict = eval(open(file_path, 'r', encoding='utf-8-sig').read())
     media_list = setting_dict.pop('media_list')
@@ -105,23 +105,22 @@ def kpi_analysis_prep(total_data):
     total_data = total_data.drop_duplicates().sort_values(['appsflyer_id', 'event_time']).reset_index(drop=True)
 
     loan_data = total_data.loc[
-        total_data['event_name'] == 'loan_contract_completed', ['appsflyer_id', 'event_time']].rename(
-        columns={'event_time': 'loan_time'})
+        total_data['event_name'] == kpi_event, ['appsflyer_id', 'event_time']].rename(
+        columns={'event_time': 'kpi_time'})
     merged_data = total_data.merge(loan_data, how='left', on=['appsflyer_id'])
-    merged_data['time_gap'] = merged_data['loan_time'] - merged_data['event_time']
-    merged_data.loc[merged_data['time_gap'] > datetime.timedelta(0), 'is_loan_completed'] = True
-    merged_data['is_loan_completed'] = merged_data['is_loan_completed'].fillna(False)
-    merged_data = merged_data.sort_values(['appsflyer_id', 'event_time', 'is_loan_completed'], ascending=False)
+    merged_data['time_gap'] = merged_data['kpi_time'] - merged_data['event_time']
+    merged_data.loc[merged_data['time_gap'] > datetime.timedelta(0), 'kpi_achievement'] = True
+    merged_data['kpi_achievement'] = merged_data['kpi_achievement'].fillna(False)
+    merged_data = merged_data.sort_values(['appsflyer_id', 'event_time', 'kpi_achievement'], ascending=False)
     col_list = list(merged_data.columns)
     col_list.remove('time_gap')
-    col_list.remove('loan_time')
+    col_list.remove('kpi_time')
     merged_data = merged_data[col_list]
-    col_list.remove('is_loan_completed')
+    col_list.remove('kpi_achievement')
     dedup_merged_data = merged_data.drop_duplicates(col_list, keep='first')
 
-    conversion_event = ['Opened Finda App']
     column_list = ['campaign', 'media_source', 'advertising_id', 'appsflyer_id', 'customer_user_id', 'conversion_date',
-                   'conversion_time', 'is_paid', 'is_loan_completed']
+                   'conversion_time', 'is_paid', 'kpi_achievement']
     daily_segment_analysis = segment_analysis(dedup_merged_data, event_dict, conversion_event, column_list,
                                               detarget_dict, media_list)
     kpi_analysis_df = daily_segment_analysis.do_work()
@@ -136,5 +135,7 @@ organic_data['is_paid'] = False
 paid_data = read_paid()
 paid_data['is_paid'] = True
 total_data = pd.concat([organic_data, paid_data]).reset_index(drop=True)
-kpi_analysis_df = kpi_analysis_prep(total_data)
+kpi_event = 'loan_contract_completed'
+conversion_event = ['Opened Finda App']
+kpi_analysis_df = kpi_analysis_prep(total_data, kpi_event, conversion_event)
 kpi_analysis_df.to_csv(dr.download_dir + '/kpi_analysis_df.csv', index=False, encoding='utf-8-sig')
