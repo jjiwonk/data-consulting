@@ -77,7 +77,7 @@ def read_organic():
     organic_data = pd.concat([ios,aos])
 
     organic_data['Event Time'] = pd.to_datetime(organic_data['Event Time'])
-    organic_data = organic_data.loc[(organic_data['Event Time'] >= datetime.datetime(year=2022, month=7, day=1))&(organic_data['Event Time']  <= datetime.datetime(year=2023, month=5, day=1))]
+    organic_data = organic_data.loc[(organic_data['Event Time'] >= datetime.datetime(year=2022, month=7, day=1))&(organic_data['Event Time']  <= datetime.datetime(year=2023, month=6, day=1))]
 
     return organic_data
 
@@ -98,7 +98,7 @@ def read_paid():
     data = data.sort_values('event_time')
 
     data['event_time'] = pd.to_datetime(data['event_time'])
-    paid_data = data.loc[(data['event_time'] >= datetime.datetime(year=2022, month=7, day=1)) & (data['event_time'] <= datetime.datetime(year=2023, month=5, day=1))]
+    paid_data = data.loc[(data['event_time'] >= datetime.datetime(year=2022, month=7, day=1)) & (data['event_time'] <= datetime.datetime(year=2023, month=6, day=1))]
 
     return paid_data
 
@@ -215,4 +215,4 @@ def data_prep():
 
 result_data = data_prep()
 
-result_data.to_csv(result_dir + '/result_forecast.csv', index= False, encoding= 'utf-8-sig')
+result_data.to_csv(result_dir + '/result_refresh.csv', index= False, encoding= 'utf-8-sig')
