@@ -193,7 +193,10 @@ class segment_analysis():
     def __init__(self, raw_data: pd.DataFrame, event_dict: dict, conversion_event: list, column_list: list, detarget_dict: dict = None, media_list: list = None):
         self.raw_data = raw_data
         self.event_dict = event_dict
-        self.detarget_dict = detarget_dict
+        if detarget_dict is None:
+            self.detarget_dict = {}
+        else:
+            self.detarget_dict = detarget_dict
         self.media_list = media_list
         self.conversion_event = conversion_event
         self.column_list = column_list
@@ -238,17 +241,15 @@ class segment_analysis():
             col_name = f'{seg_name}_in_{str(target_period)}_days'
 
             merge_data = conversion_data.merge(segment_df, on='appsflyer_id', how='left')
-            merge_data['time_gap'] = merge_data['conversion_time'] - merge_data['event_time']
-            merge_data['time_gap'] = merge_data['time_gap'].apply(lambda x: x.days)
+            merge_data['time_gap'] = (merge_data['conversion_time'] - merge_data['event_time']).dt.days
 
             merge_data.loc[(merge_data['time_gap'] <= target_period) & (merge_data['time_gap'] > 0), col_name] = True
 
-            merge_data_dedup = merge_data[['appsflyer_id', 'conversion_time', col_name]]
-            merge_data_dedup[col_name] = merge_data_dedup[col_name].fillna(False)
-            merge_data_dedup = merge_data_dedup.sort_values(['appsflyer_id', 'conversion_time', col_name], ascending=False)
-            merge_data_dedup = merge_data_dedup.drop_duplicates(['appsflyer_id', 'conversion_time'], keep='first')
+            merge_data[col_name] = merge_data[col_name].fillna(False)
+            merge_data = merge_data[['appsflyer_id', 'conversion_time', col_name]].sort_values(['appsflyer_id', 'conversion_time', col_name], ascending=False)
+            merge_data = merge_data.drop_duplicates(['appsflyer_id', 'conversion_time'], keep='first')
 
-            result_data = self.result_data.merge(merge_data_dedup, on=['appsflyer_id', 'conversion_time'], how='left')
+            result_data = self.result_data.merge(merge_data, on=['appsflyer_id', 'conversion_time'], how='left')
             result_data[col_name] = result_data[col_name].fillna(False)
 
             self.result_data = result_data
