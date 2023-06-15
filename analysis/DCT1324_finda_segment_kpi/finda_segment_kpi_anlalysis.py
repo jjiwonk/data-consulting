@@ -83,35 +83,30 @@ def read_addition(detarget_dir, data_list):
 def kpi_analysis_prep(total_data, kpi_event, conversion_event):
     file_path = detarget_dir + '/detarget_list.txt'
     setting_dict = eval(open(file_path, 'r', encoding='utf-8-sig').read())
-    # media_list = setting_dict.pop('media_list')
     event_dict = setting_dict.pop('event_dict')
-    detarget_df = pd.read_csv(detarget_dir + setting_dict.pop('file_name')).drop_duplicates()
-    detarget_dict = {}
-    for type in detarget_df.data_type.unique():
-        detarget_dict[type] = detarget_df.loc[detarget_df['data_type'] == type].reset_index(drop=True)
-    data_list = setting_dict.pop('data_list')
-    addition_df = read_addition(detarget_dir, data_list)
-    total_data = pd.concat([total_data, addition_df]).reset_index(drop=True)
     total_data = total_data.drop_duplicates().sort_values(['appsflyer_id', 'event_time']).reset_index(drop=True)
 
-    loan_data = total_data.loc[
-        total_data['event_name'] == kpi_event, ['appsflyer_id', 'event_time']].rename(
-        columns={'event_time': 'kpi_time'})
-    merged_data = total_data.merge(loan_data, how='left', on=['appsflyer_id'])
-    merged_data['time_gap'] = merged_data['kpi_time'] - merged_data['event_time']
-    merged_data.loc[merged_data['time_gap'] > datetime.timedelta(0), 'kpi_achievement'] = True
-    merged_data['kpi_achievement'] = merged_data['kpi_achievement'].fillna(False)
-    merged_data = merged_data.sort_values(['appsflyer_id', 'event_time', 'kpi_achievement'], ascending=False)
-    col_list = list(merged_data.columns)
-    col_list.remove('time_gap')
-    col_list.remove('kpi_time')
-    merged_data = merged_data[col_list]
-    col_list.remove('kpi_achievement')
-    dedup_merged_data = merged_data.drop_duplicates(col_list, keep='first')
+    kpi_list = []
+    for kpi in kpi_event:
+        kpi_data = total_data.loc[
+            total_data['event_name'] == kpi, ['appsflyer_id', 'event_time']].rename(
+            columns={'event_time': 'kpi_time'})
+        merged_data = total_data.merge(kpi_data, how='left', on=['appsflyer_id'])
+        merged_data['time_gap'] = merged_data['kpi_time'] - merged_data['event_time']
+        kpi_name = f'{kpi}_achievement'
+        kpi_list.append(kpi_name)
+        merged_data.loc[merged_data['time_gap'] > datetime.timedelta(0), kpi_name] = True
+        merged_data[kpi_name] = merged_data[kpi_name].fillna(False)
+        merged_data = merged_data.sort_values(['appsflyer_id', 'event_time', kpi_name], ascending=False)
+        col_list = list(merged_data.columns)
+        col_list.remove('time_gap')
+        col_list.remove('kpi_time')
+        merged_data = merged_data[col_list]
+        col_list.remove(kpi_name)
+        total_data = merged_data.drop_duplicates(col_list, keep='first')
 
-    column_list = ['campaign', 'media_source', 'advertising_id', 'appsflyer_id', 'customer_user_id', 'conversion_date',
-                   'conversion_time', 'is_paid', 'kpi_achievement']
-    daily_segment_analysis = segment_analysis(dedup_merged_data, event_dict, conversion_event, column_list, detarget_dict)
+    column_list = ['appsflyer_id', 'conversion_date', 'is_paid', 'conversion_time'] + kpi_list
+    daily_segment_analysis = segment_analysis(total_data, event_dict, conversion_event, column_list)
     kpi_analysis_df = daily_segment_analysis.do_work()
 
     return kpi_analysis_df
@@ -124,7 +119,12 @@ organic_data['is_paid'] = False
 paid_data = read_paid()
 paid_data['is_paid'] = True
 total_data = pd.concat([organic_data, paid_data]).reset_index(drop=True)
-kpi_event = 'loan_contract_completed'
+total_data = total_data.loc[total_data['event_time'] < '2023-06-01']
+kpi_event = ['loan_contract_completed', 'Viewed LA Home']
 conversion_event = ['Opened Finda App']
+del organic_data
+del paid_data
+total_data = total_data[['appsflyer_id', 'event_name', 'is_paid', 'event_time']]
 kpi_analysis_df = kpi_analysis_prep(total_data, kpi_event, conversion_event)
 kpi_analysis_df.to_csv(dr.download_dir + '/kpi_analysis_df.csv', index=False, encoding='utf-8-sig')
+
