@@ -7,6 +7,7 @@ import os
 from setting import directory as dr
 from workers import read_data
 from workers.func import segment_analysis
+from spreadsheet import spreadsheet
 
 
 def read_organic():
@@ -132,6 +133,15 @@ def detargeting_inspection(total_data, today=None):
     daily_for_update = daily_segment_analysis_df.loc[daily_segment_analysis_df['conversion_date'] >= last_day.strftime('%Y-%m-%d')]
     daily_previous_df = daily_previous_df.loc[daily_previous_df['conversion_date'] < last_day.strftime('%Y-%m-%d')]
     daily_for_download = pd.concat([daily_previous_df, daily_for_update], ignore_index=True)
+
+    # 운영 여부 확인 컬럼 추가
+    spread_sheet_url = 'https://docs.google.com/spreadsheets/d/1OXlBSaK5km6YHxHdvZtgm2nNK033Pjh7dPoA0gBzISA/edit#gid=797669622'
+    sheet_name = 'RE 캠페인 리스트'
+    doc = spreadsheet.spread_document_read(spread_sheet_url)
+    setting_df = spreadsheet.spread_sheet(doc, sheet_name).reset_index(drop=True)
+    campaign_list = setting_df.loc[:, '캠페인명']
+    daily_for_download.loc[daily_for_download['campaign'].isin(campaign_list), 'is_operating'] = True
+    daily_for_download['is_operating'] = daily_for_download['is_operating'].fillna(False)
     daily_for_download.to_csv(rd_dir + '/daily_segment_analysis_df.csv', index=False, encoding='utf-8-sig')
 
     return daily_for_download
