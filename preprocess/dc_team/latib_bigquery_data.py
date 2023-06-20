@@ -5,7 +5,7 @@ import datetime
 import json
 import time
 from dateutil import tz
-
+import math
 
 raw_dir = dr.dropbox_dir + '/광고사업부/데이터컨설팅/데이터 분석 프로젝트/Latib'
 # session_file_name= 'bquxjob_565609be_188b8f07f00.csv'
@@ -44,8 +44,8 @@ raw_dir = dr.dropbox_dir + '/광고사업부/데이터컨설팅/데이터 분석
 #
 # session_df_comp_user_filter = session_df_comp.loc[session_df_comp['user_pseudo_id'].isin(temp_user_list)]
 
-log1 = pd.read_json(raw_dir + '/bq-results-20230614-085528-1686733050757.json', lines=True)
-log2 = pd.read_json(raw_dir + '/bq-results-20230614-093849-1686735542547.json', lines=True)
+log1 = pd.read_json(raw_dir + '/bq-results-20230619-052545-1687152363615.json', lines=True)
+log2 = pd.read_json(raw_dir + '/bq-results-20230619-052735-1687152468418.json', lines=True)
 
 total_log_data = pd.concat([log1, log2], ignore_index=True)
 # total_log_data['event_timestamp_parsing'] = total_log_data['event_timestamp'].apply(lambda x : float(str(x)[:10] + "." + str(x)[-6:]))
@@ -67,3 +67,46 @@ for col in ['manual_source', 'manual_medium'] :
 log_pivot = total_log_data_kst.pivot_table(index = ['event_name', 'source', 'medium', 'manual_source', 'manual_medium'], values = 'cnt', aggfunc='sum').reset_index()
 log_pivot_selected = log_pivot.loc[((log_pivot['source']=='instagram')|(log_pivot['manual_source']=='instagram'))&
                                    (log_pivot['event_name']=='session_start')]
+
+
+# session scope 으로 정의
+raw_data = pd.read_json(raw_dir + '/bq-results-20230619-052545-1687152363615.json', lines=True)
+
+# traffic_source 정의
+for col in ['name', 'source', 'medium']:
+    raw_data[col] = raw_data['traffic_source'].apply(lambda x : x.get(col))
+
+#collected_traffic_source 정의
+raw_data['type'] = raw_data['collected_traffic_source'].apply(lambda x : type(x))
+raw_data['manual_source'] = '-'
+
+manual_data = raw_data.loc[raw_data['type'] == dict]
+manual_data['manual_source'] = manual_data['collected_traffic_source'].apply(lambda x : x.get('manual_source'))
+notman_data = raw_data.loc[raw_data['type'] != dict]
+
+raw_data = pd.concat([manual_data,notman_data])
+raw_data.index = range(len(raw_data))
+
+# 수동 utm 소스 정의
+raw_data['utm_sorce'] = '-'
+
+for i in range(len(raw_data)):
+    paramas_cnt = len(raw_data['event_params'][i])
+    for ind in range(paramas_cnt) :
+        key = raw_data['event_params'][i][ind]['key']
+        if key == 'page_location':
+            raw_data['utm_sorce'][i] = raw_data['event_params'][i][ind]['value']
+        else:
+            pass
+
+raw_data['utm_sorce'] = raw_data['utm_sorce'].apply(lambda x : x.get('string_value'))
+raw_data['utm_source'] = raw_data['utm_sorce'].apply(lambda x: x.split('utm_source=')[-1].split('&')[0] if x.find('utm_source') != -1 else '-' )
+
+raw_data['cnt'] = 1
+
+total_check = raw_data.pivot_table(index = 'event_name', values= 'cnt', aggfunc= 'sum').reset_index()
+media_check = raw_data.pivot_table(index = ['event_name', 'source','utm_source','manual_source'], values= 'cnt', aggfunc= 'sum').reset_index()
+direct_check = media_check.loc[media_check['source'] == '(direct)']
+insta_check = media_check.loc[(media_check['source'] == 'instagram')|(media_check['manual_source'] == 'instagram')]
+
+check = insta_check.pivot_table(index = ['event_name'], values= 'cnt', aggfunc= 'sum').reset_index()
