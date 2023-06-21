@@ -18,6 +18,7 @@ def read_organic():
 
         dtypes = {
             'Install Time': pa.string(),
+            'Attributed Touch Time': pa.string(),
             'Event Time': pa.string(),
             'Event Name': pa.string(),
             'AppsFlyer ID': pa.string(),
@@ -33,6 +34,7 @@ def read_organic():
     organic_data = pd.concat([ios, aos, opened_app])
 
     organic_data['Event Time'] = pd.to_datetime(organic_data['Event Time'])
+    organic_data['Attributed Touch Time'] = pd.to_datetime(organic_data['Attributed Touch Time'])
     organic_data = organic_data.loc[organic_data['Event Time'] >= datetime.datetime(year=2022, month=7, day=1)]
 
     return organic_data
@@ -42,13 +44,11 @@ def read_paid():
     file_dir = dr.dropbox_dir + '/광고사업부/4. 광고주/핀다_7팀/2. 리포트/자동화리포트/appsflyer_prism_2'
     file_list = os.listdir(file_dir)
     file_list = [file for file in file_list if '.csv' in file]
-    # add_file_dir = file_dir + '/(임시)Opened Finda App_0601_0607'
-    # add_file_list = os.listdir(add_file_dir)
-    # add_file_list = ['(임시)Opened Finda App_0601_0607/' + file for file in add_file_list if '.csv' in file]
-    # file_list = file_list + add_file_list
 
     dtypes = {
         'install_time': pa.string(),
+        'attributed_touch_time': pa.string(),
+        'attributed_touch_type': pa.string(),
         'event_time': pa.string(),
         'event_name': pa.string(),
         'campaign': pa.string(),
@@ -62,6 +62,7 @@ def read_paid():
     data = data.sort_values('event_time')
 
     data['event_time'] = pd.to_datetime(data['event_time'])
+    data['attributed_touch_time'] = pd.to_datetime(data['attributed_touch_time'])
     paid_data = data.drop_duplicates()
 
     return paid_data
@@ -82,6 +83,7 @@ def read_addition(detarget_dir, data_list):
         data = data.rename(columns=column_dict).drop_duplicates()
         data = data.sort_values('event_time')
         data['event_time'] = pd.to_datetime(data['event_time'])
+        data['attributed_touch_time'] = pd.to_datetime(data['attributed_touch_time'])
 
         addition_data = pd.concat([addition_data, data]).reset_index(drop=True)
     return addition_data
@@ -113,7 +115,7 @@ def detargeting_inspection(total_data, today=None):
     total_data = total_data.loc[total_data['event_time'] < to_date]
     last_day = datetime.datetime.strptime(max(daily_previous_df['conversion_date']), '%Y-%m-%d')
     # last_day = datetime.datetime.strptime('2023-01-01', '%Y-%m-%d')
-    from_date = last_day.replace(day=1) - relativedelta(months=2)
+    from_date = last_day.replace(day=1) - relativedelta(months=3)
     cropped_total_data = total_data.loc[total_data['event_time'] >= from_date]
 
     # last_month = last_day.strftime('%Y-%m')
@@ -133,6 +135,7 @@ def detargeting_inspection(total_data, today=None):
     daily_for_update = daily_segment_analysis_df.loc[daily_segment_analysis_df['conversion_date'] >= last_day.strftime('%Y-%m-%d')]
     daily_previous_df = daily_previous_df.loc[daily_previous_df['conversion_date'] < last_day.strftime('%Y-%m-%d')]
     daily_for_download = pd.concat([daily_previous_df, daily_for_update], ignore_index=True)
+    # daily_for_download = daily_for_update
 
     # 운영 여부 확인 컬럼 추가
     spread_sheet_url = 'https://docs.google.com/spreadsheets/d/1OXlBSaK5km6YHxHdvZtgm2nNK033Pjh7dPoA0gBzISA/edit#gid=797669622'
@@ -142,7 +145,10 @@ def detargeting_inspection(total_data, today=None):
     campaign_list = setting_df.loc[:, '캠페인명']
     daily_for_download.loc[daily_for_download['campaign'].isin(campaign_list), 'is_operating'] = True
     daily_for_download['is_operating'] = daily_for_download['is_operating'].fillna(False)
-    daily_for_download.to_csv(rd_dir + '/daily_segment_analysis_df.csv', index=False, encoding='utf-8-sig')
+    daily_for_download.to_csv(rd_dir + '/daily_segment_analysis_df_test.csv', index=False, encoding='utf-8-sig')
+    backup_dir = dr.dropbox_dir + '/광고사업부/4. 광고주/핀다_7팀/2. 업무/RE_디타겟점검/RAW_FIN'
+    daily_for_download.to_csv(backup_dir + f'/daily_segment_analysis_df_{today.strftime("%y%m%d")}.csv', index=False,
+                              encoding='utf-8-sig')
 
     return daily_for_download
 
@@ -150,7 +156,8 @@ def detargeting_inspection(total_data, today=None):
 organic_data = read_organic()
 organic_data.columns = [col.lower().replace(' ', '_') for col in organic_data.columns]
 paid_data = read_paid()
+paid_data = paid_data.loc[paid_data['attributed_touch_type'] == 'click']
 total_data = pd.concat([organic_data, paid_data]).reset_index(drop=True)
 # 업데이트 기준 날짜 (ex. 2023년 4월 30일까지 업데이트 시 > 2023-05-01 기재)
-today = datetime.datetime.strptime('2023-06-11', '%Y-%m-%d')
+today = datetime.datetime.strptime('2023-06-21', '%Y-%m-%d')
 daily_df = detargeting_inspection(total_data, today)
