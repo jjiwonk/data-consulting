@@ -207,9 +207,9 @@ class segment_analysis():
         df = self.raw_data.copy()
 
         base_data = df.loc[df['event_name'].isin(self.conversion_event)]
-        base_data = base_data.rename(columns={'event_time': 'conversion_time'})
+        base_data = base_data.rename(columns={'attributed_touch_time': 'conversion_time'})
         base_data['conversion_date'] = pd.to_datetime(base_data['conversion_time']).dt.strftime('%Y-%m-%d')
-        base_data = base_data.drop_duplicates(['conversion_time', 'appsflyer_id', 'event_name'])
+        base_data = base_data.drop_duplicates(['conversion_time', 'advertising_id', 'event_name'])
         base_data['Cnt'] = 1
         if self.media_list is not None:
             base_data = base_data.loc[base_data['media_source'].isin(self.media_list)]
@@ -225,8 +225,8 @@ class segment_analysis():
 
         seg_df = df.loc[df['event_name'] == target_event]
         seg_df['segment'] = seg_name
-        seg_df = seg_df.drop_duplicates(['appsflyer_id', 'event_time'])
-        seg_df = seg_df[['event_time', 'segment', 'appsflyer_id']]
+        seg_df = seg_df.drop_duplicates(['advertising_id', 'event_time'])
+        seg_df = seg_df[['event_time', 'segment', 'advertising_id']]
 
         return seg_df
 
@@ -240,16 +240,16 @@ class segment_analysis():
             segment_df = self.make_segment_dataset(target_event, seg_name)
             col_name = f'{seg_name}_in_{str(target_period)}_days'
 
-            merge_data = conversion_data.merge(segment_df, on='appsflyer_id', how='left')
+            merge_data = conversion_data.merge(segment_df, on='advertising_id', how='left')
             merge_data['time_gap'] = (merge_data['conversion_time'] - merge_data['event_time']).dt.days
 
-            merge_data.loc[(merge_data['time_gap'] <= target_period) & (merge_data['time_gap'] > 0), col_name] = True
+            merge_data.loc[(merge_data['time_gap'] < target_period) & (merge_data['time_gap'] > 0), col_name] = True
 
             merge_data[col_name] = merge_data[col_name].fillna(False)
-            merge_data = merge_data[['appsflyer_id', 'conversion_time', col_name]].sort_values(['appsflyer_id', 'conversion_time', col_name], ascending=False)
-            merge_data = merge_data.drop_duplicates(['appsflyer_id', 'conversion_time'], keep='first')
+            merge_data = merge_data[['advertising_id', 'conversion_time', col_name]].sort_values(['advertising_id', 'conversion_time', col_name], ascending=False)
+            merge_data = merge_data.drop_duplicates(['advertising_id', 'conversion_time'], keep='first')
 
-            result_data = self.result_data.merge(merge_data, on=['appsflyer_id', 'conversion_time'], how='left')
+            result_data = self.result_data.merge(merge_data, on=['advertising_id', 'conversion_time'], how='left')
             result_data[col_name] = result_data[col_name].fillna(False)
 
             self.result_data = result_data
@@ -264,9 +264,9 @@ class segment_analysis():
                     end_date = date_df.loc[i, 'end_date']
                     adid_list = detarget_df.loc[(detarget_df['data_type'] == detarget) & (detarget_df['start_date'] == start_date) & (detarget_df['end_date'] == end_date), 'advertising_id'].drop_duplicates().to_list()
                     merge_data.loc[(merge_data['advertising_id'].isin(adid_list) & (merge_data['conversion_date'] >= start_date)&(merge_data['conversion_date'] <= end_date)), detarget] = True
-                merge_data_dedup = merge_data[['appsflyer_id', 'conversion_time', detarget]]
+                merge_data_dedup = merge_data[['advertising_id', 'conversion_time', detarget]]
 
-                result_data = self.result_data.merge(merge_data_dedup, on=['appsflyer_id', 'conversion_time'], how='left')
+                result_data = self.result_data.merge(merge_data_dedup, on=['advertising_id', 'conversion_time'], how='left')
                 result_data[detarget] = result_data[detarget].fillna(False)
 
                 self.result_data = result_data
