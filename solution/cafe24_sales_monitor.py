@@ -23,6 +23,7 @@ from selenium.common.exceptions import StaleElementReferenceException, TimeoutEx
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.common.by import By
+from selenium.webdriver import ActionChains
 
 
 class Key:
@@ -119,8 +120,11 @@ class Cafe24SalesMonitor(Worker):
                     sales_manage_tab.click()
                     break
                 except ElementClickInterceptedException:
-                    driver.execute_script("window.scrollTo(1920,0)")
-                    driver.find_element(By.CSS_SELECTOR, ".btnClose.eClose").click()
+                    action = ActionChains(driver)
+                    button = driver.find_element(By.CSS_SELECTOR, ".btnClose.eClose")
+                    action.move_to_element(button).perform()
+                    button.click()
+                    # driver.find_element(By.CSS_SELECTOR, ".btnClose.eClose").click()
                     sales_manage_tab = driver.find_element(By.CLASS_NAME, "link.order")
                     sales_manage_tab.click()
                     break
