@@ -1,6 +1,7 @@
 import time
 
 from selenium.webdriver.common.by import By
+from selenium.common.exceptions import TimeoutException
 
 from utils.selenium_util import get_chromedriver, wait_for_element, selenium_error_logging
 from utils.path_util import get_tmp_path
@@ -137,8 +138,13 @@ class SpcDownload(Worker):
                 try :
                     download_btn = wait_for_element(driver=driver, by=By.CSS_SELECTOR,
                                                     value=f'#downloadList > tr:nth-child({i + 1}) > td.last > a', max_retry_cnt=10)
-                except Exception as e :
-                    if i == down_num - 1 :
+                except TimeoutException:
+                    driver.find_element(By.CSS_SELECTOR, ".swal-button .swal-button--confirm").click()
+                    download_btn = wait_for_element(driver=driver, by=By.CSS_SELECTOR,
+                                                    value=f'#downloadList > tr:nth-child({i + 1}) > td.last > a',
+                                                    max_retry_cnt=10)
+                except Exception as e:
+                    if i == down_num - 1:
                         break
                     else :
                         self.logger.info(e)
