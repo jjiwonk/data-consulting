@@ -139,10 +139,13 @@ class SpcDownload(Worker):
                     download_btn = wait_for_element(driver=driver, by=By.CSS_SELECTOR,
                                                     value=f'#downloadList > tr:nth-child({i + 1}) > td.last > a', max_retry_cnt=10)
                 except TimeoutException:
-                    driver.find_element(By.CSS_SELECTOR, ".swal-button .swal-button--confirm").click()
-                    download_btn = wait_for_element(driver=driver, by=By.CSS_SELECTOR,
-                                                    value=f'#downloadList > tr:nth-child({i + 1}) > td.last > a',
-                                                    max_retry_cnt=10)
+                    if i == down_num - 1:
+                        break
+                    else:
+                        driver.find_element(By.CSS_SELECTOR, ".swal-button .swal-button--confirm").click()
+                        download_btn = wait_for_element(driver=driver, by=By.CSS_SELECTOR,
+                                                        value=f'#downloadList > tr:nth-child({i + 1}) > td.last > a',
+                                                        max_retry_cnt=10)
                 except Exception as e:
                     if i == down_num - 1:
                         break
