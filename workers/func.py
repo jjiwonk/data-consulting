@@ -286,6 +286,98 @@ class segment_analysis():
         return self.result_data
 
 
+class FunnelDataGenerator():
+    def __init__(self, user_array, event_array, event_time_array, value_array, kpi_event_name, funnel_period, paid_events):
+        self.num = 0
+        self.funnel_id = 'funnel ' + str(self.num)
+        self.kpi_event = kpi_event_name
+        self.funnel_period = datetime.timedelta(seconds=funnel_period)
+
+        self.array_list = {
+            'user': user_array,
+            'event': event_array,
+            'event_time': event_time_array,
+            'value': value_array
+        }
+
+        self.start_time = self.array_list['event_time'][0]
+        self.end_time = None
+        self.current_event_time = None
+
+        self.current_user = None
+        self.before_user = self.array_list['user'][0]
+
+        self.current_event = None
+        self.before_event = self.array_list['event'][0]
+        self.funnel_sequence = [self.before_event]
+        self.kpi_achievement = False
+        self.is_paid = False
+
+        self.current_value = None
+        self.before_value = self.array_list['value'][0]
+
+        self.paid_events = paid_events
+        self.data = []
+        self.column_names = ['user_id', 'funnel_id', 'funnel_sequence', 'start_time', 'end_time', 'is_paid', 'kpi_achievement', 'value']
+
+    def start_new_funnel(self):
+        self.num += 1
+        self.funnel_sequence = []
+        self.funnel_id = 'funnel ' + str(self.num)
+        self.funnel_sequence.append(self.current_event)
+        self.start_time = self.current_event_time
+        self.kpi_achievement = False
+        self.is_paid = False
+
+    def append_row(self):
+        self.funnel_sequence.append('funnel_end')
+        row = [self.before_user, self.funnel_id, self.funnel_sequence,
+               self.start_time, self.end_time, self.is_paid, self.kpi_achievement, self.before_value]
+        self.data.append(row)
+
+    def discriminator(self):
+        # 현재 유저가 이전 유저와 같은 경우
+        if self.current_user == self.before_user:
+            # 현재 이벤트가 kpi 이벤트 or 첫 이벤트와 시간차가 period 이상인 경우 퍼널이 종료되고 새로운 퍼널 시작
+            time_gap = (self.current_event_time - self.start_time)
+            if self.before_event == self.kpi_event:
+                self.kpi_achievement = True
+                self.append_row()
+                self.start_new_funnel()
+            elif time_gap >= self.funnel_period:
+                self.append_row()
+                self.start_new_funnel()
+            else:  # 현재 유저와 이전 유저가 같으면서 현재 이벤트가 kpi 이벤트가 아니고 period 이상이 아니기 때문에 시퀀스 정보만 추가
+                self.funnel_sequence.append(self.current_event)
+
+        else:
+            # 유저 정보가 같지 않다면 새로운 퍼널이 시작된 것
+            self.append_row()
+            self.start_new_funnel()
+
+    def do_work(self):
+        for i, user in enumerate(self.array_list['user']):
+            if i == 0:
+                pass
+            else:
+                self.current_event_time = self.array_list['event_time'][i]
+                self.end_time = self.array_list['event_time'][i - 1]
+
+                self.current_user = self.array_list['user'][i]
+                self.before_user = self.array_list['user'][i - 1]
+
+                self.current_event = self.array_list['event'][i]
+                self.before_event = self.array_list['event'][i - 1]
+                if self.before_event in self.paid_events:
+                    self.is_paid = True
+
+                self.before_value = self.array_list['value'][i - 1]
+
+                self.discriminator()
+
+        self.data = pd.DataFrame(data=self.data, columns=self.column_names)
+
+
 def user_identifier(df, platform_id, user_id):
     df = df.loc[df[user_id].str.len()>0]
     df = df.drop_duplicates([platform_id, user_id])
