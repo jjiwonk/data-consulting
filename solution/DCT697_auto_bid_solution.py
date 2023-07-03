@@ -124,8 +124,8 @@ class AutoBidSolution(KeywordMonitoring):
             keyword_id = row['ad_keyword_id']
             group_id = row['adgroup_id']
             goal_rank = int(row['goal_rank'])
-            min_bid = int(row['min_bid'])
-            max_bid = int(row['max_bid'])
+            min_bid = int(row['min_bid'].replace(',', ''))
+            max_bid = int(row['max_bid'].replace(',', ''))
             bid_degree = float(row['bid_degree'])
             cur_bid = int(row['cur_bid'])
             cur_rank = row['ad_rank']
