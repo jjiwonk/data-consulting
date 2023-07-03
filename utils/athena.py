@@ -45,7 +45,7 @@ def athena_table_refresh(database, table_name):
     return execute_query(athena, res)
 
 
-def athena_table_manually_refresh(database, table_name, table_s3_path, owner_id, channel, start_date:str):
+def athena_table_manually_refresh(database, table_name, table_s3_path, owner_id, channel, start_date: str):
     athena = boto3.client('athena', region_name='ap-northeast-2')
     start_date = datetime.strptime(start_date, "%Y-%m-%d")
     queries = []
@@ -63,7 +63,7 @@ def athena_table_manually_refresh(database, table_name, table_s3_path, owner_id,
                     'OutputLocation': 's3://data-consulting-private/athena_refresh_result/'
                 }
             )
-            time.sleep(0.005)
+            time.sleep(0.08)
     except Exception as e:
         raise e
 
