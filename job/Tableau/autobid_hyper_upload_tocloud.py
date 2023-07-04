@@ -1,10 +1,11 @@
 from utils import s3
-from utils.path_util import get_tmp_path , get_root_directory
+from utils.path_util import get_tmp_path
 from utils import const
 from utils import athena
 import os
 import pandas as pd
 from datetime import datetime
+from dateutil.relativedelta import relativedelta
 
 from solution.DCT1086_tableau_hyper_upload_tocloud import hyper_file_upload
 
@@ -53,6 +54,7 @@ if __name__ == "__main__":
         df = df[report_col]
 
         df = df.drop_duplicates(keep='first')
+        df = df.loc[df['date'] >= (datetime.now() - relativedelta(months=3))]
         df.index = range(len(df))
 
         # 데이터 s3에 업로드하기
@@ -82,20 +84,20 @@ if __name__ == "__main__":
 
         return data
 
-    attr = s3.get_info_from_s3('tableau','hyper_upload_solution_tocloud')
+    attr = s3.get_info_from_s3('tableau', 'hyper_upload_solution_tocloud')
 
     info = dict(
-        hyper_name ='autobid.hyper',
-        project_name = 'RD',
-        success_alert_channel = 'pjt_dc_success',
+        hyper_name='autobid.hyper',
+        project_name='RD',
+        success_alert_channel='pjt_dc_success',
         error_slack_channel='pjt_dc_erro',
-        num_list = ['goal_rank', 'min_bid', 'max_bid', 'cur_bid', 'ad_rank', 'next_bid' ,'year', 'month', 'day', 'hour', 'minute'],
-        double_list =[],
-        text_list = ['customer_id', 'ad_keyword', 'campaign_name', 'campaign_id','adgroup_name', 'adgroup_id', 'ad_keyword_id', 'pc_mobile_type','bid_degree', 'use_groupbid','result', 'owner_id','channel'],
-        date_list = ['date']
+        num_list=['goal_rank', 'min_bid', 'max_bid', 'cur_bid', 'ad_rank', 'next_bid', 'year', 'month', 'day', 'hour', 'minute'],
+        double_list=[],
+        text_list=['customer_id', 'ad_keyword', 'campaign_name', 'campaign_id','adgroup_name', 'adgroup_id', 'ad_keyword_id', 'pc_mobile_type', 'bid_degree', 'use_groupbid', 'result', 'owner_id', 'channel'],
+        date_list=['date']
     )
 
-    info['report_col'] =  info['num_list'] + info['double_list'] + info['text_list'] + info['date_list']
-    info['data'] = data_prep('tableau',info['num_list'], info['text_list'], info['report_col'])
+    info['report_col'] = info['num_list'] + info['double_list'] + info['text_list'] + info['date_list']
+    info['data'] = data_prep('tableau', info['num_list'], info['text_list'], info['report_col'])
 
     worker.work(attr=attr, info=info)
