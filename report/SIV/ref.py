@@ -196,6 +196,24 @@ class columns:
         'itemQuantity': pa.float64(),
         'itemRevenue': pa.float64()}
 
+    ga4_rename = {'세션 캠페인' : 'campaign',
+                   '세션 수동 광고 콘텐츠' : 'adContent',
+                   '세션 소스/매체' : 'sourceMedium',
+                   '세션 수동 검색어' : 'keyword',
+                   '거래' : 'transactions',
+                   '구매 수익' : 'transactionRevenue',
+                   '이벤트 이름': 'eventname',
+                   '이벤트 수' : 'eventcount'
+                   }
+
+    ga4_rename_final = { 'session_start' : '세션(GA)',
+                   'users' : 'UA(GA)',
+                   'transactions' : '구매(GA)',
+                   'transactionRevenue' : '매출(GA)',
+                   'sign_up': '가입(GA)'
+                   }
+
+
     def merge_index(df):
         merge_index = df[['머징코드', '캠페인', '세트', '소재']].drop_duplicates(keep='first')
         merge_index = merge_index.loc[merge_index['머징코드'] != 'None']

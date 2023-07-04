@@ -3,8 +3,8 @@ from report.SIV import ref
 import datetime
 import pandas as pd
 
-def ga_read(type,use_col):
-    dir = dr.report_dir + f'ga_{type}_prism'
+def ga_read(type, use_col, ga4 = '',header= 0):
+    dir = dr.report_dir + f'ga_{type}_prism{ga4}'
 
     from_date = ref.r_date.start_date
     to_date = ref.r_date.target_date
@@ -15,7 +15,7 @@ def ga_read(type,use_col):
         date_name = from_date.strftime('%Y%m%d')
         file_name = f'127881812_{type}_daily_report_{date_name}.csv'
 
-        file = pd.read_csv(dir + '/' + file_name, usecols= use_col)
+        file = pd.read_csv(dir + '/' + file_name, usecols= use_col, header= header)
         file['날짜'] = from_date.strftime('%Y-%m-%d')
         ga_raw = ga_raw.append(file)
 
@@ -25,74 +25,32 @@ def ga_read(type,use_col):
 
     return ga_raw
 
-def ga3_prep():
-    df = ga_read('type3',ref.columns.ga3_dtype.keys())
-
-    pmax_campaign = ['[2023.01]Pmax_Pmax','정기_pmax_sales_2301_Pmax','[2023.01]Pmax_Pmax_SVGG0001','정기_pmax_sales_2301_Pmax_JJGG0015']
-    df = df.loc[df['campaign'].isin(pmax_campaign)]
-
-    df['source'] = 'google'
-    df['medium'] = 'cpc'
-    df[['keyword','adContent']] = '-'
-    return df
-
 def ga_exception(df):
 
+    df['source'] = df['sourceMedium'].apply(lambda x: x.split(' / ')[0])
+    df['medium'] = df['sourceMedium'].apply(lambda x: x.split(' / ')[-1]).drop(columns='sourceMedium')
     df = df.loc[df['source'].isin(ref.columns.ga1_media)]
-    df = df.loc[df['﻿dataSource'] == 'web']
-    df['source'].unique()
+
     #예외처리(크리테오)
     df.loc[df['medium'] == 'da_app_If', 'medium'] = 'da_app_lf'
 
-    criteo_dc = ['feed','(not set)','siv_banner','jaju_sales']
-    criteo_s = ['criteo','criteo_cca','criteo_mo','criteo_pc']
+    criteo_dc = ['feed','(not set)','jaju_sales']
+    criteo_s = ['criteo']
 
     df.index = range(len(df))
-
     idx = df[(df['source'].isin(criteo_s))&(df['campaign'].isin(criteo_dc))].index
-    idx = idx.append(df[(df['campaign'] == 'dynamic')&(df['medium'] == 'da_app_lf')&(df['browser'] == 'Chrome')].index)
-    idx = idx.append(df[(df['campaign'] == 'jaju')&(df['medium'] == 'da_cca')&(df['browser'] == 'Chrome')].index)
-    idx = idx.append(df[(df['campaign'] == 'jaju')&(df['medium'] == 'da_mf')&(df['browser'] == 'Edge')].index)
-
-    # 브라우저 필터링 더하기
-    idx = idx.append(df[(df['source'] == 'criteo') & (df['medium'] == 'catalog') & (df['adContent'] == '2301_sales_catalog_SVCT0001') & (df['browser'].isin(['Android Webview','Safari (in-app)']))].index)
-    idx = idx.append(df[(df['source'] == 'adisonofferwall_int') & (df['medium'] == 'display') & (df['browser'].isin(['Android Webview', 'Safari (in-app)']))].index)
-    idx = idx.append(df[(df['source'] == 'buzzad_int') & (df['medium'] == 'display') & (df['campaign'] == 'siv_cpa_network') & (df['browser'].isin(['Android Webview', 'Safari (in-app)']))].index)
     df.drop(idx, inplace = True)
 
-    df.loc[(df['campaign'] == 'dynamic')&(df['medium'] == 'da_mo_cca') , 'campaign'] = 'CCA'
-    df.loc[(df['campaign'] == 'dynamic')&(df['medium'] == 'da_mo_lf') , 'campaign'] = 'LF - MOBILE - CVO'
     df.loc[(df['campaign'] == 'dynamic') & (df['medium'] == 'da_pc_lf'), 'campaign'] = 'LF - DESKTOP - CVO'
-    df.loc[(df['campaign'] == 'dynamic') & (df['medium'] == 'da_app_lf')& (df['browser'] == 'Safari'), 'campaign'] = 'LF - IOS'
-    df.loc[(df['campaign'] == 'dynamic') & (df['medium'] == 'da_app_lf')& (df['browser'] == 'Samsung Internet'), 'campaign'] = 'LF - ANDROID'
-
-    df.loc[(df['campaign'] == 'jaju') & (df['medium'] == 'da_mf') & (df['browser'] == 'Safari'), 'campaign'] = 'MF - Desktop/Mobile'
-    df.loc[(df['campaign'] == 'jaju') & (df['medium'] == 'da_mo_lf') & (df['browser'] == 'Chrome'), 'campaign'] = 'LF - Mobile'
-    df.loc[(df['campaign'] == 'jaju') & (df['medium'] == 'da_mo_lf') & (df['browser'] == 'Safari'), 'campaign'] = 'LF - Mobile'
-    df.loc[(df['campaign'] == 'jaju') & (df['medium'] == 'da_mo_lf') & (df['browser'] == 'Samsung Internet'), 'campaign'] = 'LF - Mobile'
-    df.loc[(df['campaign'] == 'jaju') & (df['medium'] == 'da_pc_lf') & (df['browser'] == 'Chrome'), 'campaign'] = 'LF - Desktop'
-    df.loc[(df['campaign'] == 'jaju') & (df['medium'] == 'da_pc_lf') & (df['browser'] == 'Edge'), 'campaign'] = 'LF - Desktop'
 
     #예외처리(시트 + 브검)
-    dic =ref.exc_ga_adict
     c_media = ['google','naver','navershoppingsa']
     df.loc[df['source'].isin(c_media), 'campaign'] = df['campaign'].apply(lambda x: x.replace(x, ref.exc_cdict[x]) if x in ref.exc_cdict.keys() else x)
 
     a_media = ['criteo','rtbhouse_int']
     df.loc[df['source'].isin(a_media), 'adContent'] = df['adContent'].apply(lambda x: x.replace(x, ref.exc_ga_adict[x]) if x in ref.exc_ga_adict.keys() else x)
-    check = df.loc[df['source'] == 'rtbhouse_int']
-    df['브검구분'] = df['adContent'].apply(lambda x : x.replace(x, '브랜드') if x.find('브랜드') != -1 else '-')
-    df.loc[df['브검구분'] == '-','브검구분'] = df['adContent'].apply(lambda x: x.replace(x, '일반') if x.find('일반') != -1 else '-')
-
-    df.loc[(df['campaign'] == 'jaju') & (df['source'] == 'naver') & (df['medium'] == 'sa_mo') & (df['브검구분'] == '브랜드'), 'campaign'] = 'jaju_JJFK0005'
-    df.loc[(df['campaign'] == 'jaju') & (df['source'] == 'naver') & (df['medium'] == 'sa_pc') & (df['브검구분'] == '브랜드'), 'campaign'] = 'jaju_JJFK0006'
-    df.loc[(df['campaign'] == 'jaju') & (df['source'] == 'naver') & (df['medium'] == 'sa_mo') & (df['브검구분'] == '일반'), 'campaign'] = 'jaju_JJFK0007'
-    df.loc[(df['campaign'] == 'jaju') & (df['source'] == 'naver') & (df['medium'] == 'sa_pc') & (df['브검구분'] == '일반'), 'campaign'] = 'jaju_JJFK0008'
-
-    df = df.drop(columns = '브검구분')
 
     # 자주 구글SA 예외처리
-
     df.loc[(df['source'] == 'google') & (df['campaign'] == 'jj_all_br_common_JJFK0003')& (df['adContent'] == '2301_pc-main_JJGS0014'), 'campaign'] = 'jj_all_br_common_JJFK0004'
     df.loc[(df['source'] == 'google') & (df['campaign'] == 'jj_all_br_cooking_JJFK0003')& (df['adContent'] == '2301_pc-main_JJGS0027'), 'campaign'] = 'jj_all_br_cooking_JJFK0004'
 
@@ -112,9 +70,6 @@ def ga_exception(df):
 
 def brand_order():
     df = ga_read('type2',ref.columns.ga2_dtype.keys())
-
-    df['source'] = df['sourceMedium'].apply(lambda x: x.split(' / ')[0])
-    df['medium'] = df['sourceMedium'].apply(lambda x: x.split(' / ')[-1]).drop(columns='sourceMedium')
 
     df = ga_exception(df)
     df = ref.adcode_ga(df)
@@ -150,20 +105,37 @@ def brand_order():
 
 def ga_report():
 
-    df = ga_read('type1', ref.columns.ga1_dtype.keys())
-    df3 = ga3_prep()
-    df = pd.concat([df, df3])
-
+    # 여기 수정
+    df = ga_read('type1', ref.columns.ga4_rename.keys(), ga4 = '(ga4)',header= 6)
+    df = df.rename(columns = ref.columns.ga4_rename)
+    df = df.dropna(subset = 'campaign')
     df = ga_exception(df)
-    df = ref.adcode_ga(df)
-    df[['브랜드구매(GA)','브랜드매출(GA)']] = 0
 
+    df = df.loc[df['eventname'].isin(['sign_up','session_start','purchase'])]
+    ga1 = pd.pivot_table(df ,index = ['날짜','source', 'medium','campaign','adContent', 'keyword','transactions', 'transactionRevenue'], columns= 'eventname' , values= 'eventcount').reset_index().fillna(0)
+    ga1 = ref.adcode_ga(ga1)
+    ga1 =  ga1.rename(columns=ref.columns.ga4_rename_final)
+    ga1[['브랜드구매(GA)','브랜드매출(GA)']] = 0
+
+    user_df = ga_read('type1', ['세션 캠페인', '세션 수동 광고 콘텐츠', '세션 소스/매체', '세션 수동 검색어', '이벤트 이름', '이벤트 수', '총 사용자'], ga4='(ga4user)', header=6)
+    user_df = user_df.rename(columns=ref.columns.ga4_rename)
+    user_df = user_df.dropna(subset='campaign')
+    user_df = user_df.loc[user_df['eventname'].isin(['session_start'])]
+    user_df = ga_exception(user_df)
+    user_df = ref.adcode_ga(user_df)
+    user_df = user_df.loc[user_df['머징코드'] != 'None']
+    user_df = user_df.drop(columns = ['sourceMedium','eventname','eventcount']).rename(columns = {'총 사용자':'UA(GA)'})
     br_df = brand_order()
-    df = pd.concat([df, br_df])
+    br_df = br_df.rename(columns=ref.columns.ga1_rename)
+    br_df =  br_df[['날짜','source', 'medium', 'campaign', 'adContent', 'keyword', '머징코드','구매(GA)', '매출(GA)', '세션(GA)', 'UA(GA)', '가입(GA)', '브랜드구매(GA)','브랜드매출(GA)']]
 
-    df = df.rename(columns=ref.columns.ga1_rename)
+    df = pd.concat([ga1, br_df])
+    df = pd.concat([df, user_df]).fillna(0)
+
+    df = df[['날짜','source', 'medium', 'campaign', 'adContent', 'keyword', '머징코드','구매(GA)', '매출(GA)', '세션(GA)', 'UA(GA)', '가입(GA)', '브랜드구매(GA)','브랜드매출(GA)']]
+    ga_raw = df.groupby(['날짜', '머징코드'])[['구매(GA)', '매출(GA)', 'UA(GA)','세션(GA)', '가입(GA)', '브랜드구매(GA)','브랜드매출(GA)']].sum().reset_index()
+
     df.to_csv(dr.download_dir + f'GA_raw/ga_raw_{ref.r_date.yearmonth}.csv',index = False, encoding = 'utf-8-sig')
-    df = ref.date_dt(df)
+    ga_raw = ref.date_dt(ga_raw)
 
-    return df
-
+    return ga_raw
