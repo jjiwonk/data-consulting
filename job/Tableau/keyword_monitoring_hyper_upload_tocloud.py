@@ -86,7 +86,7 @@ if __name__ == "__main__":
         hyper_name ='keyword_monitoring.hyper',
         project_name = 'RD',
         success_alert_channel = 'pjt_dc_success',
-        error_slack_channel='pjt_dc_erro',
+        error_slack_channel='pjt_dc_error',
         num_list = ['ad_rank','year', 'month', 'day', 'hour', 'minute'],
         double_list = [],
         text_list = ['collected_at','pc_mobile_type', 'weekday', 'ad_name','ad_keyword','screenshot_url','url_dict', 'owner_id', 'channel'],
