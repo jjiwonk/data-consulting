@@ -5,7 +5,7 @@ from utils import athena
 import os
 import pandas as pd
 from datetime import datetime
-from dateutil.relativedelta import relativedelta
+from datetime import timedelta
 
 from solution.DCT1086_tableau_hyper_upload_tocloud import hyper_file_upload
 
@@ -54,7 +54,7 @@ if __name__ == "__main__":
         df = df[report_col]
 
         df = df.drop_duplicates(keep='first')
-        df = df.loc[df['date'] >= (datetime.now() - relativedelta(months=3))]
+        df = df.loc[df['date'] >= (datetime.now() - timedelta(days=50))]
         df.index = range(len(df))
 
         # 데이터 s3에 업로드하기
