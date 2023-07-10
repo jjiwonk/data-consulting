@@ -23,6 +23,7 @@ from selenium.common.exceptions import StaleElementReferenceException, TimeoutEx
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.common.by import By
+from selenium.webdriver.common.action_chains import ActionChains
 
 
 class Key:
@@ -119,7 +120,9 @@ class Cafe24SalesMonitor(Worker):
                     sales_manage_tab.click()
                     break
                 except ElementClickInterceptedException:
-                    driver.find_element(By.CSS_SELECTOR, ".btnClose.eClose").click()  # 기존 팝업 닫기
+                    element = driver.find_element(By.CSS_SELECTOR, ".btnClose.eClose")  # 기존 팝업 닫기
+                    actions = ActionChains(driver).move_to_element(element).click()
+                    actions.perform()
                     try:
                         sales_manage_tab = driver.find_element(By.CLASS_NAME, "link.order")
                         sales_manage_tab.click()
