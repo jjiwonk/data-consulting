@@ -96,7 +96,7 @@ class Cafe24SalesMonitor(Worker):
             download_dir = Key.tmp_path.replace('/', '\\')
         else:
             download_dir = Key.tmp_path
-        driver = get_chromedriver(headless=Key.USE_HEADLESS, download_dir=download_dir)
+        driver = get_chromedriver(headless=False, download_dir=download_dir)
 
         slack_msg = f"*{store_name} cafe24 매출 모니터링*\n{schedule_date} {schedule_time}\n\n"
 
@@ -119,11 +119,13 @@ class Cafe24SalesMonitor(Worker):
                     sales_manage_tab.click()
                     break
                 except ElementClickInterceptedException:
-                    # driver.find_element(By.CSS_SELECTOR, ".btnClose.eClose").click()  # 기존 팝업 닫기
-                    driver.find_element(By.CSS_SELECTOR, ".gLabel").click()  # 채널톡 팝업 닫기
-                    sales_manage_tab = driver.find_element(By.CLASS_NAME, "link.order")
-                    sales_manage_tab.click()
-                    break
+                    driver.find_element(By.CSS_SELECTOR, ".btnClose.eClose").click()  # 기존 팝업 닫기
+                    try:
+                        sales_manage_tab = driver.find_element(By.CLASS_NAME, "link.order")
+                        sales_manage_tab.click()
+                        break
+                    except ElementClickInterceptedException as e:
+                        raise e
                 except Exception as e:
                     if max_retry_cnt > 0:
                         max_retry_cnt -= 1
