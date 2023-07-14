@@ -74,43 +74,11 @@ def ga_read(day):
 
     ga_raw = pd.concat([piv,user_df]).fillna(0)
     ga_raw = ref.week_day(ga_raw)
-
-    brand_raw = gprep.ga_read('type2', ga4='(ga4keyword)', header=6)
-    brand_raw.columns = ['거래 ID','상품 브랜드','항목 이름','세션 캠페인','keyword','상품 수량','상품 수익','총 합계','날짜']
-
-    brand_raw = brand_raw.rename(columns = ref.columns.ga4_rename)
-    brand_raw = brand_raw.dropna(subset='campaign')
-
-    pat = re.compile('[A-Z]{4,4}\d{4,4}')
-    brand_raw['머징코드'] = brand_raw['campaign'].apply(lambda x: pat.findall(str(x))[-1] if pat.search(str(x)) else 'None')
-    brand_raw = brand_raw.loc[brand_raw['머징코드'] != 'None']
-
-    index = ref.br_ind.drop_duplicates(keep= 'last')
-    index = index.loc[index['브랜드'] != '-'].drop_duplicates('머징코드')
-
-    merge = pd.merge(brand_raw,index, on = '머징코드', how = 'left').fillna('-')
-
-    # 예외처리
-    merge.loc[merge['상품 브랜드'] == 'GAP Kids', '상품 브랜드'] = 'GAP Adults'
-    merge.loc[(merge['머징코드'].isin(['SVFK0123','SVFK0122'])) & (merge['상품 브랜드'].isin(['GIORGIO ARMANI','EMPORIO ARMANI','EMPORIO ARMANI JUNIOR','ARMANI EXCHANGE','EMPORIO ARMANI UNDERWEAR'])), '상품 브랜드'] = 'GIORGIO ARMANI'
-
-    # 값 수정하기
-    order = merge.loc[merge['상품 브랜드'] == merge['브랜드']]
-    order = order.sort_values('거래 ID')
-    order = order.drop_duplicates('거래 ID',keep ='first')
-    order['브랜드구매(GA)'] = 1
-    merge = pd.merge(merge,order, on =['거래 ID', '상품 브랜드', '항목 이름', 'campaign', 'keyword', '상품 수량', '상품 수익','총 합계', '날짜', '머징코드', '브랜드'],how = 'left').fillna(0)
-    merge['브랜드매출(GA)'] = 0
-    merge.loc[merge['상품 브랜드'] == merge['브랜드'],'브랜드매출(GA)'] = merge['상품 수익']
-    merge = ref.week_day(merge)
+    ga_raw[['브랜드구매(GA)', '브랜드매출(GA)']] = 0
 
     dimension = ['머징코드', 'keyword','연도', '월'] + day
-    metric = ['세션(GA)', 'UA(GA)', '구매(GA)', '매출(GA)', '가입(GA)']
-    brand_df = merge.groupby(dimension)['브랜드구매(GA)','브랜드매출(GA)'].sum().reset_index()
-    ga_raw = ga_raw.groupby(dimension)[metric].sum().reset_index()
-    ga_raw = pd.concat([ga_raw,brand_df]).fillna(0)
-
-    ga_raw = ga_raw.groupby(dimension)[['세션(GA)', 'UA(GA)', '구매(GA)', '매출(GA)', '가입(GA)','브랜드구매(GA)','브랜드매출(GA)']].sum().reset_index().rename(columns={'keyword': '키워드'})
+    metric = ['세션(GA)', 'UA(GA)', '구매(GA)', '매출(GA)', '가입(GA)','브랜드구매(GA)','브랜드매출(GA)']
+    ga_raw = ga_raw.groupby(dimension)[metric].sum().reset_index().rename(columns={'keyword': '키워드'})
 
     ga_raw.to_csv(dr.download_dir + f'keyword_raw/keyword_ga_raw_{ref.r_date.yearmonth}_{day}.csv', index=False, encoding='utf-8-sig')
 
