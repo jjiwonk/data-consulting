@@ -4,6 +4,10 @@ from report.SIV import directory as dr
 import report.SIV.ga_prep as gprep
 import report.SIV.media_prep as mprep
 import report.SIV.apps_prep as aprep
+import re
+import warnings
+
+warnings.filterwarnings("ignore", category=FutureWarning)
 
 def media_read(day) :
 
@@ -34,20 +38,83 @@ def media_read(day) :
 
 def ga_read(day):
 
-    df = gprep.ga_report()
-    df =df.loc[(df['medium'] == 'cpc')|(df['medium'] == 'bsa')]
+    df = gprep.ga_read('type1', ga4='(ga4)', header=6)
+    df.columns = ['세션 캠페인', '세션 소스/매체', '세션 수동 광고 콘텐츠', '세션 수동 검색어', '이벤트 이름', '세션수', '이벤트 수', '구매 수익','거래', '총 합계','날짜']
+    df = df.rename(columns=ref.columns.ga4_rename)
+    df = df.dropna(subset='campaign')
+    df = gprep.ga_exception(df)
+
+    df = df.loc[(df['medium'] == 'cpc')|(df['medium'] == 'bsa')]
     df = df.loc[df['campaign']!='[2023.01]Pmax_Pmax_SVGG0001']
 
     df = ref.week_day(df)
     df['keyword'] = df['keyword'].apply(lambda x: x.lower())
+    df = df.loc[df['eventname'].isin(['sign_up','session_start','purchase'])]
 
-    dimension = ['머징코드','﻿dataSource', 'browser', 'campaign', 'source', 'medium','keyword', 'adContent', '연도', '월'] + day
-    metric = ['세션(GA)', 'UA(GA)', '구매(GA)', '매출(GA)','브랜드구매(GA)', '브랜드매출(GA)', '가입(GA)']
+    piv = pd.pivot_table(df ,index = ['날짜','source', 'medium','campaign','adContent', 'keyword','transactions', 'transactionRevenue'], columns= 'eventname' , values= 'eventcount').reset_index().fillna(0)
+    piv = ref.adcode_ga(piv)
+    piv =  piv.rename(columns=ref.columns.ga4_rename_final)
 
-    df = df.groupby(dimension)[metric].sum().reset_index().rename(columns ={'keyword' : '키워드'})
-    df.to_csv(dr.download_dir + f'keyword_raw/keyword_ga_raw_{ref.r_date.yearmonth}_{day}.csv', index=False, encoding='utf-8-sig')
+    user_df = gprep.ga_read('type1', ga4='(ga4user)', header=6)
+    user_df.columns = ['세션 캠페인', '세션 소스/매체', '세션 수동 광고 콘텐츠', '세션 수동 검색어', '이벤트 이름', '세션수', '이벤트 수', '총 사용자','총 합계','날짜']
+    user_df = user_df.rename(columns=ref.columns.ga4_rename)
+    user_df = user_df.dropna(subset='campaign')
+    user_df = user_df.loc[user_df['eventname'].isin(['session_start'])]
+    user_df = gprep.ga_exception(user_df)
 
-    return df
+    user_df = user_df.loc[(user_df['medium'] == 'cpc') | (user_df['medium'] == 'bsa')]
+    user_df = user_df.loc[user_df['campaign'] != '[2023.01]Pmax_Pmax_SVGG0001']
+
+    user_df = ref.adcode_ga(user_df)
+    user_df = user_df.loc[user_df['머징코드'] != 'None']
+    user_df = user_df.drop(columns = ['sourceMedium','eventname','eventcount','총 합계']).rename(columns = {'총 사용자':'UA(GA)'})
+    user_df['key'] = user_df['머징코드'] + user_df['keyword']
+    user_df = user_df[['날짜', 'campaign', 'adContent', 'keyword', 'UA(GA)', 'source','medium', '머징코드']]
+    user_df = ref.date_dt(user_df)
+
+    ga_raw = pd.concat([piv,user_df]).fillna(0)
+    ga_raw = ref.week_day(ga_raw)
+
+    brand_raw = gprep.ga_read('type2', ga4='(ga4keyword)', header=6)
+    brand_raw.columns = ['거래 ID','상품 브랜드','항목 이름','세션 캠페인','keyword','상품 수량','상품 수익','총 합계','날짜']
+
+    brand_raw = brand_raw.rename(columns = ref.columns.ga4_rename)
+    brand_raw = brand_raw.dropna(subset='campaign')
+
+    pat = re.compile('[A-Z]{4,4}\d{4,4}')
+    brand_raw['머징코드'] = brand_raw['campaign'].apply(lambda x: pat.findall(str(x))[-1] if pat.search(str(x)) else 'None')
+    brand_raw = brand_raw.loc[brand_raw['머징코드'] != 'None']
+
+    index = ref.br_ind.drop_duplicates(keep= 'last')
+    index = index.loc[index['브랜드'] != '-'].drop_duplicates('머징코드')
+
+    merge = pd.merge(brand_raw,index, on = '머징코드', how = 'left').fillna('-')
+
+    # 예외처리
+    merge.loc[merge['상품 브랜드'] == 'GAP Kids', '상품 브랜드'] = 'GAP Adults'
+    merge.loc[(merge['머징코드'].isin(['SVFK0123','SVFK0122'])) & (merge['상품 브랜드'].isin(['GIORGIO ARMANI','EMPORIO ARMANI','EMPORIO ARMANI JUNIOR','ARMANI EXCHANGE','EMPORIO ARMANI UNDERWEAR'])), '상품 브랜드'] = 'GIORGIO ARMANI'
+
+    # 값 수정하기
+    order = merge.loc[merge['상품 브랜드'] == merge['브랜드']]
+    order = order.sort_values('거래 ID')
+    order = order.drop_duplicates('거래 ID',keep ='first')
+    order['브랜드구매(GA)'] = 1
+    merge = pd.merge(merge,order, on =['거래 ID', '상품 브랜드', '항목 이름', 'campaign', 'keyword', '상품 수량', '상품 수익','총 합계', '날짜', '머징코드', '브랜드'],how = 'left').fillna(0)
+    merge['브랜드매출(GA)'] = 0
+    merge.loc[merge['상품 브랜드'] == merge['브랜드'],'브랜드매출(GA)'] = merge['상품 수익']
+    merge = ref.week_day(merge)
+
+    dimension = ['머징코드', 'keyword','연도', '월'] + day
+    metric = ['세션(GA)', 'UA(GA)', '구매(GA)', '매출(GA)', '가입(GA)']
+    brand_df = merge.groupby(dimension)['브랜드구매(GA)','브랜드매출(GA)'].sum().reset_index()
+    ga_raw = ga_raw.groupby(dimension)[metric].sum().reset_index()
+    ga_raw = pd.concat([ga_raw,brand_df]).fillna(0)
+
+    ga_raw = ga_raw.groupby(dimension)[['세션(GA)', 'UA(GA)', '구매(GA)', '매출(GA)', '가입(GA)','브랜드구매(GA)','브랜드매출(GA)']].sum().reset_index().rename(columns={'keyword': '키워드'})
+
+    ga_raw.to_csv(dr.download_dir + f'keyword_raw/keyword_ga_raw_{ref.r_date.yearmonth}_{day}.csv', index=False, encoding='utf-8-sig')
+
+    return ga_raw
 
 def apps_read(day):
 
@@ -144,28 +211,56 @@ def shopping_sa(day):
 
     naverss_df = naverss_df.groupby(dimension)[metric].sum().reset_index()
 
-    ga_df = gprep.ga_read('type1', ref.columns.ga1_dtype.keys())
-    ga_df = ga_df.loc[ga_df['source'] == 'navershoppingsa']
+    ga_df = gprep.ga_read('type1', ga4='(ga4)', header=6)
+    ga_df.columns = ['세션 캠페인', '세션 소스/매체', '세션 수동 광고 콘텐츠', '세션 수동 검색어', '이벤트 이름', '세션수', '이벤트 수', '구매 수익','거래', '총 합계','날짜']
+
+    ga_user_df = gprep.ga_read('type1', ga4='(ga4user)', header=6)
+    ga_user_df.columns = ['세션 캠페인', '세션 소스/매체', '세션 수동 광고 콘텐츠', '세션 수동 검색어', '이벤트 이름', '세션수', '이벤트 수', '총 사용자','총 합계','날짜']
+
+    def data_prep(ga_df) :
+        ga_df = ga_df.dropna(subset='세션 캠페인')
+        ga_df = ga_df.rename(columns=ref.columns.ga4_rename)
+        ga_df['source'] = ga_df['sourceMedium'].apply(lambda x: x.split(' / ')[0])
+        ga_df['medium'] = ga_df['sourceMedium'].apply(lambda x: x.split(' / ')[-1]).drop(columns='sourceMedium')
+
+        ga_df = ga_df.loc[ga_df['source'] == 'navershoppingsa']
+
+        # last 기준으로 없애기
+        shopping_cdict = dict(zip(ref.shoppingsa_index['그룹ID'], ref.shoppingsa_index['캠페인명']))
+        shopping_gdict = dict(zip(ref.shoppingsa_index['그룹ID'], ref.shoppingsa_index['그룹명']))
+
+        ga_df[['세트']] = ga_df[['campaign']]
+        ga_df.loc[ga_df['source'] == 'navershoppingsa', '세트'] = ga_df['campaign'].apply(
+            lambda x: x.replace(x, shopping_gdict[x]) if x in shopping_gdict.keys() else '-')
+        ga_df.loc[ga_df['source'] == 'navershoppingsa', 'campaign'] = ga_df['campaign'].apply(
+            lambda x: x.replace(x, shopping_cdict[x]) if x in shopping_cdict.keys() else '-')
+
+        ga_df = ga_df.loc[ga_df['세트'] != '-']
+        ga_df = ref.adcode_ga(ga_df)
+
+        return ga_df
+
+    ga_df = data_prep(ga_df)
+    ga_user_df = data_prep(ga_user_df)
+
+    ga_user_df.loc[ga_user_df['eventname'] =='session_start','eventname'] = 'user'
+    ga_user_df = ga_user_df.loc[ga_user_df['eventname'] == 'user']
+    ga_user_df = pd.pivot_table(ga_user_df,index=['날짜', 'source', 'medium', 'campaign', '세트', 'adContent', 'keyword'], columns='eventname', values='총 사용자').reset_index().fillna(0)
+
+    ga_df = ga_df.loc[ga_df['eventname'].isin(['sign_up', 'session_start', 'purchase'])]
+    ga_df = pd.pivot_table(ga_df, index=['날짜', 'source', 'medium', 'campaign','세트', 'adContent', 'keyword', 'transactions','transactionRevenue'], columns='eventname',values='eventcount').reset_index().fillna(0)
+
+    ga_df = pd.concat([ga_df,ga_user_df]).fillna(0)
     ga_df = ref.adcode_ga(ga_df)
+    ga_df = ga_df.rename(columns=ref.columns.ga4_rename_final)
 
-    # last 기준으로 없애기
-    shopping_cdict = dict(zip(ref.shoppingsa_index['그룹ID'], ref.shoppingsa_index['캠페인명']))
-    shopping_gdict = dict(zip(ref.shoppingsa_index['그룹ID'], ref.shoppingsa_index['그룹명']))
-
-    ga_df[['세트','브랜드구매(GA)', '브랜드매출(GA)']] = 0
-    ga_df.loc[ga_df['source'] == 'navershoppingsa', '세트'] = ga_df['campaign'].apply(lambda x: x.replace(x, shopping_gdict[x]) if x in shopping_gdict.keys() else '-')
-    ga_df.loc[ga_df['source'] == 'navershoppingsa', 'campaign'] = ga_df['campaign'].apply(lambda x: x.replace(x, shopping_cdict[x]) if x in shopping_cdict.keys() else '-')
-
-    ga_df = ga_df.loc[ga_df['세트']!='-']
-
-    ga_df = ga_df.rename(columns={'sessions': '세션(GA)','users': 'UA(GA)','transactions': '구매(GA)','transactionRevenue': '매출(GA)','goal1Completions': '가입(GA)'
+    ga_df = ga_df.rename(columns={'sessions': '세션(GA)','user': 'UA(GA)','transactions': '구매(GA)','transactionRevenue': '매출(GA)','goal1Completions': '가입(GA)'
                                   ,'campaign': '캠페인','keyword': '키워드'})
 
     ga_df = ref.week_day(ga_df)
-    ga_df = ref.adcode(ga_df,'캠페인','세트','키워드')
 
     ga_dimension = ['머징코드','캠페인','세트','키워드','연도', '월'] + day
-    ga_metric = ['세션(GA)', 'UA(GA)', '구매(GA)', '매출(GA)','브랜드구매(GA)', '브랜드매출(GA)', '가입(GA)']
+    ga_metric = ['세션(GA)', 'UA(GA)', '구매(GA)', '매출(GA)', '가입(GA)']
     ga_df.loc[ga_df['키워드'].isin(['{keyword}', '{query}']), '키워드'] = '(not set)'
 
     ga_df = ga_df.groupby(ga_dimension)[ga_metric].sum().reset_index().rename(columns ={'keyword' : '키워드'})
