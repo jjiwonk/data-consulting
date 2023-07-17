@@ -4,6 +4,9 @@ import report.SIV.media_prep as mprep
 import report.SIV.ga_prep as gprep
 import report.SIV.apps_prep as aprep
 from report.SIV import directory as dr
+import warnings
+
+warnings.filterwarnings("ignore", category=FutureWarning)
 
 def total_media_raw():
 
