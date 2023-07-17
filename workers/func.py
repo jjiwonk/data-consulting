@@ -287,7 +287,7 @@ class segment_analysis():
 
 
 class FunnelDataGenerator():
-    def __init__(self, user_array, event_array, event_time_array, value_array, media_array, kpi_event_name, funnel_period, paid_events):
+    def __init__(self, user_array, event_array, event_time_array, value_array, media_array, kpi_event_name, funnel_period, paid_events, contribute: str = 'last'):
         self.num = 0
         self.funnel_id = 'funnel ' + str(self.num)
         self.kpi_event = kpi_event_name
@@ -305,6 +305,7 @@ class FunnelDataGenerator():
         self.end_time = None
         self.current_event_time = None
         self.last_engage_time = None
+        self.first_engage_time = None
 
         self.current_user = None
         self.before_user = self.array_list['user'][0]
@@ -318,7 +319,10 @@ class FunnelDataGenerator():
         self.current_value = None
         self.before_value = self.array_list['value'][0]
 
+        self.first_media = ''
+        self.contribute_standard = contribute
         self.media = ''
+        self.media_num = 0
         self.paid_events = paid_events
         self.data = []
         self.column_names = ['user_id', 'funnel_id', 'funnel_sequence', 'start_time', 'end_time', 'is_paid', 'kpi_achievement', 'value', 'media']
@@ -330,11 +334,16 @@ class FunnelDataGenerator():
         self.funnel_sequence.append(self.current_event)
         self.start_time = self.current_event_time
         self.kpi_achievement = False
+        self.media_num = 0
 
     def append_row(self):
         self.funnel_sequence.append('funnel_end')
-        row = [self.before_user, self.funnel_id, self.funnel_sequence,
-               self.start_time, self.end_time, self.is_paid, self.kpi_achievement, self.before_value, self.media]
+        if self.contribute_standard == 'last':
+            row = [self.before_user, self.funnel_id, self.funnel_sequence,
+                   self.start_time, self.end_time, self.is_paid, self.kpi_achievement, self.before_value, self.media]
+        else:
+            row = [self.before_user, self.funnel_id, self.funnel_sequence,
+                   self.start_time, self.end_time, self.is_paid, self.kpi_achievement, self.before_value, self.first_media]
         self.data.append(row)
 
     def discriminator(self):
@@ -359,7 +368,9 @@ class FunnelDataGenerator():
             self.append_row()
             self.start_new_funnel()
             self.last_engage_time = None
+            self.first_engage_time = None
             self.media = ''
+            self.first_media = ''
 
     def do_work(self):
         for i, user in enumerate(self.array_list['user']):
@@ -377,16 +388,32 @@ class FunnelDataGenerator():
                 if self.before_event in self.paid_events:
                     self.last_engage_time = self.end_time
                     self.media = self.array_list['media'][i - 1]
-                if self.last_engage_time is not None:
-                    if (self.end_time - self.last_engage_time) < self.funnel_period:
-                        self.is_paid = True
+                    self.media_num += 1
+                    if self.media_num == 1:
+                        self.first_media = self.media
+                        self.first_engage_time = self.last_engage_time
+                if self.contribute_standard == 'last':
+                    if self.last_engage_time is not None:
+                        if (self.end_time - self.last_engage_time) < self.funnel_period:
+                            self.is_paid = True
+                        else:
+                            self.is_paid = False
+                            self.last_engage_time = None
+                            self.media = ''
                     else:
                         self.is_paid = False
-                        self.last_engage_time = None
                         self.media = ''
                 else:
-                    self.is_paid = False
-                    self.media = ''
+                    if self.first_engage_time is not None:
+                        if (self.end_time - self.first_engage_time) < self.funnel_period:
+                            self.is_paid = True
+                        else:
+                            self.is_paid = False
+                            self.first_engage_time = None
+                            self.first_media = ''
+                    else:
+                        self.is_paid = False
+                        self.first_media = ''
 
                 self.before_value = self.array_list['value'][i - 1]
 
