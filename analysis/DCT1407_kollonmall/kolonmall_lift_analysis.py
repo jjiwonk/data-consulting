@@ -1,5 +1,3 @@
-import datetime
-from dateutil.relativedelta import relativedelta
 import pyarrow as pa
 import pandas as pd
 import numpy as np
@@ -31,7 +29,8 @@ def get_total_data():
         'media_source': pa.string(),
         'advertising_id': pa.string(),
         'customer_user_id': pa.string(),
-        'idfa': pa.string()}
+        'idfa': pa.string(),
+        'is_retargeting': pa.string()}
     organic_dtypes = {
         'install_time': pa.string(),
         'event_time': pa.string(),
@@ -72,51 +71,98 @@ def get_total_data():
 
 
 def data_prep(total_data):
-    # ad_type 구분
-    total_data.loc[
-        (total_data['media_source'].isin(['kakao_int'])) & (total_data['campaign'] == 'kakao_biz_purchase') & (
-                'rt' in str(total_data['adset'])), 'ad_type'] = 'RE'
-    total_data.loc[(total_data['media_source'].isin(['facebook', 'facebook_ads'])) & (
-            total_data['campaign'] == 'meta_feed_purchase') & ('rt' in str(total_data['adset'])), 'ad_type'] = 'RE'
-    total_data.loc[(total_data['media_source'].isin(['googleadwords_int'])) & (
-            total_data['campaign'] == 'google_pmax_purchase'), 'ad_type'] = 'RE'
-    total_data.loc[(total_data['media_source'].isin(['rtbhouse_int'])), 'ad_type'] = 'RE'
-
-    total_data.loc[(total_data['media_source'].isin(['kakao_int']))  & (total_data['campaign'] == 'kakao_biz_purchase')
-                        & (total_data['adset'].isin(['AOS_al_mf_2559_rt_pur', 'IOS_al_mf_2559_rt_pur'])), 'ad_type'] = 'UA'
-    total_data.loc[(total_data['media_source'].isin(['kakao_int'])) & (total_data['campaign'] == 'kakao_display_traffic'), 'ad_type'] = 'UA'
-    total_data.loc[(total_data['media_source'].isin(['facebook', 'facebook_ads'])) & (
-        total_data['campaign'].isin(['meta_aaa_install', 'meta_aaa_install_IOS'])), 'ad_type'] = 'UA'
-    total_data.loc[total_data['media_source'].isin(
-        ['kakao_plus', 'google_dsc', 'cauly_int', 'criteonew_int', 'buzzvill', 'naver_pc', 'naver_m', 'daum_pc',
-         'daum_m', 'naverbs_pc', 'naverbs_m', 'Apple', 'Search', 'Ads', 'naver_gfa', 'clearpier',
-         'tiktok_display']), 'ad_type'] = 'UA'
-
-    total_data.loc[(total_data['media_source'].isin(['facebook', 'facebook_ads'])) & (
-        total_data['campaign'].isin(['ig_reels_branding', 'meta_feed_purchase_attomax'])), 'ad_type'] = '제외'
-    total_data.loc[(total_data['media_source'].isin(['naver_band'])) | (
-    (total_data['media_source'].isin(['naver_brandingda']) & ('branding' in str(total_data['adset'])))), 'ad_type'] = '제외'
-    total_data.loc[(total_data['media_source'].isin(['googleadwords_int'])) & (total_data['campaign'] == 'branding') & (
-            'branding' in str(total_data['adset'])), 'ad_type'] = '제외'
     total_data = total_data.fillna('')
-
+    total_data['media_source'] = total_data['media_source'].str.lower()
     # media 구분
     total_data.loc[total_data['media_source'].isin(['kakao_int', 'kakao_plus']), 'media'] = '카카오'
-    total_data.loc[total_data['media_source'].isin(['facebook', 'facebook_ads']), 'media'] = '메타'
-    total_data.loc[total_data['media_source'].isin(['googleadwords_int', 'google_dsc']), 'media'] = '구글'
-    total_data.loc[total_data['media_source'].isin(['cauly_int', 'criteonew_int']), 'media'] = 'NCPI, DSP'
-    total_data.loc[total_data['media_source'].isin(['buzzvill']), 'media'] = '버즈빌'
-    total_data.loc[total_data['media_source'].isin(['naver_pc', 'naver_m']), 'media'] = '네이버 SA'
-    total_data.loc[total_data['media_source'].isin(['daum_pc', 'daum_m']), 'media'] = '다음 SA'
-    total_data.loc[total_data['media_source'].isin(['naverbs_pc', 'naverbs_m']), 'media'] = '네이버 브검'
-    total_data.loc[total_data['media_source'].isin(['Apple Search Ads']), 'media'] = '애플서치애드'
-    total_data.loc[total_data['media_source'].isin(['naver_gfa', 'naver_band', 'naver_brandingda']), 'media'] = 'GFA'
-    total_data.loc[total_data['media_source'].isin(['clearpier']), 'media'] = 'NCPI'
-    total_data.loc[total_data['media_source'].isin(['tiktok_display']), 'media'] = '틱톡'
-    total_data.loc[total_data['media_source'].isin(['rtbhouse_int']), 'media'] = 'DSP'
+    total_data.loc[total_data['media_source'].isin(['facebook', 'facebook ads']), 'media'] = '메타'
+    total_data.loc[(total_data['media_source'].isin(['googleadwords_int']))
+                   & (total_data['campaign'].isin(['google_pmax_purchase'])), 'media'] = '구글'
+    total_data.loc[(total_data['media_source'].isin(['googleadwords_int']))
+                   & (total_data['campaign'].isin(['google_sdc_purchase', 'google_aca_install', 'google_ace_purchase',
+                                                   'google_ace_purchase-dp', 'google_ac_install_IOS', 'google_ac_install'])), 'media'] = '네트워크'
+    total_data.loc[total_data['media_source'].isin(['cauly_int', 'criteonew_int', 'rtbhouse_int']), 'media'] = '네트워크'
+    total_data.loc[total_data['media_source'].isin(['naver_m', 'daum_m', 'naverbs_m', 'apple search ads']), 'media'] = 'SA'
+    total_data.loc[total_data['media_source'].isin(['naver_gfa']), 'media'] = 'GFA'
+    total_data.loc[total_data['media_source'].isin(['clearpier_int']), 'media'] = '클리어피어'
+    total_data.loc[total_data['media_source'].isin(['bytedanceglobal_int']), 'media'] = '틱톡'
     total_data['media'] = total_data['media'].fillna('')
 
-    total_data['appsflyer_id'] = total_data['appsflyer_id'].fillna('')
+
+    # ad_type 구분
+    total_data.loc[(total_data['media'].isin(['카카오']))
+                   & (total_data['campaign'].isin(['kakao_biz_purchase']))
+                   & (total_data['campaign'].str.contains('rt')), 'ad_type'] = 'RE_통합'
+    total_data.loc[(total_data['media'].isin(['카카오']))
+                   & (total_data['campaign'].isin(['kakao_biz_purchase']))
+                   & (total_data['adset'].isin(['AOS_al_mf_2559_rt_pur'])), 'ad_type'] = 'UA_AOS'
+    total_data.loc[(total_data['media'].isin(['카카오']))
+                   & (total_data['campaign'].isin(['kakao_biz_purchase']))
+                   & (total_data['adset'].isin(['IOS_al_mf_2559_rt_pur'])), 'ad_type'] = 'UA_IOS'
+    total_data.loc[(total_data['media'].isin(['카카오']))
+                   & (total_data['campaign'].isin(['kakao_display_traffic']))
+                   & (total_data['campaign'].str.contains('ALL')), 'ad_type'] = 'RE_통합'
+    total_data.loc[(total_data['media'].isin(['카카오']))
+                   & (total_data['campaign'].isin(['sns_app_message'])), 'ad_type'] = 'UA_통합'
+
+    total_data.loc[((total_data['media'].isin(['메타']))
+                   & (total_data['campaign'].isin(['meta_feed_purchase'])))
+                   | (total_data['campaign'].str.contains('rt')), 'adset'] = 'RE_통합'
+    total_data.loc[(total_data['media'].isin(['메타']))
+                   & (total_data['campaign'].isin(['meta_aaa_install'])), 'ad_type'] = 'UA_AOS'
+
+    total_data.loc[(total_data['media'].isin(['구글']))
+                   & (total_data['campaign'].isin(['google_pmax_purchase'])), 'ad_type'] = 'RE_통합'
+
+    total_data.loc[(total_data['media'].isin(['네트워크']))
+                   & (total_data['campaign'].isin(['google_aca_install', 'google_ac_install'])), 'ad_type'] = 'UA_AOS'
+    total_data.loc[(total_data['media'].isin(['네트워크']))
+                   & (total_data['campaign'].isin(['google_ace_purchase', 'google_ace_purchase-dp'])), 'ad_type'] = 'RE_AOS'
+    total_data.loc[(total_data['media'].isin(['네트워크']))
+                   & (total_data['campaign'].isin(['google_sdc_purchase'])), 'ad_type'] = 'UA_통합'
+    total_data.loc[(total_data['media'].isin(['네트워크']))
+                   & (total_data['campaign'].isin(['google_ac_install_IOS'])), 'ad_type'] = 'UA_IOS'
+
+    total_data.loc[(total_data['media'].isin(['네트워크']))
+                   & (total_data['campaign'].isin(['cauly_ncpi_install']))
+                   & (total_data['adset'].isin(['AOS_al_mf_ALL_nt'])), 'ad_type'] = 'UA_AOS'
+    total_data.loc[(total_data['media'].isin(['네트워크']))
+                   & (total_data['campaign'].isin(['cauly_ncpi_install']))
+                   & (total_data['adset'].isin(['IOS_al_mf_ALL_nt'])), 'ad_type'] = 'UA_IOS'
+    total_data.loc[(total_data['media'].isin(['네트워크']))
+                   & (total_data['campaign'].isin(['cauly_re_purchase']))
+                   & (total_data['adset'].isin(['AOS_al_mf_ALL_rt_pur'])), 'ad_type'] = 'RE_AOS'
+
+    total_data.loc[(total_data['media'].isin(['네트워크']))
+                   & (total_data['campaign'].isin(['criteo_app_install'])), 'ad_type'] = 'UA_AOS'
+    total_data.loc[(total_data['media'].isin(['네트워크']))
+                   & (total_data['campaign'].isin(['LF_Kolonmall_App_Android'])), 'ad_type'] = 'RE_AOS'
+    total_data.loc[(total_data['media'].isin(['네트워크']))
+                   & (total_data['campaign'].isin(['LF_Kolonmall_App_iOS'])), 'ad_type'] = 'RE_IOS'
+    total_data.loc[(total_data['campaign'].isin(['tiktok_display_install_AOS'])), 'ad_type'] = 'UA_AOS'
+
+    total_data.loc[(total_data['media'].isin(['네트워크']))
+                   & (total_data['campaign'].isin(['rtbhouse-retargeting', 'rtb_feed_purchase'])), 'ad_type'] = 'RE_통합'
+
+
+    total_data.loc[(total_data['media'].isin(['SA']))
+                   & (total_data['media_source'].isin(['naver_m', 'daum_m', 'naverbs_m'])), 'ad_type'] = 'UA_통합'
+    total_data.loc[(total_data['media'].isin(['SA']))
+                   & (total_data['media_source'].isin(['Apple Search Ads'])), 'ad_type'] = 'UA_IOS'
+
+    total_data.loc[(total_data['media'].isin(['GFA']))
+                   & (total_data['campaign'].str.contains('naver_gfa')), 'ad_type'] = 'RE_통합'
+
+    total_data.loc[(total_data['media'].isin(['클리어피어']))
+                   & (total_data['campaign'].str.contains('clearpier_ncpi_install')), 'ad_type'] = 'UA_IOS'
+
+    total_data.loc[(total_data['media'].isin(['틱톡']))
+                   & (total_data['campaign'].str.contains('tiktok_display_install_AOS')), 'ad_type'] = 'UA_AOS'
+    total_data.loc[(total_data['media'].isin(['틱톡']))
+                   & (total_data['campaign'].str.contains('tiktok_display_install_iOS')), 'ad_type'] = 'UA_IOS'
+
+    total_data = total_data.fillna('')
+
     total_data = total_data.loc[total_data['appsflyer_id'] != ''].reset_index(drop=True)
     total_data.loc[total_data['event_name'] == 'first_purchase', 'event_name'] = 'af_purchase'
     sorted_total_data = total_data.sort_values(['appsflyer_id', 'event_time', 'event_name', 'install_time'])
@@ -126,10 +172,27 @@ def data_prep(total_data):
     return dedup_total_data
 
 
-today = datetime.datetime.strptime('2023-07-01', '%Y-%m-%d')
-from_date = today - relativedelta(months=3)
-data = get_total_data()
-paid_event = ['re-engagement', 're-attribution']
+def get_funnel_data(prep_data, contribute):
+    user_arr = prep_data['appsflyer_id']
+    event_arr = prep_data['event_name']
+    event_time_arr = prep_data['event_time']
+    value_arr = prep_data['event_revenue']
+    media_arr = prep_data['ad_type'] + '/' + prep_data['media'] + '/' + prep_data['campaign'] + '/' + prep_data['media_source']
+    funnel_generator = FunnelDataGenerator(user_arr, event_arr, event_time_arr, value_arr, media_arr, kpi_event,
+                                           kpi_period, paid_event, contribute)
+    funnel_generator.do_work()
+    funnel_data = funnel_generator.data
+    funnel_data['ad_type'] = funnel_data['media'].apply(lambda x: x.split('/')[0])
+    funnel_data['media_div'] = funnel_data['media'].apply(lambda x: x.split('/')[1] if '/' in x else '')
+    funnel_data['campaign'] = funnel_data['media'].apply(lambda x: x.split('/')[2] if '/' in x else '')
+    funnel_data['media_source'] = funnel_data['media'].apply(lambda x: x.split('/')[3] if '/' in x else '')
+    result_data = funnel_data.sort_values(['user_id', 'start_time'])
+
+    return result_data
+
+
+total_data = get_total_data()
+paid_event = ['paid_install', 're-engagement', 're-attribution']
 kpi_event = 'af_purchase'
 kpi_period = 7*24*60*60
 
@@ -142,27 +205,34 @@ kpi_period = 7*24*60*60
 # media_arr = prep_data['ad_type']
 
 # 광고 유입 유저 데이터 기반
-adid_list = set(data.loc[data['event_name'].isin(['paid_install', 're-engagement', 're-attribution']), 'appsflyer_id'])
-paid_user_data = data.loc[data['appsflyer_id'].isin(adid_list)].reset_index(drop=True)
+total_prep_data = data_prep(total_data)
+# 퍼널(세션) 데이터 컬럼: 'user_id', 'funnel_id', 'funnel_sequence', 'start_time', 'end_time', 'is_paid', 'kpi_achievement', 'value', 'media'
+# 라스트 태핑 매체 기준 퍼널
+last_funnel_data = get_funnel_data(total_prep_data, 'last')
+last_funnel_data.to_csv(dr.dropbox_dir + '/광고사업부/데이터컨설팅/Tableau/RD/코오롱몰/kpi_funnel_analysis_df_7days_last_all.csv', index=False, encoding='utf-8-sig')
+
+# 퍼스트 태핑 매체 기준 퍼널
+first_funnel_data = get_funnel_data(total_prep_data, 'first')
+first_funnel_data.to_csv(dr.dropbox_dir + '/광고사업부/데이터컨설팅/Tableau/RD/코오롱몰/kpi_funnel_analysis_df_7days_first_all.csv', index=False, encoding='utf-8-sig')
+
+
+# paid 유입 유저 필터링
+adid_list = set(total_data.loc[total_data['event_name'].isin(['paid_install', 're-engagement', 're-attribution']), 'appsflyer_id'])
+paid_user_data = total_data.loc[total_data['appsflyer_id'].isin(adid_list)].reset_index(drop=True)
 paid_prep_data = data_prep(paid_user_data)
-user_arr = paid_prep_data['appsflyer_id']
-event_arr = paid_prep_data['event_name']
-event_time_arr = paid_prep_data['event_time']
-value_arr = paid_prep_data['event_revenue']
-media_arr = paid_prep_data['ad_type'] + '/' + paid_prep_data['media']
 
+# 라스트 태핑 매체 기준 퍼널
+paid_last_funnel_data = get_funnel_data(paid_prep_data, 'last')
+paid_last_funnel_data.to_csv(dr.dropbox_dir + '/광고사업부/데이터컨설팅/Tableau/RD/코오롱몰/kpi_funnel_analysis_df_7days_last.csv', index=False, encoding='utf-8-sig')
 
-# 1. 퍼널(세션) 데이터 생성
-# 컬럼: appsflyer_id, funnel_id, funnel_sequence, start_time, end_time, is_paid, kpi_achievement, fee_value
-funnel_generator = FunnelDataGenerator(user_arr, event_arr, event_time_arr, value_arr, media_arr, kpi_event, kpi_period, paid_event)
-funnel_generator.do_work()
-funnel_data = funnel_generator.data
-funnel_data['ad_type'] = funnel_data['media'].apply(lambda x: x.split('/')[0])
-funnel_data['media_div'] = funnel_data['media'].apply(lambda x: x.split('/')[1] if '/' in x else '')
-funnel_data.loc[funnel_data['media_div'] == 'NCPI, DCP', 'media_div'] = 'NCPI, DSP'
+# 퍼스트 태핑 매체 기준 퍼널
+paid_first_funnel_data = get_funnel_data(paid_prep_data, 'first')
+paid_first_funnel_data.to_csv(dr.dropbox_dir + '/광고사업부/데이터컨설팅/Tableau/RD/코오롱몰/kpi_funnel_analysis_df_7days_first.csv', index=False, encoding='utf-8-sig')
 
-# 2. 추출 후 태블로에서 계산
-result_data = funnel_data.sort_values(['user_id', 'start_time'])
-result_data.to_csv(dr.download_dir + '/kpi_funnel_analysis_df_7days_media.csv', index=False, encoding='utf-8-sig')
+# 라벨링 안된 데이터 제외하고 퍼널 생성
+only_labeled_paid_data = paid_prep_data.loc[~((paid_prep_data['event_name'].isin(paid_event)) & (paid_prep_data['ad_type'] == ''))].reset_index(drop=True)
+only_labeled_paid_last_funnel_data = get_funnel_data(only_labeled_paid_data, 'last')
+only_labeled_paid_last_funnel_data.to_csv(dr.dropbox_dir + '/광고사업부/데이터컨설팅/Tableau/RD/코오롱몰/kpi_funnel_analysis_df_7days_last_labeled.csv', index=False, encoding='utf-8-sig')
+only_labeled_paid_first_funnel_data = get_funnel_data(only_labeled_paid_data, 'first')
+only_labeled_paid_first_funnel_data.to_csv(dr.dropbox_dir + '/광고사업부/데이터컨설팅/Tableau/RD/코오롱몰/kpi_funnel_analysis_df_7days_first_labeled.csv', index=False, encoding='utf-8-sig')
 
-# del paid_prep_data, user_arr, event_arr, event_time_arr, value_arr, result_data, funnel_data
