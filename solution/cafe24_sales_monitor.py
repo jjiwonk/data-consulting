@@ -284,7 +284,7 @@ class Cafe24SalesMonitor(Worker):
                     if len(unique_products) == 1:
                         continue
                     else:
-                        coupon_dc_values = compare_data["쿠폰 할인금액"].unique()
+                        coupon_dc_values = compare_data["쿠폰 할인금액(최초)"].unique()
                         if len(coupon_dc_values) == len(compare_data):
                             self.logger.info("쿠폰 할인금액이 중복되지 않음")
 
@@ -294,7 +294,7 @@ class Cafe24SalesMonitor(Worker):
                             else:
                                 self.logger.info("쿠폰 할인금액이 중복되므로 첫행만 남기고 삭제")
                                 for index in list(compare_data.index)[1:]:
-                                    sales_report.loc[index, "쿠폰 할인금액"] = 0
+                                    sales_report.loc[index, "쿠폰 할인금액(최초)"] = 0
 
                         mileage_values = compare_data["사용한 적립금액(최초)"].unique()
                         if len(mileage_values) == len(compare_data):
