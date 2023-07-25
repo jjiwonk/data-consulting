@@ -4,25 +4,27 @@ import report.SIV.ga_prep as gprep
 import report.SIV.apps_prep as aprep
 import report.SIV.merging as merge
 import report.SIV.directory as dr
+import warnings
+
+warnings.filterwarnings("ignore", category=FutureWarning)
 
 def ga_prep():
 
-    df = gprep.ga_read('type2', ref.columns.ga2_dtype.keys())
+    df = gprep.ga_read('type2', ga4='(ga4contents)',header= 6)
+    df.columns = ['거래 ID','상품 브랜드','항목 이름','세션 캠페인','세션 수동 광고 콘텐츠','상품 수량','상품 수익','총 합계','날짜']
 
-    df['source'] = df['sourceMedium'].apply(lambda x: x.split(' / ')[0])
-    df['medium'] = df['sourceMedium'].apply(lambda x: x.split(' / ')[-1]).drop(columns='sourceMedium')
-
-    df = gprep.ga_exception(df)
+    df = df.rename(columns = ref.columns.ga4_rename)
+    df = gprep.brand_exception(df)
     df = ref.adcode_ga(df)
     df = df.loc[df['머징코드'] != 'None']
 
-    df['구매건수(GA)'] = df['uniquePurchases']
-    df['매출(GA)'] = df['itemRevenue']
+    df['구매건수(GA)'] = df['상품 수량']
+    df['매출(GA)'] = df['상품 수익']
 
     df['날짜'] = pd.to_datetime(df['날짜'])
     df['날짜'] = df['날짜'].dt.date
 
-    df = df.rename(columns = {'productBrand':'구매브랜드','productName' : '구매상품'})
+    df = df.rename(columns = {'상품 브랜드':'구매브랜드','항목 이름' : '구매상품'})
     df = df[['날짜', '머징코드','구매상품', '구매브랜드', '구매건수(GA)','매출(GA)']]
     df = df.groupby(['날짜', '머징코드','구매상품', '구매브랜드'])[['구매건수(GA)','매출(GA)']].sum().reset_index()
 
@@ -111,4 +113,3 @@ def df_merge():
 
     return df
 
-df = df_merge()

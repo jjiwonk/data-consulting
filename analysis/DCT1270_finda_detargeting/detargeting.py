@@ -10,11 +10,13 @@ from workers.func import segment_analysis
 from spreadsheet import spreadsheet
 
 
-def read_organic():
+def read_organic(from_date):
+    yearmonth_list = [(from_date + relativedelta(months=i)).strftime("%Y-%m") for i in range(5)]
+
     def read_file(OS):
         file_dir = dr.dropbox_dir + f'/광고사업부/4. 광고주/핀다_7팀/14. AF RAW 합본/- raw_organic/{OS}'
         file_list = os.listdir(file_dir)
-        files = [f for f in file_list if ('in-app-events' in f)]
+        files = [f for f in file_list if ('in-app-events' in f) & (any([yearmonth in f for yearmonth in yearmonth_list]))]
 
         dtypes = {
             'Install Time': pa.string(),
@@ -40,10 +42,12 @@ def read_organic():
     return organic_data
 
 
-def read_paid():
+def read_paid(from_date):
+    yearmonth_list = [(from_date + relativedelta(months=i)).strftime("%Y%m") for i in range(5)]
+
     file_dir = dr.dropbox_dir + '/광고사업부/4. 광고주/핀다_7팀/2. 리포트/자동화리포트/appsflyer_prism_2'
     file_list = os.listdir(file_dir)
-    file_list = [file for file in file_list if '.csv' in file]
+    file_list = [f for f in file_list if ('.csv' in f) & (any([yearmonth in f for yearmonth in yearmonth_list]))]
 
     dtypes = {
         'install_time': pa.string(),
@@ -89,7 +93,7 @@ def read_addition(detarget_dir, data_list):
     return addition_data
 
 
-def detargeting_inspection(total_data, today=None):
+def detargeting_inspection(total_data, today, from_date):
     # 디타겟 세그먼트 셋팅
     detarget_dir = dr.dropbox_dir + '/광고사업부/4. 광고주/핀다_7팀/2. 업무/RE_디타겟점검/RAW'
     file_path = detarget_dir + '/detarget_list.txt'
@@ -106,7 +110,6 @@ def detargeting_inspection(total_data, today=None):
 
     rd_dir = dr.dropbox_dir + '/광고사업부/데이터컨설팅/Tableau/result/핀다/retargeting_inspection'
     daily_previous_df = pd.read_csv(rd_dir + '/daily_segment_analysis_df.csv', encoding='utf-8-sig')
-    # monthly_previous_df = pd.read_csv(rd_dir + '/monthly_segment_analysis_df.csv', encoding='utf-8-sig')
 
     if today is None:
         to_date = datetime.datetime.today()
@@ -118,16 +121,6 @@ def detargeting_inspection(total_data, today=None):
     from_date = last_day.replace(day=1) - relativedelta(months=3)
     cropped_total_data = total_data.loc[total_data['event_time'] >= from_date]
 
-    # last_month = last_day.strftime('%Y-%m')
-    # monthly_segment_analysis = segment_analysis(cropped_total_data, event_dict, detarget_dict, media_list, 'month')
-    # monthly_segment_analysis_df = monthly_segment_analysis.do_work()
-    # monthly_columns = list(monthly_segment_analysis_df.columns)
-    # monthly_columns.remove('advertising_id')
-    # monthly_for_update = monthly_segment_analysis_df.loc[:, monthly_columns]
-    # monthly_for_update = monthly_for_update.loc[monthly_for_update['conversion_date'] >= last_month]
-    # monthly_previous_df = monthly_previous_df.loc[monthly_previous_df['conversion_date'] < last_month]
-    # monthly_for_download = pd.concat([monthly_previous_df, monthly_for_update], ignore_index=True)
-    # monthly_for_download.to_csv(rd_dir + '/monthly_segment_analysis_df.csv', index=False, encoding='utf-8-sig')
     conversion_event = ['re-engagement', 're-attribution']
     column_list = ['campaign', 'media_source', 'advertising_id', 'appsflyer_id', 'customer_user_id', 'conversion_date', 'conversion_time']
     daily_segment_analysis = segment_analysis(cropped_total_data, event_dict, conversion_event, column_list, detarget_dict, media_list)
@@ -135,7 +128,9 @@ def detargeting_inspection(total_data, today=None):
     daily_for_update = daily_segment_analysis_df.loc[daily_segment_analysis_df['conversion_date'] >= last_day.strftime('%Y-%m-%d')]
     daily_previous_df = daily_previous_df.loc[daily_previous_df['conversion_date'] < last_day.strftime('%Y-%m-%d')]
     daily_for_download = pd.concat([daily_previous_df, daily_for_update], ignore_index=True)
-    # daily_for_download = daily_for_update
+    daily_for_download = daily_for_download.loc[daily_for_download['conversion_date'] >= from_date.strftime('%Y-%m-%d')]
+    daily_for_download = daily_for_download.replace(True, 1)
+    daily_for_download = daily_for_download.replace(False, 0)
 
     # 운영 여부 확인 컬럼 추가
     spread_sheet_url = 'https://docs.google.com/spreadsheets/d/1OXlBSaK5km6YHxHdvZtgm2nNK033Pjh7dPoA0gBzISA/edit#gid=797669622'
@@ -143,9 +138,9 @@ def detargeting_inspection(total_data, today=None):
     doc = spreadsheet.spread_document_read(spread_sheet_url)
     setting_df = spreadsheet.spread_sheet(doc, sheet_name).reset_index(drop=True)
     campaign_list = setting_df.loc[:, '캠페인명']
-    daily_for_download.loc[daily_for_download['campaign'].isin(campaign_list), 'is_operating'] = True
-    daily_for_download['is_operating'] = daily_for_download['is_operating'].fillna(False)
-    daily_for_download.to_csv(rd_dir + '/daily_segment_analysis_df_test.csv', index=False, encoding='utf-8-sig')
+    daily_for_download.loc[daily_for_download['campaign'].isin(campaign_list), 'is_operating'] = 1
+    daily_for_download['is_operating'] = daily_for_download['is_operating'].fillna(0)
+    daily_for_download.to_csv(rd_dir + '/daily_segment_analysis_df.csv', index=False, encoding='utf-8-sig')
     backup_dir = dr.dropbox_dir + '/광고사업부/4. 광고주/핀다_7팀/2. 업무/RE_디타겟점검/RAW_FIN'
     daily_for_download.to_csv(backup_dir + f'/daily_segment_analysis_df_{today.strftime("%y%m%d")}.csv', index=False,
                               encoding='utf-8-sig')
@@ -153,11 +148,12 @@ def detargeting_inspection(total_data, today=None):
     return daily_for_download
 
 
-organic_data = read_organic()
+# 업데이트 기준 날짜 (ex. 2023년 4월 30일까지 업데이트 시 > 2023-05-01 기재)
+today = datetime.datetime.strptime('2023-07-05', '%Y-%m-%d')
+from_date = today.replace(day=1) - relativedelta(months=3)
+organic_data = read_organic(from_date)
 organic_data.columns = [col.lower().replace(' ', '_') for col in organic_data.columns]
-paid_data = read_paid()
+paid_data = read_paid(from_date)
 paid_data = paid_data.loc[paid_data['attributed_touch_type'] == 'click']
 total_data = pd.concat([organic_data, paid_data]).reset_index(drop=True)
-# 업데이트 기준 날짜 (ex. 2023년 4월 30일까지 업데이트 시 > 2023-05-01 기재)
-today = datetime.datetime.strptime('2023-06-21', '%Y-%m-%d')
-daily_df = detargeting_inspection(total_data, today)
+daily_df = detargeting_inspection(total_data, today, from_date)

@@ -143,13 +143,14 @@ user_arr = cropped_total_data['advertising_id']
 event_arr = cropped_total_data['event_name']
 event_time_arr = cropped_total_data['event_time']
 value_arr = cropped_total_data['event_revenue']
+media_arr = cropped_total_data['media_source']
 kpi_event = 'loan_contract_completed'
 kpi_period = 14*24*60*60
 paid_events = ['re-engagement', 're-attribution']
 
 # 1. 퍼널(세션) 데이터 생성
 # 컬럼: advertising_id, funnel_id, 'funnel_sequence', start_time, end_time, is_paid, kpi_achievement, fee_value
-funnel_generator = FunnelDataGenerator(user_arr, event_arr, event_time_arr, value_arr, kpi_event, kpi_period, paid_events)
+funnel_generator = FunnelDataGenerator(user_arr, event_arr, event_time_arr, value_arr, media_arr, kpi_event, kpi_period, paid_events)
 funnel_generator.do_work()
 funnel_data = funnel_generator.data
 funnel_data = funnel_data.rename(columns={'user_id':'advertising_id'})

@@ -94,6 +94,8 @@ class AutoBidSolution(KeywordMonitoring):
                                                   '키워드 ID': 'ad_keyword_id', '목표 순위': 'goal_rank',
                                                   '최소 입찰가': 'min_bid', '최대 입찰가': 'max_bid',
                                                   '입찰 강도': 'bid_degree'})
+        keywords_df['min_bid'] = keywords_df['min_bid'].apply(lambda x: x.replace(',', ''))
+        keywords_df['max_bid'] = keywords_df['max_bid'].apply(lambda x: x.replace(',', ''))
         ids = keywords_df.loc[:, 'ad_keyword_id'].tolist()
 
         uri = '/ncc/keywords'
@@ -124,8 +126,8 @@ class AutoBidSolution(KeywordMonitoring):
             keyword_id = row['ad_keyword_id']
             group_id = row['adgroup_id']
             goal_rank = int(row['goal_rank'])
-            min_bid = int(row['min_bid'].replace(',', ''))
-            max_bid = int(row['max_bid'].replace(',', ''))
+            min_bid = int(row['min_bid'])
+            max_bid = int(row['max_bid'])
             bid_degree = float(row['bid_degree'])
             cur_bid = int(row['cur_bid'])
             cur_rank = row['ad_rank']

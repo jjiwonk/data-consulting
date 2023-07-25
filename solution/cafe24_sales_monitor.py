@@ -23,6 +23,7 @@ from selenium.common.exceptions import StaleElementReferenceException, TimeoutEx
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.common.by import By
+from selenium.webdriver.common.action_chains import ActionChains
 
 
 class Key:
@@ -97,6 +98,7 @@ class Cafe24SalesMonitor(Worker):
         else:
             download_dir = Key.tmp_path
         driver = get_chromedriver(headless=Key.USE_HEADLESS, download_dir=download_dir)
+        driver.set_window_size(3000, 5000)
 
         slack_msg = f"*{store_name} cafe24 매출 모니터링*\n{schedule_date} {schedule_time}\n\n"
 
@@ -119,11 +121,15 @@ class Cafe24SalesMonitor(Worker):
                     sales_manage_tab.click()
                     break
                 except ElementClickInterceptedException:
-                    # driver.find_element(By.CSS_SELECTOR, ".btnClose.eClose").click()  # 기존 팝업 닫기
-                    driver.find_element(By.CSS_SELECTOR, ".gLabel").click()  # 채널톡 팝업 닫기
-                    sales_manage_tab = driver.find_element(By.CLASS_NAME, "link.order")
-                    sales_manage_tab.click()
-                    break
+                    element = driver.find_element(By.CSS_SELECTOR, ".btnClose.eClose")  # 기존 팝업 닫기
+                    actions = ActionChains(driver).move_to_element(element).click()
+                    actions.perform()
+                    try:
+                        sales_manage_tab = driver.find_element(By.CLASS_NAME, "link.order")
+                        sales_manage_tab.click()
+                        break
+                    except ElementClickInterceptedException as e:
+                        raise e
                 except Exception as e:
                     if max_retry_cnt > 0:
                         max_retry_cnt -= 1
@@ -278,7 +284,7 @@ class Cafe24SalesMonitor(Worker):
                     if len(unique_products) == 1:
                         continue
                     else:
-                        coupon_dc_values = compare_data["쿠폰 할인금액"].unique()
+                        coupon_dc_values = compare_data["쿠폰 할인금액(최초)"].unique()
                         if len(coupon_dc_values) == len(compare_data):
                             self.logger.info("쿠폰 할인금액이 중복되지 않음")
 
@@ -288,7 +294,7 @@ class Cafe24SalesMonitor(Worker):
                             else:
                                 self.logger.info("쿠폰 할인금액이 중복되므로 첫행만 남기고 삭제")
                                 for index in list(compare_data.index)[1:]:
-                                    sales_report.loc[index, "쿠폰 할인금액"] = 0
+                                    sales_report.loc[index, "쿠폰 할인금액(최초)"] = 0
 
                         mileage_values = compare_data["사용한 적립금액(최초)"].unique()
                         if len(mileage_values) == len(compare_data):

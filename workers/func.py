@@ -253,10 +253,10 @@ class segment_analysis():
             merge_data.loc[(merge_data['time_gap'] < target_period) & (merge_data['time_gap'] > 0), col_name] = True
 
             merge_data[col_name] = merge_data[col_name].fillna(False)
-            merge_data = merge_data[['advertising_id', 'conversion_time', col_name]].sort_values(['advertising_id', 'conversion_time', col_name], ascending=False)
-            merge_data = merge_data.drop_duplicates(['advertising_id', 'conversion_time'], keep='first')
+            sorted_merge_data = merge_data[['advertising_id', 'conversion_time', col_name]].sort_values(['advertising_id', 'conversion_time', col_name], ascending=False)
+            dedup_merge_data = sorted_merge_data.drop_duplicates(['advertising_id', 'conversion_time'], keep='first')
 
-            result_data = self.result_data.merge(merge_data, on=['advertising_id', 'conversion_time'], how='left')
+            result_data = self.result_data.merge(dedup_merge_data, on=['advertising_id', 'conversion_time'], how='left')
             result_data[col_name] = result_data[col_name].fillna(False)
 
             self.result_data = result_data
@@ -294,7 +294,7 @@ class segment_analysis():
 
 
 class FunnelDataGenerator():
-    def __init__(self, user_array, event_array, event_time_array, value_array, kpi_event_name, funnel_period, paid_events):
+    def __init__(self, user_array, event_array, event_time_array, value_array, media_array, kpi_event_name, funnel_period, paid_events, contribute: str = 'last'):
         self.num = 0
         self.funnel_id = 'funnel ' + str(self.num)
         self.kpi_event = kpi_event_name
@@ -304,12 +304,15 @@ class FunnelDataGenerator():
             'user': user_array,
             'event': event_array,
             'event_time': event_time_array,
-            'value': value_array
+            'value': value_array,
+            'media': media_array
         }
 
         self.start_time = self.array_list['event_time'][0]
         self.end_time = None
         self.current_event_time = None
+        self.last_engage_time = None
+        self.first_engage_time = None
 
         self.current_user = None
         self.before_user = self.array_list['user'][0]
@@ -323,9 +326,13 @@ class FunnelDataGenerator():
         self.current_value = None
         self.before_value = self.array_list['value'][0]
 
+        self.first_media = ''
+        self.contribute_standard = contribute
+        self.media = ''
+        self.media_num = 0
         self.paid_events = paid_events
         self.data = []
-        self.column_names = ['user_id', 'funnel_id', 'funnel_sequence', 'start_time', 'end_time', 'is_paid', 'kpi_achievement', 'value']
+        self.column_names = ['user_id', 'funnel_id', 'funnel_sequence', 'start_time', 'end_time', 'is_paid', 'kpi_achievement', 'value', 'media']
 
     def start_new_funnel(self):
         self.num += 1
@@ -334,12 +341,16 @@ class FunnelDataGenerator():
         self.funnel_sequence.append(self.current_event)
         self.start_time = self.current_event_time
         self.kpi_achievement = False
-        self.is_paid = False
+        self.media_num = 0
 
     def append_row(self):
         self.funnel_sequence.append('funnel_end')
-        row = [self.before_user, self.funnel_id, self.funnel_sequence,
-               self.start_time, self.end_time, self.is_paid, self.kpi_achievement, self.before_value]
+        if self.contribute_standard == 'last':
+            row = [self.before_user, self.funnel_id, self.funnel_sequence,
+                   self.start_time, self.end_time, self.is_paid, self.kpi_achievement, self.before_value, self.media]
+        else:
+            row = [self.before_user, self.funnel_id, self.funnel_sequence,
+                   self.start_time, self.end_time, self.is_paid, self.kpi_achievement, self.before_value, self.first_media]
         self.data.append(row)
 
     def discriminator(self):
@@ -359,8 +370,14 @@ class FunnelDataGenerator():
 
         else:
             # 유저 정보가 같지 않다면 새로운 퍼널이 시작된 것
+            if self.before_event == self.kpi_event:
+                self.kpi_achievement = True
             self.append_row()
             self.start_new_funnel()
+            self.last_engage_time = None
+            self.first_engage_time = None
+            self.media = ''
+            self.first_media = ''
 
     def do_work(self):
         for i, user in enumerate(self.array_list['user']):
@@ -376,7 +393,34 @@ class FunnelDataGenerator():
                 self.current_event = self.array_list['event'][i]
                 self.before_event = self.array_list['event'][i - 1]
                 if self.before_event in self.paid_events:
-                    self.is_paid = True
+                    self.last_engage_time = self.end_time
+                    self.media = self.array_list['media'][i - 1]
+                    self.media_num += 1
+                    if self.media_num == 1:
+                        self.first_media = self.media
+                        self.first_engage_time = self.last_engage_time
+                if self.contribute_standard == 'last':
+                    if self.last_engage_time is not None:
+                        if (self.end_time - self.last_engage_time) < self.funnel_period:
+                            self.is_paid = True
+                        else:
+                            self.is_paid = False
+                            self.last_engage_time = None
+                            self.media = ''
+                    else:
+                        self.is_paid = False
+                        self.media = ''
+                else:
+                    if self.first_engage_time is not None:
+                        if (self.end_time - self.first_engage_time) < self.funnel_period:
+                            self.is_paid = True
+                        else:
+                            self.is_paid = False
+                            self.first_engage_time = None
+                            self.first_media = ''
+                    else:
+                        self.is_paid = False
+                        self.first_media = ''
 
                 self.before_value = self.array_list['value'][i - 1]
 

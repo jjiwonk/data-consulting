@@ -68,12 +68,15 @@ if __name__ == "__main__":
         day = datetime.now().strftime('%d')
         hour = datetime.now().strftime('%H')
 
-        s3.upload_file(local_path,
-                       s3_path=f'auto_bid/owner_id={owner_id}/year={year}/month={month}/day={day}/hour={hour}/{file_name}',
-                       s3_bucket=const.DEFAULT_S3_PRIVATE_BUCKET)
-        s3.upload_file(local_path,
-                       s3_path=f'auto_bid/owner_id={owner_id}/update/{file_name}',
-                       s3_bucket=const.DEFAULT_S3_PRIVATE_BUCKET)
+        try:
+            s3.upload_file(local_path,
+                           s3_path=f'auto_bid/owner_id={owner_id}/year={year}/month={month}/day={day}/hour={hour}/{file_name}',
+                           s3_bucket=const.DEFAULT_S3_PRIVATE_BUCKET)
+            s3.upload_file(local_path,
+                           s3_path=f'auto_bid/owner_id={owner_id}/update/{file_name}',
+                           s3_bucket=const.DEFAULT_S3_PRIVATE_BUCKET)
+        except Exception as e:
+            raise e
 
         os.remove(local_path)
 
