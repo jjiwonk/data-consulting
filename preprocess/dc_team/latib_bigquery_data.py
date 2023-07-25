@@ -2,111 +2,171 @@ import numpy as np
 import pandas as pd
 from setting import directory as dr
 import datetime
-import json
-import time
-from dateutil import tz
-import math
+from workers import func
+from workers import bigquery
 
 raw_dir = dr.dropbox_dir + '/광고사업부/데이터컨설팅/데이터 분석 프로젝트/Latib'
-# session_file_name= 'bquxjob_565609be_188b8f07f00.csv'
-#
-# session_df = pd.read_csv(raw_dir + '/' + session_file_name)
-#
-# def get_attribute(x, attribute, key, key_name, value,value_name):
-#     array = json.loads(x)[attribute]
-#
-#     target_item = None
-#     for item in array :
-#         if item[key] == key_name :
-#             target_item = item
-#             break
-#
-#     return target_item[value][value_name]
-#
-# event_param_array = np.array(session_df['event_params'])
-#
-# result_array = list(range(len(event_param_array)))
-# for i, event_param in enumerate(event_param_array) :
-#     result_array[i] = get_attribute(event_param, 'event_params', 'key', 'page_location', 'value','string_value')
-#
-# session_df['page_location'] = result_array
-#
-# for col in ['name', 'source', 'medium']:
-#     session_df[col] = session_df['traffic_source'].apply(lambda x : json.loads(x)['traffic_source'][col])
-#
-# session_df_comp = session_df[['event_date', 'event_timestamp', 'event_name', 'event_params',
-#                               'user_pseudo_id','user_first_touch_timestamp','device',  'platform', 'event_dimensions',
-#                               'page_location', 'name', 'source', 'medium']]
-# temp = session_df_comp.loc[session_df_comp['page_location'].str.contains('utm')]
-# temp = temp.loc[temp['page_location'].str.contains('naver_bs')]
-# temp = temp.loc[temp['source']!='naver_bs']
-# temp_user_list = temp['user_pseudo_id'].unique()
-#
-# session_df_comp_user_filter = session_df_comp.loc[session_df_comp['user_pseudo_id'].isin(temp_user_list)]
-
-log1 = pd.read_json(raw_dir + '/bq-results-20230619-052545-1687152363615.json', lines=True)
-log2 = pd.read_json(raw_dir + '/bq-results-20230619-052735-1687152468418.json', lines=True)
-
-total_log_data = pd.concat([log1, log2], ignore_index=True)
-# total_log_data['event_timestamp_parsing'] = total_log_data['event_timestamp'].apply(lambda x : float(str(x)[:10] + "." + str(x)[-6:]))
-# total_log_data['event_date_utc'] = total_log_data['event_timestamp_parsing'].apply(lambda x : datetime.datetime.fromtimestamp(x, ))
-# total_log_data['event_date_utc'] = total_log_data['event_date_utc'].apply(lambda x : x + datetime.timedelta(hours = 9))
-# total_log_data['event_date_kst'] = total_log_data['event_date_utc'].dt.date
-
-#total_log_data_kst = total_log_data.loc[total_log_data['event_date_kst']==datetime.date(2023,6,12)]
-total_log_data_kst = total_log_data.loc[total_log_data['event_date']==20230612]
 
 
-for col in ['name', 'source', 'medium']:
-    total_log_data_kst[col] = total_log_data_kst['traffic_source'].apply(lambda x : x.get(col))
-total_log_data_kst['cnt'] = 1
+bigquery_prep = bigquery.BigQueryPrep()
 
-for col in ['manual_source', 'manual_medium'] :
-    total_log_data_kst[col] = total_log_data_kst['collected_traffic_source'].apply(lambda x : x.get(col) if pd.notnull(x) else 'none')
+data = bigquery_prep.read_data(raw_dir, 'query_data.json')
+data = bigquery_prep.timestamp_to_kst(data)
 
-log_pivot = total_log_data_kst.pivot_table(index = ['event_name', 'source', 'medium', 'manual_source', 'manual_medium'], values = 'cnt', aggfunc='sum').reset_index()
-log_pivot_selected = log_pivot.loc[((log_pivot['source']=='instagram')|(log_pivot['manual_source']=='instagram'))&
-                                   (log_pivot['event_name']=='session_start')]
+period_data = data.loc[(data['event_date']>=datetime.date(2023,5,4))&
+                       (data['event_date']<=datetime.date(2023,7,1))]
+period_data.index = range(len(period_data))
+
+# 세션 시작 이벤트
+session_start = bigquery_prep.event_param_parser(period_data, 'session_start')
+
+# 네이버 결제 시작 이벤트 발라내기
+checkout = bigquery_prep.event_param_parser(period_data, 'begin_checkout')
+checkout_naver = checkout.loc[checkout['transaction_id'].str.len()>0]
+
+period_data.loc[period_data['event_id'].isin(checkout_naver['event_id']), 'event_name'] = 'begin_checkout_naver'
+period_data['event_name'].value_counts()
+period_data = period_data.loc[period_data['event_name']!='user_engagement']
+
+len(checkout_naver['user_pseudo_id'].unique())
+
+# scroll 데이터 EDA
+# scroll = bigquery_prep.event_param_parser(period_data, 'scroll')
+# scroll_10 = scroll.loc[scroll['Scroll_Depth']=='10']
+# scroll['Scroll_Depth'].value_counts()
+
+period_data = period_data.sort_values(['user_pseudo_id', 'event_timestamp'])
+period_data['event_date_kst'] = pd.to_datetime(period_data['event_date_kst'])
+# 날짜 차이 계산 (shift 연산)
+
+period_data['time_gap'] = period_data.groupby('user_pseudo_id')['event_date_kst'].diff()
+period_data['time_gap'] = period_data['time_gap'].apply(lambda x: x.total_seconds())
+
+user_array = np.array(period_data['user_pseudo_id'])
+event_array = np.array(period_data['event_name'])
+event_time_array = np.array(period_data['event_date_kst'])
+time_gap_array = np.array(period_data['time_gap'])
+value_array = np.zeros(shape = len(period_data))
+
+session_gen = func.SessionDataGenerator(user_array, event_array, event_time_array, time_gap_array, value_array)
+session_gen.do_work()
+
+session_data = session_gen.data.copy()
+session_data['Cnt'] = 1
+session_data['session_sequence_string'] = session_data['session_sequence'].apply(lambda x: ' > '.join(x))
+
+session_id_list = []
+for i in range(len(session_data)) :
+    repeat = len(session_data['session_sequence'][i]) - 1
+    session_id_list += [f'session {i}'] * repeat
+
+period_data['session_id'] = session_id_list
+
+scroll_data = bigquery_prep.event_param_parser(period_data, 'scroll')
+scroll_data['Scroll_Depth'] = scroll_data['Scroll_Depth'].astype('int')
+scroll_data_max = scroll_data.pivot_table(index = ['session_id', 'page_title'], values = 'Scroll_Depth', aggfunc = 'max').reset_index()
+
+item = bigquery_prep.event_param_parser(period_data, 'view_item')
+last_item = item.drop_duplicates('session_id', keep = 'last')
+last_item = last_item[['session_id', 'page_title']]
+
+first_item = item.drop_duplicates('session_id', keep = 'first')
+first_item = first_item[['session_id', 'page_title']]
+
+last_item_max_scroll = last_item.merge(scroll_data_max, on = ['session_id', 'page_title'], how = 'left')
+last_item_max_scroll = last_item_max_scroll.rename(columns = {'page_title' : 'last_item',
+                                                              'Scroll_Depth' : 'last_item_scroll_depth'})
+
+first_item_max_scroll = first_item.merge(scroll_data_max, on = ['session_id', 'page_title'], how = 'left')
+first_item_max_scroll = first_item_max_scroll.rename(columns = {'page_title' : 'first_item',
+                                                                'Scroll_Depth' : 'first_item_scroll_depth'})
+
+session_data_merge = session_data.merge(last_item_max_scroll, on = 'session_id', how = 'left')
+session_data_merge = session_data_merge.merge(first_item_max_scroll, on = 'session_id', how = 'left')
+
+session_data_merge.to_csv(raw_dir + '/session_data.csv', index=False, encoding = 'utf-8-sig')
+
+raw_data = session_data_merge
+funnel_list = ['view_item', 'page_view','scroll', 'begin_checkout_naver']
+end_sequence = 'session_end'
+sequence_column_name = 'session_sequence_string'
+destination = raw_dir
+file_name = 'latib_sankey_data.xlsx'
+
+Sankey = func.SankeyModeling(raw_data, funnel_list, end_sequence, sequence_column_name, destination, file_name)
+Sankey.do_work()
+Sankey.sankey_to_excel()
+
+####
+
+naver_session_data = session_data.loc[session_data['session_sequence_string'].str.contains('begin_checkout_naver')]
+naver_session_data.loc[naver_session_data['session_id'].isin(Sankey.data['session_id']), 'is_target_session'] = True
+naver_session_data['is_target_session'] = naver_session_data['is_target_session'].fillna(False)
+naver_session_data.to_csv(raw_dir + '/naver_session_data.csv', index=False, encoding = 'utf-8-sig')
 
 
-# session scope 으로 정의
-raw_data = pd.read_json(raw_dir + '/bq-results-20230619-052545-1687152363615.json', lines=True)
 
-# traffic_source 정의
-for col in ['name', 'source', 'medium']:
-    raw_data[col] = raw_data['traffic_source'].apply(lambda x : x.get(col))
+sankey_data = Sankey.data
+sankey_data_step4_other = sankey_data.loc[sankey_data['Step 4'] == 'Other Events']
+sankey_data_step4_other_sessions = period_data.loc[period_data['session_id'].isin(sankey_data_step4_other['session_id'])]
+sankey_data_step4_other_sessions = sankey_data_step4_other_sessions.loc[~sankey_data_step4_other_sessions['event_name'].isin(['scroll', 'first_visit', 'session_start'])]
+sankey_data_step4_other_sessions = sankey_data_step4_other_sessions.drop_duplicates(subset = 'session_id', keep = 'last')
+sankey_data_step4_other_sessions['event_name'].value_counts()
 
-#collected_traffic_source 정의
-raw_data['type'] = raw_data['collected_traffic_source'].apply(lambda x : type(x))
-raw_data['manual_source'] = '-'
+other_session_pageview = bigquery_prep.event_param_parser(sankey_data_step4_other_sessions, 'page_view')
+other_session_pageview['page_title'].value_counts()
 
-manual_data = raw_data.loc[raw_data['type'] == dict]
-manual_data['manual_source'] = manual_data['collected_traffic_source'].apply(lambda x : x.get('manual_source'))
-notman_data = raw_data.loc[raw_data['type'] != dict]
+#######
+#### CRM 설계 ####
+scroll_funnel_user = sankey_data.loc[sankey_data['Step 3']=='scroll']
 
-raw_data = pd.concat([manual_data,notman_data])
-raw_data.index = range(len(raw_data))
+view_item = bigquery_prep.event_param_parser(period_data, 'view_item')
+view_item_salad_user = view_item.loc[view_item['page_title']=='라티브 샐러드 주스']
+view_item_salad_user = view_item_salad_user[['user_pseudo_id', 'session_id']].drop_duplicates()
 
-# 수동 utm 소스 정의
-raw_data['utm_sorce'] = '-'
+session_with_salad_view = scroll_funnel_user.merge(view_item_salad_user, on=['session_id'], how = 'inner')
+len(session_with_salad_view.loc[session_with_salad_view['session_sequence_string'].str.contains('begin_checkout_naver')])
 
-for i in range(len(raw_data)):
-    paramas_cnt = len(raw_data['event_params'][i])
-    for ind in range(paramas_cnt) :
-        key = raw_data['event_params'][i][ind]['key']
-        if key == 'page_location':
-            raw_data['utm_sorce'][i] = raw_data['event_params'][i][ind]['value']
-        else:
-            pass
+session_with_non_salad_view = scroll_funnel_user.loc[~scroll_funnel_user['session_id'].isin(view_item_salad_user['session_id'])]
+len(session_with_non_salad_view.loc[session_with_non_salad_view['session_sequence_string'].str.contains('begin_checkout_naver')])
 
-raw_data['utm_sorce'] = raw_data['utm_sorce'].apply(lambda x : x.get('string_value'))
-raw_data['utm_source'] = raw_data['utm_sorce'].apply(lambda x: x.split('utm_source=')[-1].split('&')[0] if x.find('utm_source') != -1 else '-' )
+### Bound User
+scroll_to_bound = sankey_data.loc[sankey_data['Step 4']=='Bound']
+scroll_to_bound_last_event = period_data.loc[period_data['session_id'].isin(scroll_to_bound['session_id'])]
+scroll_to_bound_last_event = scroll_to_bound_last_event.drop_duplicates('session_id', keep='last')
+scroll_to_bound_last_event = bigquery_prep.event_param_parser(scroll_to_bound_last_event, 'scroll')
+scroll_to_bound_last_event = scroll_to_bound_last_event.loc[scroll_to_bound_last_event['session_id'].isin(view_item_salad_user['session_id'])]
+scroll_to_bound_last_event.to_csv(raw_dir + '/scroll_to_bound_last_event.csv', index=False, encoding = 'utf-8-sig')
 
-raw_data['cnt'] = 1
+scroll_to_bound_user = list(scroll_to_bound['user_id'])
+scroll_to_bound_user_basket = period_data.loc[period_data['user_pseudo_id'].isin(scroll_to_bound_user)]
+scroll_to_bound_user_basket = scroll_to_bound_user_basket.loc[scroll_to_bound_user_basket['event_name'].isin(['begin_checkout', 'begin_checkout_naver', 'purchase', 'add_to_cart'])]
 
-total_check = raw_data.pivot_table(index = 'event_name', values= 'cnt', aggfunc= 'sum').reset_index()
-media_check = raw_data.pivot_table(index = ['event_name', 'source','utm_source','manual_source'], values= 'cnt', aggfunc= 'sum').reset_index()
-direct_check = media_check.loc[media_check['source'] == '(direct)']
-insta_check = media_check.loc[(media_check['source'] == 'instagram')|(media_check['manual_source'] == 'instagram')]
+# begin_checkout
+basket_begin_check_out = bigquery_prep.event_param_parser(scroll_to_bound_user_basket, 'begin_checkout')
+basket_begin_check_out = basket_begin_check_out.loc[basket_begin_check_out['items'].str.len()>0]
+basket_begin_check_out['item'] = basket_begin_check_out['items'].apply(lambda x: x[0]['item_name'])
+basket_begin_check_out['item'].value_counts()
 
-check = insta_check.pivot_table(index = ['event_name'], values= 'cnt', aggfunc= 'sum').reset_index()
+# begin_checkout_naver
+basket_begin_checkout_naver = bigquery_prep.event_param_parser(scroll_to_bound_user_basket, 'begin_checkout_naver')
+basket_begin_checkout_naver['item'] = basket_begin_checkout_naver['items'].apply(lambda x: x[0]['item_name'])
+basket_begin_checkout_naver['item'].value_counts()
+
+# purchase
+basket_purchase = bigquery_prep.event_param_parser(scroll_to_bound_user_basket, 'purchase')
+basket_purchase['item'] = basket_purchase['items'].apply(lambda x: x[0]['item_name'])
+basket_purchase['item'].value_counts()
+
+basket_add_to_cart = bigquery_prep.event_param_parser(scroll_to_bound_user_basket, 'add_to_cart')
+basket_add_to_cart['item'] = basket_add_to_cart['items'].apply(lambda x: x[0]['item_name'])
+basket_add_to_cart['item'].value_counts()
+
+
+##### 0710 데이터 검증
+
+data_0710 = bigquery_prep.read_data(raw_dir, '0710_log.json')
+data_0710 = bigquery_prep.timestamp_to_kst(data_0710)
+data_0710 = data_0710.loc[data_0710['event_date']==datetime.date(2023,7,10)]
+
+data_0710['event_name'].value_counts()
