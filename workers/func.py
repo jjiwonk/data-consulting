@@ -90,6 +90,9 @@ class SessionDataGenerator():
 
                 self.discriminator()
 
+            if i == len(self.array_list['user'])-1:
+                self.append_row()
+
         self.data = pd.DataFrame(data=self.data, columns=self.column_names)
 
 
@@ -110,7 +113,11 @@ class SankeyModeling():
     def define_pat_list(self):
         pat_list = []
         for i in range(len(self.funnel_list)) :
-            pat = re.compile('^' + '.*'.join(self.funnel_list[:i+1]))
+            pat_string = '^'
+            for event in self.funnel_list[:i+1] :
+                pat_string += r'(?=.*\b{}\b)'.format(event)
+            pat_string += '.*$'
+            pat = re.compile(r'{}'.format(pat_string))
             pat_list.append(pat)
         pat_list.reverse()
         return pat_list
