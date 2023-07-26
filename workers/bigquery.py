@@ -10,14 +10,14 @@ class BigQueryPrep():
         data = pd.read_json(raw_dir + '/' + json_file_name, lines=True)
         data = data.reset_index()
         data = data.rename(columns={'index': 'event_id'})
+        data['event_timestamp_parsing'] = data['event_timestamp'].apply(
+            lambda x: float(str(x)[:10] + "." + str(x)[-6:]))
+        data['event_time'] = data['event_timestamp_parsing'].apply(
+            lambda x: datetime.datetime.fromtimestamp(x, ))
         return data
 
     def timestamp_to_kst(self, df):
-        df['event_timestamp_parsing'] = df['event_timestamp'].apply(
-            lambda x: float(str(x)[:10] + "." + str(x)[-6:]))
-        df['event_date_utc'] = df['event_timestamp_parsing'].apply(
-            lambda x: datetime.datetime.fromtimestamp(x, ))
-        df['event_date_kst'] = df['event_date_utc'].apply(lambda x: x + datetime.timedelta(hours=9))
+        df['event_date_kst'] = df['event_time'].apply(lambda x: x + datetime.timedelta(hours=9))
         df['event_date'] = df['event_date_kst'].dt.date
         df = df.sort_values('event_timestamp')
         return df
