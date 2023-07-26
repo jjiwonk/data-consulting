@@ -14,7 +14,7 @@ if __name__ == "__main__":
         ad_names='["thehandsome"]',
         customer_id=491016,
         bid_downgrade=True,
-        error_slack_channel='ad_더한섬닷컴_광고모니터링'
+        error_slack_channel='ad_더한섬닷컴_sa자동입찰'
     )
 
     worker.work(attr=attr, info=info)
