@@ -214,6 +214,7 @@ class segment_analysis():
         df = self.raw_data.copy()
 
         base_data = df.loc[df['event_name'].isin(self.conversion_event)]
+        base_data = base_data.loc[base_data['attributed_touch_time'].notnull()]
         base_data = base_data.rename(columns={'attributed_touch_time': 'conversion_time'})
         base_data['conversion_date'] = pd.to_datetime(base_data['conversion_time']).dt.strftime('%Y-%m-%d')
         base_data = base_data.drop_duplicates(['conversion_time', 'advertising_id', 'event_name'])
