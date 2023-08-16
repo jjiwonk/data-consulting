@@ -224,6 +224,7 @@ class segment_analysis():
         base_data_pivot = base_data.pivot_table(index=self.column_list,
                                                 values='Cnt',
                                                 aggfunc='sum').reset_index()
+        base_data_pivot = base_data_pivot.loc[base_data_pivot['advertising_id'] != '']
 
         self.conversion_data = base_data_pivot
         self.result_data = base_data_pivot
