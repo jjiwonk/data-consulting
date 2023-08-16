@@ -14,8 +14,7 @@ def read_organic(from_date):
     yearmonth_list = [(from_date + relativedelta(months=i)).strftime("%Y-%m") for i in range(5)]
 
     def read_file(OS):
-        #file_dir = dr.dropbox_dir + f'/광고사업부/4. 광고주/핀다_7팀/14. AF RAW 합본/- raw_organic/{OS}'
-        file_dir = dr.dropbox_dir + f'/광고사업부/데이터컨설팅/데이터 분석 프로젝트/핀다/DCT1559/오가닉/{OS}'
+        file_dir = dr.dropbox_dir + f'/광고사업부/4. 광고주/핀다_7팀/14. AF RAW 합본/- raw_organic/{OS}'
         file_list = os.listdir(file_dir)
         files = [f for f in file_list if ('in-app-events' in f) & (any([yearmonth in f for yearmonth in yearmonth_list]))]
 
@@ -46,8 +45,7 @@ def read_organic(from_date):
 def read_paid(from_date):
     yearmonth_list = [(from_date + relativedelta(months=i)).strftime("%Y%m") for i in range(5)]
 
-    #file_dir = dr.dropbox_dir + '/광고사업부/4. 광고주/핀다_7팀/2. 리포트/자동화리포트/appsflyer_prism_2'
-    file_dir = dr.dropbox_dir + '/광고사업부/데이터컨설팅/데이터 분석 프로젝트/핀다/DCT1559/페이드'
+    file_dir = dr.dropbox_dir + '/광고사업부/4. 광고주/핀다_7팀/2. 리포트/자동화리포트/appsflyer_prism_2'
     file_list = os.listdir(file_dir)
     file_list = [f for f in file_list if ('.csv' in f) & (any([yearmonth in f for yearmonth in yearmonth_list]))]
 
@@ -103,8 +101,7 @@ def read_addition(detarget_dir, data_list):
 
 def detargeting_inspection(total_data, today, from_date):
     # 디타겟 세그먼트 셋팅
-    #detarget_dir = dr.dropbox_dir + '/광고사업부/4. 광고주/핀다_7팀/2. 업무/RE_디타겟점검/RAW'
-    detarget_dir = dr.dropbox_dir + '/광고사업부/데이터컨설팅/데이터 분석 프로젝트/핀다/DCT1559/디타겟_RAW'
+    detarget_dir = dr.dropbox_dir + '/광고사업부/4. 광고주/핀다_7팀/2. 업무/RE_디타겟점검/RAW'
     file_path = detarget_dir + '/detarget_list.txt'
     setting_dict = eval(open(file_path, 'r', encoding='utf-8-sig').read())
     media_list = setting_dict.pop('media_list')
@@ -150,8 +147,7 @@ def detargeting_inspection(total_data, today, from_date):
     daily_for_download.loc[daily_for_download['campaign'].isin(campaign_list), 'is_operating'] = 1
     daily_for_download['is_operating'] = daily_for_download['is_operating'].fillna(0)
     daily_for_download.to_csv(rd_dir + '/daily_segment_analysis_df.csv', index=False, encoding='utf-8-sig')
-    #backup_dir = dr.dropbox_dir + '/광고사업부/4. 광고주/핀다_7팀/2. 업무/RE_디타겟점검/RAW_FIN'
-    backup_dir = dr.dropbox_dir + '/광고사업부/데이터컨설팅/데이터 분석 프로젝트/핀다/DCT1559/디타겟_RAW_FIN'
+    backup_dir = dr.dropbox_dir + '/광고사업부/4. 광고주/핀다_7팀/2. 업무/RE_디타겟점검/RAW_FIN'
     daily_for_download.to_csv(backup_dir + f'/daily_segment_analysis_df_{today.strftime("%y%m%d")}.csv', index=False,
                               encoding='utf-8-sig')
 
