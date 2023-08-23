@@ -197,7 +197,7 @@ class EventValueParser():
 
 
 class segment_analysis():
-    def __init__(self, raw_data: pd.DataFrame, event_dict: dict, conversion_event: list, column_list: list, detarget_dict: dict = None, media_list: list = None):
+    def __init__(self, raw_data: pd.DataFrame, event_dict: dict, conversion_event: list, column_list: list, detarget_dict: dict = None, media_list: list = None, user_id: str = 'advertising_id'):
         self.raw_data = raw_data
         self.event_dict = event_dict
         if detarget_dict is None:
@@ -209,22 +209,26 @@ class segment_analysis():
         self.column_list = column_list
         self.conversion_data = None
         self.result_data = None
+        self.user_column = user_id
 
     def update_conversion_data(self):
         df = self.raw_data.copy()
 
-        base_data = df.loc[df['event_name'].isin(self.conversion_event)]
+        if any([event not in ['re-engagement', 're-attribution'] for event in self.conversion_event]):
+            base_data = df
+        else:
+            base_data = df.loc[df['event_name'].isin(['re-engagement', 're-attribution'])]
         base_data = base_data.loc[base_data['attributed_touch_time'].notnull()]
         base_data = base_data.rename(columns={'attributed_touch_time': 'conversion_time'})
         base_data['conversion_date'] = pd.to_datetime(base_data['conversion_time']).dt.strftime('%Y-%m-%d')
-        base_data = base_data.drop_duplicates(['conversion_time', 'advertising_id', 'event_name'])
+        base_data = base_data.drop_duplicates(['conversion_time', self.user_column, 'event_name'])
         base_data['Cnt'] = 1
         if self.media_list is not None:
             base_data = base_data.loc[base_data['media_source'].isin(self.media_list)]
         base_data_pivot = base_data.pivot_table(index=self.column_list,
                                                 values='Cnt',
                                                 aggfunc='sum').reset_index()
-        base_data_pivot = base_data_pivot.loc[base_data_pivot['advertising_id'] != '']
+        base_data_pivot = base_data_pivot.loc[base_data_pivot[self.user_column] != '']
 
         self.conversion_data = base_data_pivot
         self.result_data = base_data_pivot
@@ -232,10 +236,13 @@ class segment_analysis():
     def make_segment_dataset(self, target_event, seg_name):
         df = self.raw_data.copy()
 
-        seg_df = df.loc[df['event_name'] == target_event]
+        if target_event == 'Opened Finda App':
+            seg_df = df
+        else:
+            seg_df = df.loc[df['event_name'] == target_event]
         seg_df['segment'] = seg_name
-        seg_df = seg_df.drop_duplicates(['advertising_id', 'event_time'])
-        seg_df = seg_df[['event_time', 'segment', 'advertising_id']]
+        seg_df = seg_df.drop_duplicates([self.user_column, 'event_time'])
+        seg_df = seg_df[['event_time', 'segment', self.user_column]]
 
         return seg_df
 
@@ -249,16 +256,15 @@ class segment_analysis():
             segment_df = self.make_segment_dataset(target_event, seg_name)
             col_name = f'{seg_name}_in_{str(target_period)}_days'
 
-            merge_data = conversion_data.merge(segment_df, on='advertising_id', how='left')
+            merge_data = conversion_data.merge(segment_df, on=self.user_column, how='left')
             merge_data['time_gap'] = (merge_data['conversion_time'] - merge_data['event_time']).dt.days
 
             merge_data.loc[(merge_data['time_gap'] < target_period) & (merge_data['time_gap'] > 0), col_name] = True
 
             merge_data[col_name] = merge_data[col_name].fillna(False)
-            sorted_merge_data = merge_data[['advertising_id', 'conversion_time', col_name]].sort_values(['advertising_id', 'conversion_time', col_name], ascending=False)
-            dedup_merge_data = sorted_merge_data.drop_duplicates(['advertising_id', 'conversion_time'], keep='first')
+            dedup_merge_data = merge_data[[self.user_column, 'conversion_time', col_name]].drop_duplicates([self.user_column, 'conversion_time'], keep='first')
 
-            result_data = self.result_data.merge(dedup_merge_data, on=['advertising_id', 'conversion_time'], how='left')
+            result_data = self.result_data.merge(dedup_merge_data, on=[self.user_column, 'conversion_time'], how='left')
             result_data[col_name] = result_data[col_name].fillna(False)
 
             self.result_data = result_data
