@@ -447,13 +447,14 @@ class FunnelDataGenerator():
 
 
 def user_identifier(df, platform_id, user_id):
-    df = df.loc[df[user_id].str.len()>0]
-    df = df.drop_duplicates([platform_id, user_id])
+    non_null_df = df.loc[df[user_id].str.len()>0]
+    non_null_df = non_null_df.sort_values([platform_id, user_id])
+    non_null_df = non_null_df.drop_duplicates([platform_id, user_id])
 
-    pid_array = np.array(df[platform_id])
+    pid_array = np.array(non_null_df[platform_id])
     pid_dict = {}
 
-    uid_array = np.array(df[user_id])
+    uid_array = np.array(non_null_df[user_id])
     uid_dict = {}
 
     num = 1
@@ -470,6 +471,10 @@ def user_identifier(df, platform_id, user_id):
                 uid_dict[uid] = user_name
                 num += 1
 
+    blank_user = df.loc[~df[platform_id].isin(pid_dict.keys()), platform_id].unique()
+    blank_user_dict = dict(zip(blank_user, ['user ' + str(n) for n in (range(num, num + len(blank_user)))]))
+
+    pid_dict.update(blank_user_dict)
     return pid_dict
 
 
