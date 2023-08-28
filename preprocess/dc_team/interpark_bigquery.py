@@ -3,9 +3,11 @@ from workers import read_data
 import pandas as pd
 import pyarrow as pa
 import os
+from urllib.parse import urlparse, parse_qs
+import datetime
 
-raw_dir = dr.download_dir
-ga_files = os.listdir(raw_dir + '/GA_데이터')
+raw_dir = dr.download_dir + '/06. 공유자료'
+ga_files = os.listdir(raw_dir)
 
 dtypes = {'Date' : pa.string(),
           'Part_Main' : pa.string(),
@@ -18,6 +20,8 @@ dtypes = {'Date' : pa.string(),
           'TrafficSource_source': pa.string(),
           'TrafficSource_medium': pa.string(),
           'pagePath': pa.string(),
+          'page_hostname' : pa.string(),
+          'page_type' : pa.string(),
           'action_type': pa.string(),
           'transactionId': pa.string(),
           'productRevenue': pa.string(),
@@ -27,20 +31,41 @@ dtypes = {'Date' : pa.string(),
           'eventInfo_eventLabel': pa.string(),
           'eventInfo_eventValue': pa.string()}
 
-data = read_data.pyarrow_csv(directory=raw_dir + '/GA_데이터', dtypes=dtypes,file_list=ga_files)
-data.loc[data['eventInfo_eventCategory']=='전자상거래 이벤트']['eventInfo_eventLabel'].value_counts()
+data = read_data.pyarrow_csv(directory=raw_dir, dtypes=dtypes,file_list=ga_files[:1])
 
-transaction_data = data.loc[data['eventInfo_eventLabel']=='Transaction']
-transaction_data = transaction_data.sort_values(['userId', 'Date'])
-transaction_data = transaction_data.loc[transaction_data['userId']!='']
-transaction_data['Cnt'] = 1
-transaction_user_pivot = transaction_data.pivot_table(index = 'userId', values = 'Cnt', columns = 'TrafficSource_source', aggfunc = 'sum', margins=True).reset_index()
-transaction_user_pivot = transaction_user_pivot.sort_values('facebook', ascending=False)
-transaction_user_pivot = transaction_user_pivot.fillna(0)
-transaction_user_pivot.to_csv(raw_dir + '/user_id_pivot.csv', index=False, encoding = 'utf-8-sig')
+# pagepath에 utm_source는 facebook으로 로깅된 이력이 있는 유저들
+facebook = data.loc[data['pagePath'].str.contains('utm_source=facebook')]
+facebook['fbclid'] = facebook['pagePath'].apply(lambda x :
+                                                parse_qs(urlparse(x).query)['fbclid'][0] if 'fbclid' in x else '') # 광고로 유입된 유저만 필터링
+facebook = facebook.loc[facebook['fbclid']!='']
+facebook = facebook.sort_values('visitStartTime')
+facebook = facebook.drop_duplicates('fbclid', keep = 'first')
+facebook['Cnt'] = 1
+#facebook_pivot = facebook.pivot_table(index = ['Part_Main', 'Part_Sub', 'TrafficSource_source'], values = 'Cnt', aggfunc = 'sum').reset_index()
 
-temp = data.loc[data['pagePath'].str.contains('utm_source=facebook')]
+# 기여 소스가 페이스북으로 인정된 유입 이력이 있는 유저
+facebook_user_list = facebook.loc[(facebook['TrafficSource_source']=='facebook'), 'fullVisitorId']
 
-direct_user = data.loc[(data['TrafficSource_source']=='(direct)')&
-                       (data['userId']!=''), 'userId'].unique()
-direct_user_log = data.loc[data['userId'].isin(direct_user)]
+# 페이스북으로 인정된 유입 이력이 있는 유저의 전체 로그를 불러옴
+facebook_user_log = data.merge(facebook_user_list, on = 'fullVisitorId', how = 'inner')
+
+# 그 중에서도 페이스북이 아닌 소스로 인정된 이력이 있는 유저 리스트를 다시 탐색
+facebook_user_log = facebook_user_log.loc[facebook_user_log['TrafficSource_source']!='facebook']
+target_user_list = facebook_user_log['fullVisitorId']
+
+# 페이스북으로 소스가 인정된 이력도 있고, 다른 소스로도 인정된 이력이 있는 유저들의 전체 데이터를 가져옴
+target_user_journey = data.merge(target_user_list, on = ['fullVisitorId'], how = 'inner')
+target_user_journey = target_user_journey.sort_values(['fullVisitorId', 'visitStartTime']) # 방문 시간 순서대로 정렬
+target_user_journey['VisitTimestamp'] = target_user_journey['visitStartTime'].apply(lambda x : datetime.datetime.utcfromtimestamp(int(x)))
+target_user_journey.to_csv(dr.download_dir + '/interpark_target_user_log.csv', index=False, encoding = 'utf-8-sig')
+
+target_user_journey_dedup = target_user_journey.drop_duplicates(['TrafficSource_source', 'fullVisitorId', 'visitStartTime'], keep = 'first')
+target_user_journey_dedup['time_gap'] = target_user_journey_dedup.groupby('fullVisitorId')['VisitTimestamp'].diff()
+target_user_journey_dedup['time_gap'] = target_user_journey_dedup['time_gap'].apply(lambda x: x.total_seconds())
+target_user_journey_dedup.to_csv(dr.download_dir + '/interpark_target_user_log_unique.csv', index=False, encoding = 'utf-8-sig')
+
+
+target_user_jouney_non_facebook = target_user_journey_dedup.loc[target_user_journey['TrafficSource_source']!='facebook']
+target_user_jouney_non_facebook_pivot = target_user_jouney_non_facebook.pivot_table(index = 'TrafficSource_source', values = 'time_gap', aggfunc = 'mean')
+target_user_jouney_non_facebook['fullVisitorId']
+target_user_jouney_non_facebook['TrafficSource_source'].value_counts()
