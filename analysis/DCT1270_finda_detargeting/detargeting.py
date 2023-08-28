@@ -11,12 +11,12 @@ from spreadsheet import spreadsheet
 
 
 def read_organic(from_date):
-    yearmonth_list = [(from_date + relativedelta(months=i)).strftime("%Y-%m") for i in range(5)]
+    yearmonth_list = [(from_date + relativedelta(months=i)).strftime("%Y-%m") for i in range(4)]
 
     def read_file(OS):
         file_dir = dr.dropbox_dir + f'/광고사업부/4. 광고주/핀다_7팀/14. AF RAW 합본/- raw_organic/{OS}'
         file_list = os.listdir(file_dir)
-        files = [f for f in file_list if ('in-app-events' in f) & (any([yearmonth in f for yearmonth in yearmonth_list]))]
+        files = [f for f in file_list if any([yearmonth in f for yearmonth in yearmonth_list])]
 
         dtypes = {
             'Install Time': pa.string(),
@@ -24,7 +24,9 @@ def read_organic(from_date):
             'Event Time': pa.string(),
             'Event Name': pa.string(),
             'AppsFlyer ID': pa.string(),
-            'Customer User ID': pa.string()}
+            'Customer User ID': pa.string(),
+            'Advertising ID': pa.string(),
+            'IDFA': pa.string()}
 
         data = read_data.pyarrow_csv(dtypes=dtypes, directory=file_dir, file_list=files)
         return data
@@ -33,17 +35,17 @@ def read_organic(from_date):
     aos = read_file('aos')
     opened_app = read_file('Opened Finda App')
 
-    organic_data = pd.concat([ios, aos, opened_app])
+    organic_data = pd.concat([ios, aos, opened_app]).reset_index(drop=True)
 
+    organic_data.loc[organic_data['Advertising ID'] == '', 'Advertising ID'] = organic_data['IDFA']
     organic_data['Event Time'] = pd.to_datetime(organic_data['Event Time'])
     organic_data['Attributed Touch Time'] = pd.to_datetime(organic_data['Attributed Touch Time'])
-    organic_data = organic_data.loc[organic_data['Event Time'] >= datetime.datetime(year=2022, month=7, day=1)]
 
     return organic_data
 
 
 def read_paid(from_date):
-    yearmonth_list = [(from_date + relativedelta(months=i)).strftime("%Y%m") for i in range(5)]
+    yearmonth_list = [(from_date + relativedelta(months=i)).strftime("%Y%m") for i in range(4)]
 
     file_dir = dr.dropbox_dir + '/광고사업부/4. 광고주/핀다_7팀/2. 리포트/자동화리포트/appsflyer_prism_2'
     file_list = os.listdir(file_dir)
@@ -65,6 +67,8 @@ def read_paid(from_date):
     data = read_data.pyarrow_csv(dtypes=dtypes, directory=file_dir, file_list=file_list)
     data = data.sort_values('event_time')
 
+    data.loc[data['advertising_id'] == '', 'advertising_id'] = data['idfa']
+    data = data.drop(columns='idfa')
     data['event_time'] = pd.to_datetime(data['event_time'])
     data['attributed_touch_time'] = pd.to_datetime(data['attributed_touch_time'])
     paid_data = data.drop_duplicates()
@@ -100,6 +104,12 @@ def detargeting_inspection(total_data, today, from_date):
     setting_dict = eval(open(file_path, 'r', encoding='utf-8-sig').read())
     media_list = setting_dict.pop('media_list')
     event_dict = setting_dict.pop('event_dict')
+
+    file_path_all = detarget_dir + '/detarget_list_all.txt'
+    setting_dict_all = eval(open(file_path_all, 'r', encoding='utf-8-sig').read())
+    media_list_all = setting_dict_all.pop('media_list')
+    event_dict_all = setting_dict_all.pop('event_dict')
+
     detarget_df = pd.read_csv(detarget_dir + setting_dict.pop('file_name')).drop_duplicates()
     detarget_dict = {}
     for type in detarget_df.data_type.unique():
@@ -109,28 +119,43 @@ def detargeting_inspection(total_data, today, from_date):
     total_data = pd.concat([total_data, addition_df]).reset_index(drop=True)
 
     rd_dir = dr.dropbox_dir + '/광고사업부/데이터컨설팅/Tableau/result/핀다/retargeting_inspection'
-    daily_previous_df = pd.read_csv(rd_dir + '/daily_segment_analysis_df.csv', encoding='utf-8-sig')
+    daily_previous_df = pd.read_csv(rd_dir + '/daily_segment_analysis_df_updated.csv', encoding='utf-8-sig')
+    daily_previous_df_all = pd.read_csv(rd_dir + '/daily_segment_analysis_df_all_updated.csv', encoding='utf-8-sig')
 
     if today is None:
         to_date = datetime.datetime.today()
     else:
         to_date = today
     total_data = total_data.loc[total_data['event_time'] < to_date]
-    last_day = datetime.datetime.strptime(max(daily_previous_df['conversion_date']), '%Y-%m-%d')
-    # last_day = datetime.datetime.strptime('2023-01-01', '%Y-%m-%d')
-    from_date = last_day.replace(day=1) - relativedelta(months=3)
-    cropped_total_data = total_data.loc[total_data['event_time'] >= from_date]
+    last_day = today.replace(day=1)
+    cropped_total_data = total_data.loc[total_data['event_time'] >= from_date]  # 3개월치만 데이터 다운로드
 
+    # RE 업데이트
     conversion_event = ['re-engagement', 're-attribution']
     column_list = ['campaign', 'media_source', 'advertising_id', 'appsflyer_id', 'customer_user_id', 'conversion_date', 'conversion_time']
-    daily_segment_analysis = segment_analysis(cropped_total_data, event_dict, conversion_event, column_list, detarget_dict, media_list)
+    daily_segment_analysis = segment_analysis(cropped_total_data, event_dict, conversion_event, column_list, detarget_dict, media_list, 'appsflyer_id')
     daily_segment_analysis_df = daily_segment_analysis.do_work()
     daily_for_update = daily_segment_analysis_df.loc[daily_segment_analysis_df['conversion_date'] >= last_day.strftime('%Y-%m-%d')]
     daily_previous_df = daily_previous_df.loc[daily_previous_df['conversion_date'] < last_day.strftime('%Y-%m-%d')]
     daily_for_download = pd.concat([daily_previous_df, daily_for_update], ignore_index=True)
+    # daily_for_download = daily_segment_analysis_df
+    # temp_date = today.replace(day=1) - relativedelta(months=3)
     daily_for_download = daily_for_download.loc[daily_for_download['conversion_date'] >= from_date.strftime('%Y-%m-%d')]
     daily_for_download = daily_for_download.replace(True, 1)
     daily_for_download = daily_for_download.replace(False, 0)
+
+    # UA 포함 업데이트
+    conversion_event_all = ['ALL', 're-engagement', 're-attribution']
+    daily_segment_analysis_all = segment_analysis(cropped_total_data, event_dict_all, conversion_event_all, column_list, detarget_dict, media_list_all, 'appsflyer_id')
+    daily_segment_analysis_df_all = daily_segment_analysis_all.do_work()
+    daily_for_update_all = daily_segment_analysis_df_all.loc[daily_segment_analysis_df_all['conversion_date'] >= last_day.strftime('%Y-%m-%d')]
+    daily_previous_df_all = daily_previous_df_all.loc[daily_previous_df_all['conversion_date'] < last_day.strftime('%Y-%m-%d')]
+    daily_for_download_all = pd.concat([daily_previous_df_all, daily_for_update_all], ignore_index=True)
+    # daily_for_download_all = daily_segment_analysis_df_all
+    daily_for_download_all = daily_for_download_all.loc[daily_for_download_all['conversion_date'] >= from_date.strftime('%Y-%m-%d')]
+    daily_for_download_all = daily_for_download_all.replace(True, 1)
+    daily_for_download_all = daily_for_download_all.replace(False, 0)
+    daily_for_download_all.to_csv(rd_dir + '/daily_segment_analysis_df_all_updated.csv', index=False, encoding='utf-8-sig')
 
     # 운영 여부 확인 컬럼 추가
     spread_sheet_url = 'https://docs.google.com/spreadsheets/d/1OXlBSaK5km6YHxHdvZtgm2nNK033Pjh7dPoA0gBzISA/edit#gid=797669622'
@@ -140,7 +165,7 @@ def detargeting_inspection(total_data, today, from_date):
     campaign_list = setting_df.loc[:, '캠페인명']
     daily_for_download.loc[daily_for_download['campaign'].isin(campaign_list), 'is_operating'] = 1
     daily_for_download['is_operating'] = daily_for_download['is_operating'].fillna(0)
-    daily_for_download.to_csv(rd_dir + '/daily_segment_analysis_df.csv', index=False, encoding='utf-8-sig')
+    daily_for_download.to_csv(rd_dir + '/daily_segment_analysis_df_updated.csv', index=False, encoding='utf-8-sig')
     backup_dir = dr.dropbox_dir + '/광고사업부/4. 광고주/핀다_7팀/2. 업무/RE_디타겟점검/RAW_FIN'
     daily_for_download.to_csv(backup_dir + f'/daily_segment_analysis_df_{today.strftime("%y%m%d")}.csv', index=False,
                               encoding='utf-8-sig')
@@ -149,7 +174,7 @@ def detargeting_inspection(total_data, today, from_date):
 
 
 # 업데이트 기준 날짜 (ex. 2023년 4월 30일까지 업데이트 시 > 2023-05-01 기재)
-today = datetime.datetime.strptime('2023-07-05', '%Y-%m-%d')
+today = datetime.datetime.strptime('2023-08-22', '%Y-%m-%d')
 from_date = today.replace(day=1) - relativedelta(months=3)
 organic_data = read_organic(from_date)
 organic_data.columns = [col.lower().replace(' ', '_') for col in organic_data.columns]
