@@ -22,8 +22,8 @@ class Key:
     USE_LOGGING = True
     login_id = None
     login_pw = None
-    id_input_value = '#login_username'
-    pw_input_value = '#login_password'
+    id_input_value = 'normal_login_username'
+    pw_input_value = 'normal_login_password'
     login_btn_value = '#root > div > div > div > div > form > div:nth-child(4) > div > div > span > button.ant-btn.btn_main_login.ant-btn-primary'
     service_item_value = '#content > div.tab2 > ul > li:nth-child(2) > a'
     total_item_value = '#content > div.prdt_status_lst > h4 > a > span'
