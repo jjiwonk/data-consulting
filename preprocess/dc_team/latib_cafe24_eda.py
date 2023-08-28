@@ -105,7 +105,21 @@ unique_purchase_data['Cnt'] = 1
 
 first_purchase_data = unique_purchase_data.sort_values(['user_id', '주문일시'])
 first_purchase_data = first_purchase_data.drop_duplicates(subset = ['user_id'],keep='first')
-first_purchase_data = first_purchase_data[['order_id', 'user_id','date','주문일시', '총 결제금액(KRW)', '매출경로', '결제수단']]
+
+total_log.loc[total_log['order_id'].isin(first_purchase_data['order_id']), '첫구매 여부'] = True
+total_log['첫구매 여부'] = total_log['첫구매 여부'].fillna(False)
+
+total_log.to_csv(dr.download_dir + '/latib_raw.csv', index=False, encoding = 'utf-8-sig')
+
+np.sum(total_log.loc[total_log['date']==datetime.date(2023,8,15)].drop_duplicates(subset = 'order_id', keep='first')['총 주문금액'])
+
+
+
+
+
+
+
+first_purchase_data = first_purchase_data[['order_id', 'user_id','date','주문일시', '총 결제금액(KRW)', '매출경로', '결제수단', 'Cnt']]
 first_purchase_data = first_purchase_data.rename(columns = {'주문일시' : '첫주문일시'})
 first_purchase_pivot = first_purchase_data.pivot_table(index =['매출경로'], values = ['총 결제금액(KRW)', 'Cnt'], aggfunc='sum').reset_index()
 first_purchase_order_id = first_purchase_data['order_id']
