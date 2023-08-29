@@ -70,15 +70,15 @@ class SpcDownload(Worker):
         driver.implicitly_wait(time_to_wait=5)
 
     def get_download_number(self, driver):
-        product_mng = driver.find_element(by=By.PARTIAL_LINK_TEXT, value='상품관리')
+        product_mng = wait_for_element(driver, "상품관리", By.PARTIAL_LINK_TEXT)
         product_mng.click()
 
-        product_mng_sub_menu = driver.find_element(by=By.PARTIAL_LINK_TEXT, value='상품현황 및 관리')
+        product_mng_sub_menu = wait_for_element(driver, "상품현황 및 관리", By.PARTIAL_LINK_TEXT)
         product_mng_sub_menu.click()
 
         time.sleep(5)
 
-        iframe_list = driver.find_elements(by=By.TAG_NAME, value = 'iframe')
+        iframe_list = driver.find_elements(by=By.TAG_NAME, value='iframe')
         if len(iframe_list) > 0 :
             driver.switch_to.frame(0)
             self.logger.info('iframe을 확인하여 전환합니다.')
@@ -115,7 +115,7 @@ class SpcDownload(Worker):
 
         os_util.clear_folder(download_dir)
 
-        driver = get_chromedriver(headless=Key.USE_HEADLESS, download_dir=download_dir)
+        driver = get_chromedriver(headless=False, download_dir=download_dir)
         driver.get(Key.LOGIN_URL)
 
         try :
@@ -144,7 +144,7 @@ class SpcDownload(Worker):
                     if i == down_num - 1:
                         break
                     else:
-                        driver.find_element(By.CSS_SELECTOR, ".swal-button .swal-button--confirm").click()
+                        driver.find_element(By.LINK_TEXT, "확인").click()
                         download_btn = wait_for_element(driver=driver, by=By.CSS_SELECTOR,
                                                         value=f'#downloadList > tr:nth-child({i + 1}) > td.last > a',
                                                         max_retry_cnt=10)
