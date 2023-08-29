@@ -115,7 +115,7 @@ class SpcDownload(Worker):
 
         os_util.clear_folder(download_dir)
 
-        driver = get_chromedriver(headless=False, download_dir=download_dir)
+        driver = get_chromedriver(headless=Key.USE_HEADLESS, download_dir=download_dir)
         driver.get(Key.LOGIN_URL)
 
         try :
