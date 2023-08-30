@@ -144,7 +144,8 @@ class SpcDownload(Worker):
                     if i == down_num - 1:
                         break
                     else:
-                        driver.find_element(By.LINK_TEXT, "확인").click()
+                        element = wait_for_element(driver=driver, by=By.LINK_TEXT, value="확인")
+                        element.click()
                         download_btn = wait_for_element(driver=driver, by=By.CSS_SELECTOR,
                                                         value=f'#downloadList > tr:nth-child({i + 1}) > td.last > a',
                                                         max_retry_cnt=10)
