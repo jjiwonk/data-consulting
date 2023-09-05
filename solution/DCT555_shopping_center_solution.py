@@ -70,11 +70,12 @@ class SpcDownload(Worker):
         driver.implicitly_wait(time_to_wait=5)
 
     def get_download_number(self, driver):
-        product_mng = wait_for_element(driver, "상품관리", By.PARTIAL_LINK_TEXT, max_retry_cnt=10)
-        product_mng[0].click()
+        time.sleep(5)
+        product_mng = driver.find_element(by=By.PARTIAL_LINK_TEXT, value='상품관리')
+        product_mng.click()
 
         product_mng_sub_menu = wait_for_element(driver, "상품현황 및 관리", By.PARTIAL_LINK_TEXT, max_retry_cnt=10)
-        product_mng_sub_menu[0].click()
+        product_mng_sub_menu.click()
 
         time.sleep(5)
 
