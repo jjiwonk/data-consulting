@@ -70,10 +70,10 @@ class SpcDownload(Worker):
         driver.implicitly_wait(time_to_wait=5)
 
     def get_download_number(self, driver):
-        product_mng = wait_for_element(driver, "상품관리", By.PARTIAL_LINK_TEXT)
+        product_mng = wait_for_element(driver, "상품관리", By.PARTIAL_LINK_TEXT, max_retry_cnt=10)
         product_mng.click()
 
-        product_mng_sub_menu = wait_for_element(driver, "상품현황 및 관리", By.PARTIAL_LINK_TEXT)
+        product_mng_sub_menu = wait_for_element(driver, "상품현황 및 관리", By.PARTIAL_LINK_TEXT, max_retry_cnt=10)
         product_mng_sub_menu.click()
 
         time.sleep(5)
@@ -172,7 +172,7 @@ class SpcDownload(Worker):
                 #     break
 
                 progress_bar = wait_for_element(driver=driver, by=By.CSS_SELECTOR,
-                                                value=f'#downloadList > tr:nth-child({i + 1}) > td:nth-child(3) > span > span')
+                                                value=f'#downloadList > tr:nth-child({i + 1}) > td:nth-child(3) > span > span', max_retry_cnt=10)
                 progress = progress_bar.get_attribute('style')
 
                 n = 0
