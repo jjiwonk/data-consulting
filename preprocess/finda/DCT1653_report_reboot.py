@@ -84,10 +84,12 @@ ms.update_metric_hierarchy('uni','Cnt', 'Clicked Signup Completion Button', 'D0'
 ms.update_metric_hierarchy('uni','Cnt', 'install', 'D0', 'click_date', 'install(uni) D0.T')
 ms.update_metric_hierarchy('uni','Cnt', 're-attribution', 'D0', 'click_date', 're-attribution(uni) D0.T')
 ms.update_metric_hierarchy('uni','Cnt', 're-engagement', 'D0', 'click_date', 're-engagement(uni) D0.T')
-ms.update_metric_hierarchy('uni','Cnt', 'Viewed LA Home', 'D0', 'click_date', 'VLH(uni) D0.T')
-ms.update_metric_hierarchy('uni','Cnt', 'Viewed LA Home No Result', 'D0', 'click_date', 'VLHN(uni) D0.T')
+
 ms.update_metric_hierarchy('uni','Cnt', 'Viewed LA Home', 'D30', 'click_date', 'VLH(uni) D30.T')
 ms.update_metric_hierarchy('uni','Cnt', 'Viewed LA Home No Result', 'D30', 'click_date', 'VLHN(uni) D30.T')
+
+ms.update_metric_hierarchy('uni_vlh','Cnt', 'Viewed LA Home', 'D0', 'click_date', 'VLH(uni) D0.T')
+ms.update_metric_hierarchy('uni_vlh','Cnt', 'Viewed LA Home No Result', 'D0', 'click_date', 'VLHN(uni) D0.T')
 
 # data_set
 data_set = pd.read_csv(dr.download_dir + '/data_set.csv')
@@ -137,7 +139,6 @@ before_data.index = (before_data.index + 1)
 
 # appsflyer_push_data
 appsflyer_push_data = pd.concat([push_data, before_data], axis= 1)
-appsflyer_push_data = appsflyer_push_data[['appsflyer_id', 'install_time', 'media_source', 'conversion_source']]
 appsflyer_push_data = appsflyer_push_data.sort_values(['appsflyer_id', 'install_time'])
 appsflyer_push_data.index = range(len(appsflyer_push_data))
 
@@ -189,53 +190,58 @@ report_data_on_month['Cnt'] = 1
 
 # 이벤트 집계
 
-def event_pivoting(date_col_name, raw_data, metric_list):
+def event_pivoting(metric_group, raw_data):
     pivot_index = ['date', 'campaign', 'adset', 'ad', 'channel', 'platform', 'is_retargeting']
+    result_pivot_list = []
 
-    raw_data['date'] = raw_data[date_col_name]
-    raw_data[pivot_index] = raw_data[pivot_index].fillna('ㅁ')
+    for date in ['click_date', 'event_date'] :
 
-    pivot_list = []
-    for window in ms.attribution_window:
-        window_data = raw_data.loc[raw_data[window] == True]
-        pivot_data = window_data.pivot_table(index=pivot_index,
-                                             columns='event_name',
-                                             values=['Cnt', 'event_revenue'],
-                                             aggfunc='sum')
-        pivot_data.columns = ['/'.join(col) + '/' + window + '/' + date_col_name for col in pivot_data.columns]
+        raw_data['date'] = raw_data[date]
+        raw_data[pivot_index] = raw_data[pivot_index].fillna('ㅁ')
 
-        pivot_list.append(pivot_data)
+        pivot_list = []
+        for window in ms.attribution_window:
+            window_data = raw_data.loc[raw_data[window] == True]
+            pivot_data = window_data.pivot_table(index=pivot_index,
+                                                 columns='event_name',
+                                                 values=['Cnt', 'event_revenue'],
+                                                 aggfunc='sum')
+            pivot_data.columns = ['/'.join(col) + '/' + window + '/' + date for col in pivot_data.columns]
 
-    pivot_concat = pd.concat(pivot_list, axis=1)
-    pivot_concat = pivot_concat[metric_list]
-    return pivot_concat
+            pivot_list.append(pivot_data)
+
+        pivot_concat = pd.concat(pivot_list, axis=1)
+
+        metric_list = ms.get_metric_list(metric_group, 'date_type', date)
+        pivot_concat = pivot_concat[metric_list]
+
+        result_pivot_list.append(pivot_concat)
+
+    result_pivot_total = pd.concat(result_pivot_list, axis=1)
+    result_pivot_total.columns = [ms.metric_group[metric_group][col] for col in result_pivot_total.columns]
+    return result_pivot_total
 
 
 # cn (Count)
-cn_pivot_list = []
-for date in ['click_date', 'event_date'] :
-    cn_pivot_data = event_pivoting(date, report_data_on_month, ms.get_metric_list('cn','date_type',date))
-    cn_pivot_list.append(cn_pivot_data)
-cn_pivot_total = pd.concat(cn_pivot_list, axis = 1)
-cn_pivot_total.columns = [ms.metric_group['cn'][col] for col in cn_pivot_total.columns]
-
+cn_pivot_total = event_pivoting('cn', report_data_on_month)
 
 # uni (Unique)
 report_data_on_month_unique = report_data_on_month.sort_values(['event_time', 'install_time', 'attributed_touch_time'])
 report_data_on_month_unique = report_data_on_month_unique.drop_duplicates(['appsflyer_id', 'event_name'])
 
-uni_pivot_list = []
-for date in ['click_date', 'event_date'] :
-    uni_pivot_data = event_pivoting(date, report_data_on_month_unique, ms.get_metric_list('uni','date_type',date))
-    uni_pivot_list.append(uni_pivot_data)
-uni_pivot_total = pd.concat(uni_pivot_list, axis = 1)
-uni_pivot_total.columns = [ms.metric_group['uni'][col] for col in uni_pivot_total.columns]
+uni_pivot_total = event_pivoting('uni', report_data_on_month_unique)
+
+# uni (Unique)
+report_data_on_month_unique_vlh = report_data_on_month.sort_values(['event_time', 'install_time', 'attributed_touch_time'])
+report_data_on_month_unique_vlh = report_data_on_month_unique_vlh.loc[report_data_on_month_unique_vlh['event_name'].str.contains('Viewed LA Home')]
+report_data_on_month_unique_vlh = report_data_on_month_unique_vlh.drop_duplicates('appsflyer_id')
+
+uni_vlh_pivot_total = event_pivoting('uni_vlh', report_data_on_month_unique_vlh)
 
 # total events
-total_event_pivot = pd.concat([cn_pivot_total, uni_pivot_total], axis = 1)
+total_event_pivot = pd.concat([cn_pivot_total, uni_pivot_total, uni_vlh_pivot_total], axis = 1)
 total_event_pivot = total_event_pivot.fillna(0)
 total_event_pivot = total_event_pivot.reset_index()
-total_event_pivot.columns
 
 # 계산된 필드
 total_event_pivot['total_install(uni) D0.T'] = total_event_pivot['install(uni) D0.T'] + \
