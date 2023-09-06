@@ -2,6 +2,8 @@ import time
 
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import TimeoutException
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
 from utils.selenium_util import get_chromedriver, wait_for_element, selenium_error_logging
 from utils.path_util import get_tmp_path
@@ -24,7 +26,7 @@ class Key:
     login_pw = None
     id_input_value = 'login_username'
     pw_input_value = 'login_password'
-    login_btn_value = '#root > div > div > div > div > form > div:nth-child(4) > div > div > span > button.ant-btn.btn_main_login.ant-btn-primary'
+    login_btn_value = 'login_button'
     service_item_value = '#content > div.tab2 > ul > li:nth-child(2) > a'
     total_item_value = '#content > div.prdt_status_lst > h4 > a > span'
     file_name = None
@@ -50,13 +52,13 @@ class SpcDownload(Worker):
         Key.page_source_file_name = f'Error PageSource_{owner_id}_{product_id}_{time_str}.txt'
 
     def spc_login_action(self, driver):
-        id_input = driver.find_element(by=By.ID, value=Key.id_input_value)
+        id_input = wait_for_element(driver, Key.id_input_value, By.ID)
         id_input.send_keys(Key.login_id)
 
-        pw_input = driver.find_element(by=By.ID, value=Key.pw_input_value)
+        pw_input = wait_for_element(driver, Key.pw_input_value, By.ID)
         pw_input.send_keys(Key.login_pw)
 
-        login_click = driver.find_element(by=By.CSS_SELECTOR, value=Key.login_btn_value)
+        login_click = wait_for_element(driver, Key.login_btn_value, By.ID)
         login_click.click()
 
         msg = "로그인 완료"
@@ -68,15 +70,16 @@ class SpcDownload(Worker):
         driver.implicitly_wait(time_to_wait=5)
 
     def get_download_number(self, driver):
+        time.sleep(5)
         product_mng = driver.find_element(by=By.PARTIAL_LINK_TEXT, value='상품관리')
         product_mng.click()
 
-        product_mng_sub_menu = driver.find_element(by=By.PARTIAL_LINK_TEXT, value='상품현황 및 관리')
+        product_mng_sub_menu = wait_for_element(driver, "상품현황 및 관리", By.PARTIAL_LINK_TEXT, max_retry_cnt=10)
         product_mng_sub_menu.click()
 
         time.sleep(5)
 
-        iframe_list = driver.find_elements(by=By.TAG_NAME, value = 'iframe')
+        iframe_list = driver.find_elements(by=By.TAG_NAME, value='iframe')
         if len(iframe_list) > 0 :
             driver.switch_to.frame(0)
             self.logger.info('iframe을 확인하여 전환합니다.')
@@ -142,7 +145,8 @@ class SpcDownload(Worker):
                     if i == down_num - 1:
                         break
                     else:
-                        driver.find_element(By.CSS_SELECTOR, ".swal-button .swal-button--confirm").click()
+                        element = wait_for_element(driver=driver, by=By.LINK_TEXT, value="확인", max_retry_cnt=10)
+                        element.click()
                         download_btn = wait_for_element(driver=driver, by=By.CSS_SELECTOR,
                                                         value=f'#downloadList > tr:nth-child({i + 1}) > td.last > a',
                                                         max_retry_cnt=10)
@@ -169,7 +173,7 @@ class SpcDownload(Worker):
                 #     break
 
                 progress_bar = wait_for_element(driver=driver, by=By.CSS_SELECTOR,
-                                                value=f'#downloadList > tr:nth-child({i + 1}) > td:nth-child(3) > span > span')
+                                                value=f'#downloadList > tr:nth-child({i + 1}) > td:nth-child(3) > span > span', max_retry_cnt=10)
                 progress = progress_bar.get_attribute('style')
 
                 n = 0
