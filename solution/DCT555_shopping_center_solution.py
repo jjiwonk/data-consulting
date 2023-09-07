@@ -139,6 +139,7 @@ class SpcDownload(Worker):
 
             for i in range(down_num):
                 try :
+                    time.sleep(3)
                     download_btn = wait_for_element(driver=driver, by=By.CSS_SELECTOR,
                                                     value=f'#downloadList > tr:nth-child({i + 1}) > td.last > a', max_retry_cnt=10)
                 except TimeoutException:
@@ -147,6 +148,7 @@ class SpcDownload(Worker):
                     else:
                         element = wait_for_element(driver=driver, by=By.LINK_TEXT, value="확인", max_retry_cnt=10)
                         element.click()
+                        time.sleep(3)
                         download_btn = wait_for_element(driver=driver, by=By.CSS_SELECTOR,
                                                         value=f'#downloadList > tr:nth-child({i + 1}) > td.last > a',
                                                         max_retry_cnt=10)
