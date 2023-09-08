@@ -138,10 +138,9 @@ class SpcDownload(Worker):
             driver.switch_to.window(driver.window_handles[1])
 
             for i in range(down_num):
-                try :
+                try:
                     time.sleep(3)
-                    download_btn = wait_for_element(driver=driver, by=By.CSS_SELECTOR,
-                                                    value=f'#downloadList > tr:nth-child({i + 1}) > td.last > a', max_retry_cnt=10)
+                    download_btn = driver.find_element(by=By.CSS_SELECTOR, value=f'#downloadList > tr:nth-child({i + 1}) > td.last > a')
                 except TimeoutException:
                     if i == down_num - 1:
                         break
@@ -149,9 +148,7 @@ class SpcDownload(Worker):
                         element = wait_for_element(driver=driver, by=By.LINK_TEXT, value="확인", max_retry_cnt=10)
                         element.click()
                         time.sleep(3)
-                        download_btn = wait_for_element(driver=driver, by=By.CSS_SELECTOR,
-                                                        value=f'#downloadList > tr:nth-child({i + 1}) > td.last > a',
-                                                        max_retry_cnt=10)
+                        download_btn = driver.find_element(by=By.CSS_SELECTOR, value=f'#downloadList > tr:nth-child({i + 1}) > td.last > a')
                 except Exception as e:
                     if i == down_num - 1:
                         break
@@ -174,8 +171,7 @@ class SpcDownload(Worker):
                 #         continue
                 #     break
 
-                progress_bar = wait_for_element(driver=driver, by=By.CSS_SELECTOR,
-                                                value=f'#downloadList > tr:nth-child({i + 1}) > td:nth-child(3) > span > span', max_retry_cnt=10)
+                progress_bar = driver.find_element(by=By.CSS_SELECTOR, value=f'#downloadList > tr:nth-child({i + 1}) > td:nth-child(3) > span > span')
                 progress = progress_bar.get_attribute('style')
 
                 n = 0
