@@ -161,6 +161,7 @@ push_convert = push_convert.loc[push_convert['event_time'].dt.month == 8]
 
 # 2차 가공 (리포트 가공 절차) 시작 =================================================================
 report_data = push_convert.loc[push_convert['event_name'].isin(ms.target_event)]
+report_data = report_data.loc[report_data['media_source']!='push']
 report_data['event_revenue'] = report_data['event_revenue'].apply(lambda x : float(str(x).replace('{}', '0')))
 
 # google_channel_condition
@@ -190,7 +191,7 @@ report_data_on_month['Cnt'] = 1
 
 # 이벤트 집계
 
-def event_pivoting(metric_group, raw_data):
+def event_pivoting(metric_group, raw_data, subset):
     pivot_index = ['date', 'campaign', 'adset', 'ad', 'channel', 'platform', 'is_retargeting']
     result_pivot_list = []
 
@@ -202,6 +203,12 @@ def event_pivoting(metric_group, raw_data):
         pivot_list = []
         for window in ms.attribution_window:
             window_data = raw_data.loc[raw_data[window] == True]
+
+            if 'uni' in metric_group :
+                window_data = window_data.sort_values(['event_time', 'install_time', 'attributed_touch_time'])
+                window_data = window_data.drop_duplicates(subset)
+
+
             pivot_data = window_data.pivot_table(index=pivot_index,
                                                  columns='event_name',
                                                  values=['Cnt', 'event_revenue'],
@@ -223,20 +230,15 @@ def event_pivoting(metric_group, raw_data):
 
 
 # cn (Count)
-cn_pivot_total = event_pivoting('cn', report_data_on_month)
+cn_pivot_total = event_pivoting('cn', report_data_on_month, ['appsflyer_id', 'event_name'])
 
 # uni (Unique)
-report_data_on_month_unique = report_data_on_month.sort_values(['event_time', 'install_time', 'attributed_touch_time'])
-report_data_on_month_unique = report_data_on_month_unique.drop_duplicates(['appsflyer_id', 'event_name'])
-
-uni_pivot_total = event_pivoting('uni', report_data_on_month_unique)
+uni_pivot_total = event_pivoting('uni', report_data_on_month, ['appsflyer_id', 'event_name'])
+uni_pivot_total.sum()
 
 # uni (Unique)
-report_data_on_month_unique_vlh = report_data_on_month.sort_values(['event_time', 'install_time', 'attributed_touch_time'])
-report_data_on_month_unique_vlh = report_data_on_month_unique_vlh.loc[report_data_on_month_unique_vlh['event_name'].str.contains('Viewed LA Home')]
-report_data_on_month_unique_vlh = report_data_on_month_unique_vlh.drop_duplicates('appsflyer_id')
-
-uni_vlh_pivot_total = event_pivoting('uni_vlh', report_data_on_month_unique_vlh)
+report_data_on_month_vlh = report_data_on_month.loc[report_data_on_month['event_name'].str.contains('Viewed LA Home')]
+uni_vlh_pivot_total = event_pivoting('uni_vlh', report_data_on_month_vlh, ['appsflyer_id'])
 
 # total events
 total_event_pivot = pd.concat([cn_pivot_total, uni_pivot_total, uni_vlh_pivot_total], axis = 1)
