@@ -69,7 +69,7 @@ def get_Pmax():
     df = media_prep('Pmax')
     df = pd.merge(df, ref.media_index, on='캠페인', how='left').fillna('no_index')
     df = df.loc[df['지면/상품'].isin(['Pmax'])].drop(columns=['지면/상품'])
-    df.loc[df['캠페인'] == '[2023.01]Pmax_Pmax','캠페인'] = '[2023.01]Pmax_Pmax_SVGG0001'
+    df.loc[df['캠페인'] == '[2023.09]Pmax_Pmax','캠페인'] = '[2023.09]Pmax_Pmax_SVGG0001'
     df.loc[df['캠페인'] == '정기_pmax_sales_2301_Pmax', '캠페인'] = '정기_pmax_sales_2301_Pmax_JJGG0015'
     df['세트'] = '-'
     df['소재'] = '-'
@@ -127,6 +127,7 @@ def get_GFA():
 
 def get_크리테오():
     df = media_prep('크리테오')
+    df.loc[df['캠페인'] =='CCA','소재'] = 'CCA'
     df.loc[df['구분']== '크리테오','소재'] = df['소재'].apply(lambda x: x.replace(x, ref.exc_adict[x]) if x in ref.exc_adict.keys() else x)
     df.loc[df['소재']== '-','소재'] = df['세트']
     df.loc[df['구분'] == '크리테오', '소재'] = df['소재'].apply(lambda x: x.replace(x, ref.exc_adict[x]) if x in ref.exc_adict.keys() else x)
