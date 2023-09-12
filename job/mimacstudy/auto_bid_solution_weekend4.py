@@ -9,7 +9,7 @@ if __name__ == "__main__":
         media_info='네이버SA',
         use_headless=True,
         spread_sheet_url="https://docs.google.com/spreadsheets/d/1OKz6_SOtJiKmW02_e-QLf9R4xQOLAMYaQsvbihfsREQ/edit#gid=0",
-        keyword_sheet="키워드 설정(주말 21~23시)",
+        keyword_sheet="키워드 설정(주말 22~24시)",
         keyword_column="키워드",
         ad_names='["대성마이맥", "mimacstudy"]',
         customer_id=150839,
