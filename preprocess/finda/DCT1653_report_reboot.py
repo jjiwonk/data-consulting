@@ -92,7 +92,7 @@ ms.update_metric_hierarchy('uni_vlh','Cnt', 'Viewed LA Home', 'D0', 'click_date'
 ms.update_metric_hierarchy('uni_vlh','Cnt', 'Viewed LA Home No Result', 'D0', 'click_date', 'VLHN(uni) D0.T')
 
 # data_set
-data_set = pd.read_csv(dr.download_dir + '/data_set.csv')
+data_set = pd.read_csv(dr.dropbox_dir + '/광고사업부/데이터컨설팅/데이터 분석 프로젝트/핀다/DCT-1631/data_set.csv')
 data_set['install_time'] = pd.to_datetime(data_set['install_time'])
 data_set['event_time'] = pd.to_datetime(data_set['event_time'])
 data_set['attributed_touch_time'] = pd.to_datetime(data_set['attributed_touch_time'])
@@ -108,11 +108,13 @@ source_list = ['KA-FRIEND', 'kakao_int', 'googleadwords_int', 'Apple Search Ads'
 data_set = data_set.loc[data_set['media_source'].isin(source_list)]
 data_set = data_set.loc[data_set['attributed_touch_type']=='click']
 data_set = data_set.loc[(data_set['is_primary_attribution']!=False)]
-data_set = data_set.sort_values(['appsflyer_id', 'install_time'])
+data_set.loc[data_set['media_source'] == 'push', 'media_source'] = '_push'
+data_set = data_set.sort_values(['appsflyer_id', 'install_time', 'media_source'])
+data_set.loc[data_set['media_source'] == '_push', 'media_source'] = 'push'
 
 # conversion_data
 conversion_event = ['install', 're-engagement', 're-attribution']
-conversion_data_columns = ['media_source', 'install_time', 'appsflyer_id', 'event_name',
+conversion_data_columns = ['attributed_touch_time', 'media_source', 'install_time', 'appsflyer_id', 'event_name',
                            'channel', 'keywords', 'campaign', 'campaign_id',
                            'adset', 'adset_id', 'ad', 'ad_id', 'site_id', 'sub_site_id',
                            'sub_param_1', 'sub_param_2', 'sub_param_3', 'sub_param_4', 'sub_param_5',
@@ -154,7 +156,7 @@ for col in convert_columns :
     push_convert.loc[(push_convert['media_source'] == 'push') &
                      (push_convert['pre_media_source'].notnull()), col] = push_convert['pre_' + col]
 push_convert = push_convert.loc[push_convert['event_time'].dt.month == 8]
-#push_convert.to_csv(dr.download_dir + '/push_convert.csv', index=False, encoding = 'utf-8-sig')
+push_convert.to_csv(dr.download_dir + '/push_convert.csv', index=False, encoding = 'utf-8-sig')
 
 # 1차 가공 완료 =================================================================================
 

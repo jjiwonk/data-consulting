@@ -175,7 +175,7 @@ class Cafe24SalesMonitor(Worker):
                 while cur_sales_amt == "-":
                     if retry_cnt == 2:
                         break
-                    cur_sales_amt = wait_for_element(driver, "today_payed_price", By.ID).text
+                    cur_sales_amt = driver.find_element(By.XPATH, '//*[@id="react-dom-root"]/div[1]/div[2]/div[2]/div/div[2]/div/div/div/table/tbody/tr[1]/td[2]/div/div[1]/a').text
                     retry_cnt += 1
                     time.sleep(2)
 
