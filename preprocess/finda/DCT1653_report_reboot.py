@@ -109,7 +109,7 @@ data_set = data_set.loc[data_set['media_source'].isin(source_list)]
 data_set = data_set.loc[data_set['attributed_touch_type']=='click']
 data_set = data_set.loc[(data_set['is_primary_attribution']!=False)]
 data_set.loc[data_set['media_source'] == 'push', 'media_source'] = '_push'
-data_set = data_set.sort_values(['appsflyer_id', 'install_time', 'media_source'])
+data_set = data_set.sort_values(['appsflyer_id', 'install_time', 'media_source', 'campaign'])
 data_set.loc[data_set['media_source'] == '_push', 'media_source'] = 'push'
 
 # conversion_data
@@ -183,12 +183,14 @@ for window in ms.attribution_window :
 
 report_data[ms.attribution_window] = report_data[ms.attribution_window].fillna(False)
 
+report_data['click_date'] = report_data['attributed_touch_time'].dt.date
+report_data['event_date'] = report_data['event_time'].dt.date
+report_data['Cnt'] = 1
+
+
 # 터치타임이 당월인 데이터만 남김
 report_data_on_month = report_data.loc[report_data['attributed_touch_time'].dt.month == 8]
 report_data_on_month.index = range(len(report_data_on_month))
-report_data_on_month['click_date'] = report_data_on_month['attributed_touch_time'].dt.date
-report_data_on_month['event_date'] = report_data_on_month['event_time'].dt.date
-report_data_on_month['Cnt'] = 1
 
 
 # 이벤트 집계
@@ -232,7 +234,7 @@ def event_pivoting(metric_group, raw_data, subset):
 
 
 # cn (Count)
-cn_pivot_total = event_pivoting('cn', report_data_on_month, ['appsflyer_id', 'event_name'])
+cn_pivot_total = event_pivoting('cn', report_data, ['appsflyer_id', 'event_name'])
 
 # uni (Unique)
 uni_pivot_total = event_pivoting('uni', report_data_on_month, ['appsflyer_id', 'event_name'])
