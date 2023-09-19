@@ -109,7 +109,7 @@ data_set = data_set.loc[data_set['media_source'].isin(source_list)]
 data_set = data_set.loc[data_set['attributed_touch_type']=='click']
 data_set = data_set.loc[(data_set['is_primary_attribution']!=False)]
 data_set.loc[data_set['media_source'] == 'push', 'media_source'] = '_push'
-data_set = data_set.sort_values(['appsflyer_id', 'install_time', 'media_source', 'campaign'])
+data_set = data_set.sort_values(['appsflyer_id', 'install_time', 'media_source'])
 data_set.loc[data_set['media_source'] == '_push', 'media_source'] = 'push'
 
 # conversion_data
@@ -156,10 +156,9 @@ for col in convert_columns :
     push_convert.loc[(push_convert['media_source'] == 'push') &
                      (push_convert['pre_media_source'].notnull()), col] = push_convert['pre_' + col]
 push_convert = push_convert.loc[push_convert['event_time'].dt.month == 8]
-push_convert.to_csv(dr.download_dir + '/push_convert.csv', index=False, encoding = 'utf-8-sig')
+# push_convert.to_csv(dr.download_dir + '/push_convert.csv', index=False, encoding = 'utf-8-sig')
 
 # 1차 가공 완료 =================================================================================
-
 
 # 2차 가공 (리포트 가공 절차) 시작 =================================================================
 report_data = push_convert.loc[push_convert['event_name'].isin(ms.target_event)]
@@ -170,6 +169,11 @@ report_data['event_revenue'] = report_data['event_revenue'].apply(lambda x : flo
 google_drop_index = report_data.loc[(report_data['media_source']=='googleadwords_int') &
                                     ~(report_data['channel'].isin(['ACI_Search','ACE_Search','ACE_Youtube','ACE_Display','ACI_Youtube','ACI_Display']))].index
 report_data = report_data.drop(index=google_drop_index)
+
+# 페이스북 RE 제외
+facebook_drop_index = report_data.loc[report_data['media_source'].isin(['Facebook Ads', 'Facebook_onelink']) &
+                                      ((report_data['campaign'].str.contains('_RT_')) | (report_data['campaign'] == 'Madit_CNV_retargeting'))].index
+report_data = report_data.drop(index=facebook_drop_index)
 
 # attributed_touch_time 채우기
 report_data.loc[report_data['attributed_touch_time'].isnull(), 'attributed_touch_time'] = report_data['install_time']
@@ -188,18 +192,17 @@ report_data['event_date'] = report_data['event_time'].dt.date
 report_data['Cnt'] = 1
 
 
-# 터치타임이 당월인 데이터만 남김
-report_data_on_month = report_data.loc[report_data['attributed_touch_time'].dt.month == 8]
-report_data_on_month.index = range(len(report_data_on_month))
-
-
 # 이벤트 집계
 
 def event_pivoting(metric_group, raw_data, subset):
     pivot_index = ['date', 'campaign', 'adset', 'ad', 'channel', 'platform', 'is_retargeting']
     result_pivot_list = []
 
-    for date in ['click_date', 'event_date'] :
+    for date in ['event_date', 'click_date']:
+        if date == 'click_date':
+            # 터치타임이 당월인 데이터만 남김
+            raw_data = raw_data.loc[raw_data['attributed_touch_time'].dt.month == 8]
+            raw_data.index = range(len(raw_data))
 
         raw_data['date'] = raw_data[date]
         raw_data[pivot_index] = raw_data[pivot_index].fillna('ㅁ')
@@ -237,12 +240,12 @@ def event_pivoting(metric_group, raw_data, subset):
 cn_pivot_total = event_pivoting('cn', report_data, ['appsflyer_id', 'event_name'])
 
 # uni (Unique)
-uni_pivot_total = event_pivoting('uni', report_data_on_month, ['appsflyer_id', 'event_name'])
+uni_pivot_total = event_pivoting('uni', report_data, ['appsflyer_id', 'event_name'])
 uni_pivot_total.sum()
 
 # uni (Unique)
-report_data_on_month_vlh = report_data_on_month.loc[report_data_on_month['event_name'].str.contains('Viewed LA Home')]
-uni_vlh_pivot_total = event_pivoting('uni_vlh', report_data_on_month_vlh, ['appsflyer_id'])
+report_data_vlh = report_data.loc[report_data['event_name'].str.contains('Viewed LA Home')]
+uni_vlh_pivot_total = event_pivoting('uni_vlh', report_data_vlh, ['appsflyer_id'])
 
 # total events
 total_event_pivot = pd.concat([cn_pivot_total, uni_pivot_total, uni_vlh_pivot_total], axis = 1)
