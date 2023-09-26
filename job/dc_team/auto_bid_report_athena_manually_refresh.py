@@ -12,7 +12,7 @@ if __name__ == "__main__":
         database="dc_athena",
         table_name="auto_bid_report",
         table_s3_path="data-consulting-private/auto_bid/",
-        owner_ids=['29cm', 'finda', 'drgroot', 'aboutpet', 'heum', 'kolonmall', 'samsungkracc', 'disneyplus', 'mimacstudy', 'thehandsome'],
+        owner_ids=['29cm', 'finda', 'drgroot', 'aboutpet', 'heum', 'kolonmall', 'samsungkracc', 'disneyplus', 'mimacstudy', 'thehandsome','siv'],
         channel='네이버SA',
         start_date=datetime.now().replace(day=1).strftime("%Y-%m-%d"),
     )
