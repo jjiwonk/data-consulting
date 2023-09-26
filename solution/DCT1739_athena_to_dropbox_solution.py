@@ -12,7 +12,11 @@ class AthenaToDropbox(Worker):
         file_name = info['file_name']
         dropbox_path = info['dropbox_path']
         query = info['query']
-        df = athena.get_table_data_from_athena('dmp_athena', query)
-        df.to_csv(file_name, index=False, encoding='utf-8-sig')
-        upload_file(file_name, dropbox_path + '/' + file_name)
-        os.remove(file_name)
+        try:
+            df = athena.get_table_data_from_athena('dmp_athena', query)
+            df.to_csv(file_name, index=False, encoding='utf-8-sig')
+            upload_file(file_name, dropbox_path + '/' + file_name)
+            os.remove(file_name)
+            return 'AthenaToDropbox Job complete.'
+        except Exception as e:
+            raise e
