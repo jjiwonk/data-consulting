@@ -14,6 +14,7 @@ class AthenaToDropbox(Worker):
         query = info['query']
         try:
             df = athena.get_table_data_from_athena('dmp_athena', query)
+            df = df.replace("[' ']", 0)
             df.to_csv(file_name, index=False, encoding='utf-8-sig')
             upload_file(file_name, dropbox_path + '/' + file_name)
             os.remove(file_name)
