@@ -9,7 +9,7 @@ if __name__ == "__main__":
         owner_id="finda"
     )
     owner_id = 'aurora_b102'
-    today = datetime.datetime.now()
+    today = datetime.datetime.now() - relativedelta(days=1)
     year = today.year
     month = today.month
     last_month = (today - relativedelta(months=1)).month
@@ -271,6 +271,7 @@ if __name__ == "__main__":
             SELECT *, ROW_NUMBER() OVER(ORDER BY event_time, install_time, attributed_touch_time, campaign) AS num
             FROM prep_appsflyer_df
             WHERE event_name IN ('install', 're-attribution', 're-engagement', 'Clicked Signup Completion Button')
+            AND YEAR(DATE_PARSE(attributed_touch_time, '%Y-%m-%d %H:%i:%s')) = {year}
             AND MONTH(DATE_PARSE(attributed_touch_time, '%Y-%m-%d %H:%i:%s')) = {month}
             AND CTET <= INTERVAL '86400' SECOND
         )
@@ -287,6 +288,7 @@ if __name__ == "__main__":
             SELECT *, ROW_NUMBER() OVER(ORDER BY event_time, install_time, attributed_touch_time, event_name) AS num
             FROM prep_appsflyer_df
             WHERE event_name IN ('Viewed LA Home', 'Viewed LA Home No Result')
+            AND YEAR(DATE_PARSE(attributed_touch_time, '%Y-%m-%d %H:%i:%s')) = {year}
             AND MONTH(DATE_PARSE(attributed_touch_time, '%Y-%m-%d %H:%i:%s')) = {month}
             AND CTET <= INTERVAL '86400' SECOND
         )
@@ -317,6 +319,7 @@ if __name__ == "__main__":
             SELECT *, ROW_NUMBER() OVER(ORDER BY event_time, install_time, attributed_touch_time, event_name) AS num
             FROM prep_appsflyer_df
             WHERE event_name IN ('Viewed LA Home', 'Viewed LA Home No Result')
+            AND YEAR(DATE_PARSE(attributed_touch_time, '%Y-%m-%d %H:%i:%s')) = {year}
             AND MONTH(DATE_PARSE(attributed_touch_time, '%Y-%m-%d %H:%i:%s')) = {month}
             AND CTET <= INTERVAL '2592000' SECOND
         )
@@ -329,13 +332,25 @@ if __name__ == "__main__":
         COALESCE(COALESCE(COALESCE(COALESCE(COALESCE(t1.channel, t2.channel), t3.channel), t4.channel), t5.channel), t6.channel) AS channel, 
         COALESCE(COALESCE(COALESCE(COALESCE(COALESCE(t1.platform, t2.platform), t3.platform), t4.platform), t5.platform), t6.platform) AS platform, 
         COALESCE(COALESCE(COALESCE(COALESCE(COALESCE(t1.is_retargeting, t2.is_retargeting), t3.is_retargeting), t4.is_retargeting), t5.is_retargeting), t6.is_retargeting) AS is_retargeting, 
-        "install(cn) D30", "REVENUE(cn) D30",
-        "REVENUE(cn) D30.T", "REVENUE(cn) D7.T", "REVENUE(cn) D0.T", 
-        "LOANFEE(cn) D30.T", "LOANFEE(cn) D7.T", "LOANFEE(cn) D0.T",
-        "LOAN(cn) D30.T", "LOAN(cn) D7.T", "LOAN(cn) D0.T",
-        "CS(uni) D30", "CS(uni) D0.T",
-        "install(uni) D0.T", "re-attribution(uni) D0.T", "re-engagement(uni) D0.T", "total_install(uni) D0.T",
-        "VLH(uni) D30.T", "VLHN(uni) D30.T", "VLH+N(uni) D0.T"
+        COALESCE("install(cn) D30", 0) AS "install(cn) D30", 
+        COALESCE("REVENUE(cn) D30", 0) AS "REVENUE(cn) D30",
+        COALESCE("REVENUE(cn) D30.T", 0) AS "REVENUE(cn) D30.T", 
+        COALESCE("REVENUE(cn) D7.T", 0) AS "REVENUE(cn) D7.T", 
+        COALESCE("REVENUE(cn) D0.T", 0) AS "REVENUE(cn) D0.T", 
+        COALESCE("LOANFEE(cn) D30.T", 0) AS "LOANFEE(cn) D30.T", 
+        COALESCE("LOANFEE(cn) D7.T", 0) AS "LOANFEE(cn) D7.T", 
+        COALESCE("LOANFEE(cn) D0.T", 0) AS "LOANFEE(cn) D0.T",
+        COALESCE("LOAN(cn) D30.T", 0) AS "LOAN(cn) D30.T", 
+        COALESCE("LOAN(cn) D7.T", 0) AS "LOAN(cn) D7.T", 
+        COALESCE("LOAN(cn) D0.T", 0) AS "LOAN(cn) D0.T",
+        COALESCE("CS(uni) D30", 0) AS "CS(uni) D0.T",
+        COALESCE("install(uni) D0.T", 0) AS "install(uni) D0.T",
+        COALESCE("re-attribution(uni) D0.T", 0) AS "re-attribution(uni) D0.T", 
+        COALESCE("re-engagement(uni) D0.T", 0) AS "re-engagement(uni) D0.T", 
+        COALESCE("total_install(uni) D0.T", 0) AS "total_install(uni) D0.T",
+        COALESCE("VLH(uni) D30.T", 0) AS "VLH(uni) D30.T", 
+        COALESCE("VLHN(uni) D30.T", 0) AS "VLHN(uni) D30.T", 
+        COALESCE("VLH+N(uni) D0.T", 0) AS "VLH+N(uni) D0.T"
     FROM (
         SELECT 
             event_date AS "date", campaign, adset, ad, channel, platform, is_retargeting,
@@ -357,7 +372,8 @@ if __name__ == "__main__":
             SUM("LOAN(cn) D7") AS "LOAN(cn) D7.T",
             SUM("LOAN(cn) D0") AS "LOAN(cn) D0.T"
         FROM cn_table
-        WHERE MONTH(click_date) = {month}
+        WHERE YEAR(click_date) = {year} 
+        AND MONTH(click_date) = {month}
         GROUP BY click_date, campaign, adset, ad, channel, platform, is_retargeting
     ) t2 ON t1."date" = t2."date" 
         AND t1.campaign = t2.campaign 
