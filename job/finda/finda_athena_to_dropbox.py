@@ -323,142 +323,156 @@ if __name__ == "__main__":
             AND MONTH(DATE_PARSE(attributed_touch_time, '%Y-%m-%d %H:%i:%s')) = {month}
             AND CTET <= INTERVAL '2592000' SECOND
         )
-    )
-    SELECT 
-        COALESCE(COALESCE(COALESCE(COALESCE(COALESCE(t1."date", t2."date"), t3."date"), t4."date"), t5."date"), t6."date") AS "date", 
-        COALESCE(COALESCE(COALESCE(COALESCE(COALESCE(t1.campaign, t2.campaign), t3.campaign), t4.campaign), t5.campaign), t6.campaign) AS campaign, 
-        COALESCE(COALESCE(COALESCE(COALESCE(COALESCE(t1.adset, t2.adset), t3.adset), t4.adset), t5.adset), t6.adset) AS adset, 
-        COALESCE(COALESCE(COALESCE(COALESCE(COALESCE(t1.ad, t2.ad), t3.ad), t4.ad), t5.ad), t6.ad) AS ad, 
-        COALESCE(COALESCE(COALESCE(COALESCE(COALESCE(t1.channel, t2.channel), t3.channel), t4.channel), t5.channel), t6.channel) AS channel, 
-        COALESCE(COALESCE(COALESCE(COALESCE(COALESCE(t1.platform, t2.platform), t3.platform), t4.platform), t5.platform), t6.platform) AS platform, 
-        COALESCE(COALESCE(COALESCE(COALESCE(COALESCE(t1.is_retargeting, t2.is_retargeting), t3.is_retargeting), t4.is_retargeting), t5.is_retargeting), t6.is_retargeting) AS is_retargeting, 
-        COALESCE("install(cn) D30", 0) AS "install(cn) D30", 
-        COALESCE("REVENUE(cn) D30", 0) AS "REVENUE(cn) D30",
-        COALESCE("REVENUE(cn) D30.T", 0) AS "REVENUE(cn) D30.T", 
-        COALESCE("REVENUE(cn) D7.T", 0) AS "REVENUE(cn) D7.T", 
-        COALESCE("REVENUE(cn) D0.T", 0) AS "REVENUE(cn) D0.T", 
-        COALESCE("LOANFEE(cn) D30.T", 0) AS "LOANFEE(cn) D30.T", 
-        COALESCE("LOANFEE(cn) D7.T", 0) AS "LOANFEE(cn) D7.T", 
-        COALESCE("LOANFEE(cn) D0.T", 0) AS "LOANFEE(cn) D0.T",
-        COALESCE("LOAN(cn) D30.T", 0) AS "LOAN(cn) D30.T", 
-        COALESCE("LOAN(cn) D7.T", 0) AS "LOAN(cn) D7.T", 
-        COALESCE("LOAN(cn) D0.T", 0) AS "LOAN(cn) D0.T",
-        COALESCE("CS(uni) D30", 0) AS "CS(uni) D0.T",
-        COALESCE("install(uni) D0.T", 0) AS "install(uni) D0.T",
-        COALESCE("re-attribution(uni) D0.T", 0) AS "re-attribution(uni) D0.T", 
-        COALESCE("re-engagement(uni) D0.T", 0) AS "re-engagement(uni) D0.T", 
-        COALESCE("total_install(uni) D0.T", 0) AS "total_install(uni) D0.T",
-        COALESCE("VLH(uni) D30.T", 0) AS "VLH(uni) D30.T", 
-        COALESCE("VLHN(uni) D30.T", 0) AS "VLHN(uni) D30.T", 
-        COALESCE("VLH+N(uni) D0.T", 0) AS "VLH+N(uni) D0.T"
-    FROM (
+    ),
+    final_apps_data AS (
         SELECT 
-            event_date AS "date", campaign, adset, ad, channel, platform, is_retargeting,
-            SUM("install(cn) D30") AS "install(cn) D30",
-            SUM("REVENUE(cn) D30") AS "REVENUE(cn) D30"
-        FROM cn_table
-        GROUP BY event_date, campaign, adset, ad, channel, platform, is_retargeting
-    ) t1
-    FULL JOIN (
-        SELECT 
-            click_date AS "date", campaign, adset, ad, channel, platform, is_retargeting,
-            SUM("REVENUE(cn) D30") AS "REVENUE(cn) D30.T",
-            SUM("REVENUE(cn) D7") AS "REVENUE(cn) D7.T",
-            SUM("REVENUE(cn) D0") AS "REVENUE(cn) D0.T",
-            SUM("LOANFEE(cn) D30") AS "LOANFEE(cn) D30.T",
-            SUM("LOANFEE(cn) D7") AS "LOANFEE(cn) D7.T",
-            SUM("LOANFEE(cn) D0") AS "LOANFEE(cn) D0.T",
-            SUM("LOAN(cn) D30") AS "LOAN(cn) D30.T",
-            SUM("LOAN(cn) D7") AS "LOAN(cn) D7.T",
-            SUM("LOAN(cn) D0") AS "LOAN(cn) D0.T"
-        FROM cn_table
-        WHERE YEAR(click_date) = {year} 
-        AND MONTH(click_date) = {month}
-        GROUP BY click_date, campaign, adset, ad, channel, platform, is_retargeting
-    ) t2 ON t1."date" = t2."date" 
-        AND t1.campaign = t2.campaign 
-        AND t1.adset = t2.adset
-        AND t1.ad = t2.ad
-        AND t1.channel = t2.channel
-        AND t1.platform = t2.platform
-        AND t1.is_retargeting = t2.is_retargeting
-    FULL JOIN (
-        SELECT 
-            event_date AS "date", campaign, adset, ad, channel, platform, is_retargeting,
-            SUM("CS(uni) D30") AS "CS(uni) D30"
-        FROM uni_cs_D30_table
-        WHERE num IN (
-            SELECT MIN(num)
+            COALESCE(COALESCE(COALESCE(COALESCE(COALESCE(t1."date", t2."date"), t3."date"), t4."date"), t5."date"), t6."date") AS "date", 
+            COALESCE(COALESCE(COALESCE(COALESCE(COALESCE(t1.campaign, t2.campaign), t3.campaign), t4.campaign), t5.campaign), t6.campaign) AS campaign, 
+            COALESCE(COALESCE(COALESCE(COALESCE(COALESCE(t1.adset, t2.adset), t3.adset), t4.adset), t5.adset), t6.adset) AS adset, 
+            COALESCE(COALESCE(COALESCE(COALESCE(COALESCE(t1.ad, t2.ad), t3.ad), t4.ad), t5.ad), t6.ad) AS ad, 
+            COALESCE(COALESCE(COALESCE(COALESCE(COALESCE(t1.channel, t2.channel), t3.channel), t4.channel), t5.channel), t6.channel) AS channel, 
+            COALESCE(COALESCE(COALESCE(COALESCE(COALESCE(t1.platform, t2.platform), t3.platform), t4.platform), t5.platform), t6.platform) AS platform, 
+            COALESCE(COALESCE(COALESCE(COALESCE(COALESCE(t1.is_retargeting, t2.is_retargeting), t3.is_retargeting), t4.is_retargeting), t5.is_retargeting), t6.is_retargeting) AS is_retargeting, 
+            COALESCE("install(cn) D30", 0) AS "install(cn) D30", 
+            COALESCE("REVENUE(cn) D30", 0) AS "REVENUE(cn) D30",
+            COALESCE("REVENUE(cn) D30.T", 0) AS "REVENUE(cn) D30.T", 
+            COALESCE("REVENUE(cn) D7.T", 0) AS "REVENUE(cn) D7.T", 
+            COALESCE("REVENUE(cn) D0.T", 0) AS "REVENUE(cn) D0.T", 
+            COALESCE("LOANFEE(cn) D30.T", 0) AS "LOANFEE(cn) D30.T", 
+            COALESCE("LOANFEE(cn) D7.T", 0) AS "LOANFEE(cn) D7.T", 
+            COALESCE("LOANFEE(cn) D0.T", 0) AS "LOANFEE(cn) D0.T",
+            COALESCE("LOAN(cn) D30.T", 0) AS "LOAN(cn) D30.T", 
+            COALESCE("LOAN(cn) D7.T", 0) AS "LOAN(cn) D7.T", 
+            COALESCE("LOAN(cn) D0.T", 0) AS "LOAN(cn) D0.T",
+            COALESCE("CS(uni) D30", 0) AS "CS(uni) D0.T",
+            COALESCE("install(uni) D0.T", 0) AS "install(uni) D0.T",
+            COALESCE("re-attribution(uni) D0.T", 0) AS "re-attribution(uni) D0.T", 
+            COALESCE("re-engagement(uni) D0.T", 0) AS "re-engagement(uni) D0.T", 
+            COALESCE("total_install(uni) D0.T", 0) AS "total_install(uni) D0.T",
+            COALESCE("VLH(uni) D30.T", 0) AS "VLH(uni) D30.T", 
+            COALESCE("VLHN(uni) D30.T", 0) AS "VLHN(uni) D30.T", 
+            COALESCE("VLH+N(uni) D0.T", 0) AS "VLH+N(uni) D0.T"
+        FROM (
+            SELECT 
+                event_date AS "date", campaign, adset, ad, channel, platform, is_retargeting,
+                SUM("install(cn) D30") AS "install(cn) D30",
+                SUM("REVENUE(cn) D30") AS "REVENUE(cn) D30"
+            FROM cn_table
+            GROUP BY event_date, campaign, adset, ad, channel, platform, is_retargeting
+        ) t1
+        FULL JOIN (
+            SELECT 
+                click_date AS "date", campaign, adset, ad, channel, platform, is_retargeting,
+                SUM("REVENUE(cn) D30") AS "REVENUE(cn) D30.T",
+                SUM("REVENUE(cn) D7") AS "REVENUE(cn) D7.T",
+                SUM("REVENUE(cn) D0") AS "REVENUE(cn) D0.T",
+                SUM("LOANFEE(cn) D30") AS "LOANFEE(cn) D30.T",
+                SUM("LOANFEE(cn) D7") AS "LOANFEE(cn) D7.T",
+                SUM("LOANFEE(cn) D0") AS "LOANFEE(cn) D0.T",
+                SUM("LOAN(cn) D30") AS "LOAN(cn) D30.T",
+                SUM("LOAN(cn) D7") AS "LOAN(cn) D7.T",
+                SUM("LOAN(cn) D0") AS "LOAN(cn) D0.T"
+            FROM cn_table
+            WHERE YEAR(click_date) = {year} 
+            AND MONTH(click_date) = {month}
+            GROUP BY click_date, campaign, adset, ad, channel, platform, is_retargeting
+        ) t2 ON t1."date" = t2."date" 
+            AND t1.campaign = t2.campaign 
+            AND t1.adset = t2.adset
+            AND t1.ad = t2.ad
+            AND t1.channel = t2.channel
+            AND t1.platform = t2.platform
+            AND t1.is_retargeting = t2.is_retargeting
+        FULL JOIN (
+            SELECT 
+                event_date AS "date", campaign, adset, ad, channel, platform, is_retargeting,
+                SUM("CS(uni) D30") AS "CS(uni) D30"
             FROM uni_cs_D30_table
-            GROUP BY appsflyer_id, event_name
-            ) 
-        GROUP BY event_date, campaign, adset, ad, channel, platform, is_retargeting
-    ) t3 ON t1."date" = t3."date" 
-        AND t1.campaign = t3.campaign 
-        AND t1.adset = t3.adset
-        AND t1.ad = t3.ad
-        AND t1.channel = t3.channel
-        AND t1.platform = t3.platform
-        AND t1.is_retargeting = t3.is_retargeting
-    FULL JOIN (
-        SELECT 
-            click_date AS "date", campaign, adset, ad, channel, platform, is_retargeting,
-            SUM("VLH(uni) D30") AS "VLH(uni) D30.T",
-            SUM("VLHN(uni) D30") AS "VLHN(uni) D30.T"
-        FROM uni_vlh_D30_table
-        WHERE num IN (
-            SELECT MIN(num)
+            WHERE num IN (
+                SELECT MIN(num)
+                FROM uni_cs_D30_table
+                GROUP BY appsflyer_id, event_name
+                ) 
+            GROUP BY event_date, campaign, adset, ad, channel, platform, is_retargeting
+        ) t3 ON t1."date" = t3."date" 
+            AND t1.campaign = t3.campaign 
+            AND t1.adset = t3.adset
+            AND t1.ad = t3.ad
+            AND t1.channel = t3.channel
+            AND t1.platform = t3.platform
+            AND t1.is_retargeting = t3.is_retargeting
+        FULL JOIN (
+            SELECT 
+                click_date AS "date", campaign, adset, ad, channel, platform, is_retargeting,
+                SUM("VLH(uni) D30") AS "VLH(uni) D30.T",
+                SUM("VLHN(uni) D30") AS "VLHN(uni) D30.T"
             FROM uni_vlh_D30_table
-            GROUP BY appsflyer_id, event_name
-            ) 
-        GROUP BY click_date, campaign, adset, ad, channel, platform, is_retargeting
-    ) t4 ON t1."date" = t4."date" 
-        AND t1.campaign = t4.campaign 
-        AND t1.adset = t4.adset
-        AND t1.ad = t4.ad
-        AND t1.channel = t4.channel
-        AND t1.platform = t4.platform
-        AND t1.is_retargeting = t4.is_retargeting
-    FULL JOIN (
-        SELECT 
-            click_date AS "date", campaign, adset, ad, channel, platform, is_retargeting,
-            SUM("CS(uni) D0") AS "CS(uni) D0.T",
-            SUM("install(uni) D0") AS "install(uni) D0.T",
-            SUM("re-attribution(uni) D0") AS "re-attribution(uni) D0.T",
-            SUM("re-engagement(uni) D0") AS "re-engagement(uni) D0.T",
-            SUM("install(uni) D0") + SUM("re-attribution(uni) D0") + SUM("re-engagement(uni) D0") AS "total_install(uni) D0.T"
-        FROM uni_D0_table
-        WHERE num IN (
-            SELECT MIN(num)
+            WHERE num IN (
+                SELECT MIN(num)
+                FROM uni_vlh_D30_table
+                GROUP BY appsflyer_id, event_name
+                ) 
+            GROUP BY click_date, campaign, adset, ad, channel, platform, is_retargeting
+        ) t4 ON t1."date" = t4."date" 
+            AND t1.campaign = t4.campaign 
+            AND t1.adset = t4.adset
+            AND t1.ad = t4.ad
+            AND t1.channel = t4.channel
+            AND t1.platform = t4.platform
+            AND t1.is_retargeting = t4.is_retargeting
+        FULL JOIN (
+            SELECT 
+                click_date AS "date", campaign, adset, ad, channel, platform, is_retargeting,
+                SUM("CS(uni) D0") AS "CS(uni) D0.T",
+                SUM("install(uni) D0") AS "install(uni) D0.T",
+                SUM("re-attribution(uni) D0") AS "re-attribution(uni) D0.T",
+                SUM("re-engagement(uni) D0") AS "re-engagement(uni) D0.T",
+                SUM("install(uni) D0") + SUM("re-attribution(uni) D0") + SUM("re-engagement(uni) D0") AS "total_install(uni) D0.T"
             FROM uni_D0_table
-            GROUP BY appsflyer_id, event_name
-            ) 
-        GROUP BY click_date, campaign, adset, ad, channel, platform, is_retargeting
-    ) t5 ON t1."date" = t5."date" 
-        AND t1.campaign = t5.campaign 
-        AND t1.adset = t5.adset
-        AND t1.ad = t5.ad
-        AND t1.channel = t5.channel
-        AND t1.platform = t5.platform
-        AND t1.is_retargeting = t5.is_retargeting
-    FULL JOIN (
-        SELECT 
-            click_date AS "date", campaign, adset, ad, channel, platform, is_retargeting,
-            SUM("VLH(uni) D0") + SUM("VLHN(uni) D0") AS "VLH+N(uni) D0.T"
-        FROM uni_vlh_D0_table
-        WHERE num IN (
-            SELECT MIN(num)
+            WHERE num IN (
+                SELECT MIN(num)
+                FROM uni_D0_table
+                GROUP BY appsflyer_id, event_name
+                ) 
+            GROUP BY click_date, campaign, adset, ad, channel, platform, is_retargeting
+        ) t5 ON t1."date" = t5."date" 
+            AND t1.campaign = t5.campaign 
+            AND t1.adset = t5.adset
+            AND t1.ad = t5.ad
+            AND t1.channel = t5.channel
+            AND t1.platform = t5.platform
+            AND t1.is_retargeting = t5.is_retargeting
+        FULL JOIN (
+            SELECT 
+                click_date AS "date", campaign, adset, ad, channel, platform, is_retargeting,
+                SUM("VLH(uni) D0") + SUM("VLHN(uni) D0") AS "VLH+N(uni) D0.T"
             FROM uni_vlh_D0_table
-            GROUP BY appsflyer_id
-            ) 
-        GROUP BY click_date, campaign, adset, ad, channel, platform, is_retargeting
-    ) t6 ON t1."date" = t6."date" 
-        AND t1.campaign = t6.campaign 
-        AND t1.adset = t6.adset
-        AND t1.ad = t6.ad
-        AND t1.channel = t6.channel
-        AND t1.platform = t6.platform
-        AND t1.is_retargeting = t6.is_retargeting
+            WHERE num IN (
+                SELECT MIN(num)
+                FROM uni_vlh_D0_table
+                GROUP BY appsflyer_id
+                ) 
+            GROUP BY click_date, campaign, adset, ad, channel, platform, is_retargeting
+        ) t6 ON t1."date" = t6."date" 
+            AND t1.campaign = t6.campaign 
+            AND t1.adset = t6.adset
+            AND t1.ad = t6.ad
+            AND t1.channel = t6.channel
+            AND t1.platform = t6.platform
+            AND t1.is_retargeting = t6.is_retargeting
+    )
+    SELECT "date", "campaign", "adset", "ad",
+       CASE WHEN "channel" IN ('ACE_Display', 'ACE_Youtube', 'ACE_Search', 'ACI_Display', 'ACI_Youtube', 'ACI_Search') THEN "channel" 
+            ELSE '' END AS "channel",
+       "platform",
+       "is_retargeting", "install(cn) D30", "REVENUE(cn) D30",
+       "REVENUE(cn) D30.T", "REVENUE(cn) D7.T", "REVENUE(cn) D0.T",
+       "LOANFEE(cn) D30.T", "LOANFEE(cn) D7.T", "LOANFEE(cn) D0.T",
+       "LOAN(cn) D30.T", "LOAN(cn) D7.T", "LOAN(cn) D0.T", "CS(uni) D0.T",
+       "install(uni) D0.T", "re-attribution(uni) D0.T",
+       "re-engagement(uni) D0.T", "total_install(uni) D0.T", "VLH(uni) D30.T",
+       "VLHN(uni) D30.T", "VLH+N(uni) D0.T"
+    FROM final_apps_data
     '''
     )
 
