@@ -175,7 +175,7 @@ class Cafe24SalesMonitor(Worker):
                 while cur_sales_amt == "-":
                     if retry_cnt == 2:
                         break
-                    cur_sales_amt = driver.find_element(By.CSS_SELECTOR, '#react-dom-root > div.MuiContainer-root.MuiContainer-maxWidthXl.css-ou99bh > div.MuiGrid-root.MuiGrid-container.MuiGrid-spacing-xs-24.css-1h77wgb > div:nth-child(2) > div > div.MuiCardContent-root.css-1b9luhs > div > div > div > table > tbody > tr.MuiTableRow-root.css-1ywic0k > td:nth-child(2) > div > div.MuiStack-root.css-1uxxqyn > a').text
+                    cur_sales_amt = driver.find_element(By.XPATH, '//*[@id="react-dom-root"]/div[1]/div[2]/div[2]/div/div[2]/div/div/div/table/tbody/tr[2]/td[2]/div/div[1]/a').text
                     retry_cnt += 1
                     time.sleep(2)
 
