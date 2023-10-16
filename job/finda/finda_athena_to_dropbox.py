@@ -461,11 +461,7 @@ if __name__ == "__main__":
             AND t1.platform = t6.platform
             AND t1.is_retargeting = t6.is_retargeting
     )
-    SELECT "date", "campaign", "adset", "ad",
-           CASE WHEN "channel" IN ('ACE_Display', 'ACE_Youtube', 'ACE_Search', 'ACI_Display', 'ACI_Youtube', 'ACI_Search') THEN "channel" 
-                ELSE '' END AS "channel",
-           "platform",
-           "is_retargeting", 
+    SELECT "date", "campaign", "adset", "ad", "channel", "platform", "is_retargeting", 
            SUM("install(cn) D30") AS "install(cn) D30", 
            SUM("REVENUE(cn) D30") AS "REVENUE(cn) D30",
            SUM("REVENUE(cn) D30.T") AS "REVENUE(cn) D30.T", 
@@ -485,7 +481,33 @@ if __name__ == "__main__":
            SUM("VLH(uni) D30.T") AS "VLH(uni) D30.T",
            SUM("VLHN(uni) D30.T") AS "VLHN(uni) D30.T", 
            SUM("VLH+N(uni) D0.T") AS "VLH+N(uni) D0.T"
-    FROM final_apps_data
+    FROM 
+    (SELECT 
+        "date", "campaign", "adset", "ad",
+        CASE WHEN "channel" IN ('ACE_Display', 'ACE_Youtube', 'ACE_Search', 'ACI_Display', 'ACI_Youtube', 'ACI_Search') THEN "channel" 
+             ELSE '' 
+        END AS "channel",
+        "platform", "is_retargeting",
+        "install(cn) D30",
+        "REVENUE(cn) D30",
+        "REVENUE(cn) D30.T",
+        "REVENUE(cn) D7.T",
+        "REVENUE(cn) D0.T",
+        "LOANFEE(cn) D30.T",
+        "LOANFEE(cn) D7.T",
+        "LOANFEE(cn) D0.T",
+        "LOAN(cn) D30.T",
+        "LOAN(cn) D7.T",
+        "LOAN(cn) D0.T",
+        "CS(uni) D0.T",
+        "install(uni) D0.T",
+        "re-attribution(uni) D0.T",
+        "re-engagement(uni) D0.T",
+        "total_install(uni) D0.T",
+        "VLH(uni) D30.T",
+        "VLHN(uni) D30.T",
+        "VLH+N(uni) D0.T"
+    FROM final_apps_data)
     GROUP BY "date", "campaign", "adset", "ad", "channel", "platform", "is_retargeting"
     '''
     )
