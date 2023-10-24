@@ -295,6 +295,12 @@ class AutoBidSolution(KeywordMonitoring):
 
             # 현재 키워드 순위와 현재 입찰가 정보 머징
             self.bid_adjust_df = bid_amount_df.merge(rank_df, how='left', on=['ad_keyword', 'pc_mobile_type'])
+            if len(self.bid_adjust_df.loc[self.bid_adjust_df['cur_bid'].isnull()]) > 0:
+                check_list = list(self.bid_adjust_df.loc[self.bid_adjust_df['cur_bid'].isnull(), 'ad_keyword'])
+                return {
+                    "result_code": ResultCode.ERROR,
+                    "msg": f"Check keyword status {check_list}"
+                }
 
             # 입찰가 조정
             owner_id = attr.get("owner_id")
