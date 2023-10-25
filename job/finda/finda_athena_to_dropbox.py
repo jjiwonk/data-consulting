@@ -17,7 +17,7 @@ if __name__ == "__main__":
     date = datetime.datetime.strftime(today, '%Y%m%d')
     info = dict(
         file_name=f'appsflyer_final_report_{date}.csv',
-        dropbox_path=f'/광고사업부/4. 광고주/핀다_7팀/2. 리포트/자동화리포트/intergrated_report_push',
+        dropbox_path=f'/광고사업부/4. 광고주/핀다_7팀/2. 리포트/자동화리포트/integrated_appsflyer raw',
         query=f'''
     WITH data_set AS (
     SELECT temp.*,
@@ -26,7 +26,7 @@ if __name__ == "__main__":
         SELECT attributed_touch_type, attributed_touch_time, install_time, 
             event_time, event_name, event_value, partner, appsflyer_id, platform,
             media_source, channel, keywords, campaign, campaign_id, adset, adset_id, ad, ad_id,
-            site_id, sub_site_id, sub_param_1, sub_param_2,  sub_param_3, sub_param_4, sub_param_5, 
+            site_id, sub_site_id, sub_param_1, sub_param_2, sub_param_3, sub_param_4, sub_param_5, 
             is_retargeting, NULL AS is_primary_attribution, collected_at, year, month, day
         FROM dmp_athena.appsflyer_conversions_non_organic
         WHERE 
