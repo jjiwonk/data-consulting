@@ -4,7 +4,7 @@ from setting import directory as dr
 import pandas as pd
 from prophet import Prophet
 import holidays
-from sklearn.metrics import mean_absolute_error, mean_absolute_percentage_error
+from prophet.plot import add_changepoints_to_plot
 
 
 # 결과 파일 경로
@@ -109,3 +109,34 @@ future = m.make_future_dataframe(periods=92) #monthly 예측 값 추가 -> freq=
 forecast = m.predict(future)
 fig1 = m.plot(forecast)
 fig2 = m.plot_components(forecast)
+
+
+'''
+#작업 중
+search_space = {
+    'holidays': [holidays],
+    'changepoint_prior_scale': [0.05, 0.1, 0.5, 1.0, 5.0, 10.0],
+    'seasonality_prior_scale': [0.05, 0.1, 1.0, 10.0],
+    'holidays_prior_scale': [0.05, 0.1, 1.0, 10.0],
+    'seasonality_mode': ['additive', 'multiplicative']
+}
+
+from prophet.diagnostics import cross_validation, performance_metrics
+
+param_combined = [dict(zip(search_space.keys(), v)) for v in itertools.product(*search_space.values())]
+
+mapes = []
+for param in param_combined:
+   print('params', param)
+   _m = Prophet(**param)
+
+   _m.add_country_holidays(country_name='KR')
+   _m.fit(model_data)
+   _cv_df = cross_validation(_m, initial='365 days', period='30 days', horizon='92 days', parallel=None)
+   _df_p = performance_metrics(_cv_df, rolling_window=1)
+   mapes.append(_df_p['mape'].values[0])
+
+tuning_results = pd.DataFrame(param_combined)
+tuning_results['mapes'] = mapes
+
+'''
