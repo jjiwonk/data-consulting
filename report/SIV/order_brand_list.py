@@ -59,7 +59,7 @@ def apps_prep():
             order_brand = df['구매브랜드'][i][n]
             order_cnt = df['구매건수'][i][n]
             order_item = df['구매상품'][i][n]
-            order_reve = df['구매금액'][i][n][0]
+            order_reve = df['구매금액'][i][n][2]
             append_df = pd.DataFrame({'날짜': date ,'머징코드': merge_code,'구매상품': order_item , '구매브랜드': order_brand , '구매건수(AF)' : order_cnt,'매출(AF)': order_reve}, index=[0])
             brand_df = brand_df.append(append_df, ignore_index= True)
 
@@ -112,4 +112,3 @@ def df_merge():
     print('브랜드 구매/매출 리스트 추출 완료')
 
     return df
-
