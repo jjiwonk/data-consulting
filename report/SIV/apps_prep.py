@@ -116,9 +116,9 @@ def apps_agg_read():
 
     from_date = ref.r_date.start_date
     to_date = ref.r_date.agg_date
-    # 당월 돌릴땐 이거로
+    #당월 돌릴땐 이거로
     to_month = ref.r_date.agg_date.month
-    # 전월것 돌릴땐 이거 활성화 필요!
+    #전월것 돌릴땐 이거 활성화 필요!
     #to_month = ref.r_date.agg_date.month - 1
 
     apps_agg_list =[]
@@ -213,7 +213,7 @@ def brand_order():
 
         for n in reve_index:
             i_reve = i_reve_index[n]
-            i_reve = float(i_reve[0])
+            i_reve = float(i_reve[2])
             reve = reve + i_reve
 
         merge['브랜드매출(AF)'][i] = reve
