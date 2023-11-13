@@ -39,13 +39,14 @@ def get_model_data():
     promotion_df['프로모션 진행 여부'] = (promotion_df['프로모션 진행 여부'] == 'O').astype(int)
     promotion_df = promotion_df.rename(columns={'날짜': 'ds', '프로모션 진행 여부': 'promotion'})
     promotion_df['ds'] = pd.to_datetime(promotion_df['ds'])  # 날짜 열을 날짜 형식으로 변환
-    data = data.merge(promotion_df, on='ds')
+    data = data.merge(promotion_df, on='ds', how='left')
+    data = data.fillna(0)
 
     season_df = pd.DataFrame({'ds': data.ds})
     season_df['season'] = 0
     season_month = [3, 4, 5, 6, 9, 10, 11]
     season_df.loc[season_df['ds'].dt.month.isin(season_month), 'season'] = 1
-    data = data.merge(season_df, on='ds')
+    data = data.merge(season_df, on='ds', how='left')
 
     model_data = data[['ds', 'y', 'promotion', 'season']]
 
@@ -76,7 +77,7 @@ def get_proper_params(tmp_data):
        _m.add_regressor('season')
        _m.add_seasonality(name='monthly', period=30.5, fourier_order=5)
        _m.fit(tmp_data)
-       _cv_df = cross_validation(_m, initial='400 days', period='180 days', horizon='30 days', parallel=None)
+       _cv_df = cross_validation(_m, initial='400 days', period='180 days', horizon='60 days', parallel=None)
        _df_p = performance_metrics(_cv_df, rolling_window=1)
        mapes.append(_df_p['mape'].values[0])
 
@@ -98,7 +99,8 @@ def get_predicted_install(params, tmp_data, year, month, season_month):
     # tmp_data = tmp_data.loc[(tmp_data['ds'].dt.year <= year) & (tmp_data['ds'].dt.month < month)]
     m.fit(tmp_data)
 
-    predict_days = ((tmp_data.ds.max() + relativedelta(months=2)).replace(day=1) - relativedelta(days=1)).day
+    # predict_days = ((tmp_data.ds.max() + relativedelta(months=2)).replace(day=1) - relativedelta(days=1)).day
+    predict_days = 60
     future = m.make_future_dataframe(periods=predict_days, freq='d')
     future['season'] = 0
     future.loc[future['ds'].dt.month.isin(season_month), 'season'] = 1
@@ -110,7 +112,7 @@ def get_predicted_install(params, tmp_data, year, month, season_month):
 
     # 모델 평가 지표
     # initial은 전체 기간의 70~80%, period는 패턴 주기에 따라 조정 (분기별 설정), horizon은 예측기간
-    df_cv = cross_validation(m, initial='365 days', period='180 days', horizon='30 days')
+    df_cv = cross_validation(m, initial='365 days', period='180 days', horizon='60 days')
     df_pm = performance_metrics(df_cv)
     # fig3 = plot_cross_validation_metric(df_cv, metric='mape')
     model_eval = df_pm.iloc[len(df_pm)-1]
@@ -126,8 +128,9 @@ def get_predicted_install(params, tmp_data, year, month, season_month):
 
 
 model_data = get_model_data()
-# params = get_proper_params(model_data)
-params = {'changepoint_prior_scale': 0.1, 'seasonality_prior_scale': 0.05, 'seasonality_mode': 'multiplicative', 'weekly_seasonality': 10, 'daily_seasonality': 40}
+model_data.ds.sort_values()
+params = get_proper_params(model_data)
+# params = {'changepoint_prior_scale': 0.1, 'seasonality_prior_scale': 0.05, 'seasonality_mode': 'multiplicative', 'weekly_seasonality': 10, 'daily_seasonality': 40}
 season_month = [3, 4, 5, 6, 9, 10, 11]
 # 2023년 12월 install 예측치 총량
 eval_4, install_4 = get_predicted_install(params, model_data, 2023, 4, season_month)
@@ -137,4 +140,7 @@ eval_7, install_7 = get_predicted_install(params, model_data, 2023, 7, season_mo
 eval_8, install_8 = get_predicted_install(params, model_data, 2023, 8, season_month)
 eval_9, install_9 = get_predicted_install(params, model_data, 2023, 9, season_month)
 eval_10, install_10 = get_predicted_install(params, model_data, 2023, 10, season_month)
+eval_11, install_11 = get_predicted_install(params, model_data, 2023, 11, season_month)
+eval_12, install_12 = get_predicted_install(params, model_data, 2023, 12, season_month)
+
 
