@@ -13,7 +13,7 @@ class AthenaToDropbox(Worker):
         dropbox_path = info['dropbox_path']
         query = info['query']
         try:
-            df = athena.get_table_data_from_athena('dmp_athena', query)
+            df = athena.fetchall_athena('dmp_athena', query)
             df.to_csv(file_name, index=False, encoding='utf-8')
             upload_file(file_name, dropbox_path + '/' + file_name)
             os.remove(file_name)
