@@ -10,7 +10,6 @@ import itertools
 import matplotlib
 matplotlib.use('Qt5Agg')
 
-
 def outlier_remove(data, threshold=1.5):
     q1, q3 = np.percentile(data.y, [25, 74])
     IQR = q3 - q1
@@ -31,7 +30,6 @@ def get_model_data():
     data = data.loc[data['date'] >= '2022-03-01']
     data = data.rename(columns={'date': 'ds', '앱설치': 'y'})
 
-
     # 프로모션 진행 여부 데이터
     file_name = '/promotion.csv'
     promotion_df = pd.read_csv(result_dir + file_name)
@@ -43,11 +41,17 @@ def get_model_data():
     data = data.fillna(0)
 
     season_df = pd.DataFrame({'ds': data.ds})
-    season_df['season'] = 0
-    season_month = [3, 4, 5, 6, 9, 10, 11]
-    season_df.loc[season_df['ds'].dt.month.isin(season_month), 'season'] = 1
-    data = data.merge(season_df, on='ds', how='left')
+    season_df['season'] = 1
+    spring_month = [3,4,5]
+    summer_month = [6,7,8]
+    fall_month = [9, 10]
+    winter_month = [11, 12, 1, 2]
+    season_df.loc[season_df['ds'].dt.month.isin(spring_month), 'season'] = 1
+    season_df.loc[season_df['ds'].dt.month.isin(summer_month), 'season'] = 2
+    season_df.loc[season_df['ds'].dt.month.isin(fall_month), 'season'] = 3
+    season_df.loc[season_df['ds'].dt.month.isin(winter_month), 'season'] = 4
 
+    data = data.merge(season_df, on='ds', how='left')
     model_data = data[['ds', 'y', 'promotion', 'season']]
 
     return model_data
