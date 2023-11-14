@@ -78,7 +78,8 @@ def get_model_data():
     # 네이버 검색량 추가
     search_file =  '/naver_search.csv'
     search_df = pd.read_csv(result_dir + search_file)
-    search_df = search_df.rename(columns={'날짜':'ds','검색량':'seach'})
+    search_df = search_df.rename(columns={'날짜':'ds','검색량':'search'})
+    search_df['ds'] = pd.to_datetime(search_df['ds'])
 
     data = data.merge(search_df, on='ds', how='left')
 
