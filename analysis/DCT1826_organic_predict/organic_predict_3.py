@@ -130,6 +130,7 @@ def get_predicted_install(params, tmp_data, year, month, peak_month):
     m.add_regressor('promotion')
     m.add_regressor('peak')
     m.add_regressor('holiday')
+    m.add_regressor('search')
     m.add_seasonality(name='monthly', period=30.5, fourier_order=5)
     # tmp_data = tmp_data.loc[(tmp_data['ds'].dt.year <= year) & (tmp_data['ds'].dt.month < month)]
     m.fit(tmp_data)
