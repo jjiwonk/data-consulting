@@ -76,14 +76,14 @@ def get_model_data():
     data['holiday'] = data['holiday'].apply(lambda x: 1 if x is not None else 0)
 
     # 네이버 검색량 추가
-    search_file =  '/naver_search.csv'
-    search_df = pd.read_csv(result_dir + search_file)
-    search_df = search_df.rename(columns={'날짜':'ds','검색량':'search'})
-    search_df['ds'] = pd.to_datetime(search_df['ds'])
+    #search_file =  '/naver_search.csv'
+    #search_df = pd.read_csv(result_dir + search_file)
+    #search_df = search_df.rename(columns={'날짜':'ds','검색량':'search'})
+    #search_df['ds'] = pd.to_datetime(search_df['ds'])
 
     data = data.merge(search_df, on='ds', how='left')
 
-    model_data = data[['ds', 'y', 'promotion', 'peak', 'season', 'holiday','search']]
+    model_data = data[['ds', 'y', 'promotion', 'peak', 'season', 'holiday']]
 
     return model_data
 
@@ -131,7 +131,7 @@ def get_predicted_install(params, tmp_data, year, month, peak_month):
     m.add_regressor('promotion')
     m.add_regressor('peak')
     m.add_regressor('holiday')
-    m.add_regressor('search')
+    #m.add_regressor('search')
     m.add_seasonality(name='monthly', period=30.5, fourier_order=5)
     # tmp_data = tmp_data.loc[(tmp_data['ds'].dt.year <= year) & (tmp_data['ds'].dt.month < month)]
     m.fit(tmp_data)
@@ -155,10 +155,12 @@ def get_predicted_install(params, tmp_data, year, month, peak_month):
     future['promotion'] = future['promotion'].fillna(0)
 
     future['holiday'] = tmp_data['holiday']
+    kr_holidays = holidays.KR()
+    future['holiday'] = future['holiday'].fillna(kr_holidays.get(x))
     future['holiday'] = future['holiday'].fillna(0)
 
-    future['search'] = tmp_data['search']
-    future['search'] = future['search'].fillna(0)
+    #future['search'] = tmp_data['search']
+    #future['search'] = future['search'].fillna(0)
 
     forecast = m.predict(future)
     # fig1 = m.plot(forecast)
