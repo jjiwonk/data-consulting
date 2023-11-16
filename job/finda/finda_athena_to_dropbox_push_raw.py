@@ -18,6 +18,7 @@ if __name__ == "__main__":
     info = dict(
         file_name=f'appsflyer_push_data_{date}.csv',
         dropbox_path=f'/광고사업부/4. 광고주/핀다_7팀/2. 리포트/자동화리포트/integrated_appsflyer push',
+        source='s3',
         query=f'''
     WITH data_set AS (
     SELECT temp.*,
@@ -213,6 +214,7 @@ if __name__ == "__main__":
         WHERE MONTH(DATE_PARSE(d.event_time, '%Y-%m-%d %H:%i:%s')) = {month}
     )
     SELECT * FROM appsflyer_push_data
+    WHERE event_name IN ('re-engagement', 're-attribution', 'install', 'Clicked Signup Completion Button', 'Viewed LA Home', 'Viewed LA Home No Result', 'loan_contract_completed_fee', 'MD_complete_view', 'loan_contract_completed', 'MA_loanlist_view', 'MA_loandetail_clickCTA', 'MA_loan_reject_view')
     '''
     )
 
