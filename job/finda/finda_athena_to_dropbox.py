@@ -18,6 +18,7 @@ if __name__ == "__main__":
     info = dict(
         file_name=f'appsflyer_final_report_{date}.csv',
         dropbox_path=f'/광고사업부/4. 광고주/핀다_7팀/2. 리포트/자동화리포트/integrated_appsflyer raw',
+        source='result',
         query=f'''
     WITH data_set AS (
     SELECT temp.*,
