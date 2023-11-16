@@ -41,6 +41,9 @@ def athena_table_refresh(database, table_name):
             'OutputLocation': 's3://data-consulting-private/Unsaved/'
         }
     )
+    query_id = res['QueryExecutionId']
+    s3.delete_file(s3_path=f'Unsaved/{query_id}.csv', s3_bucket=const.DEFAULT_S3_PRIVATE_BUCKET)
+    s3.delete_file(s3_path=f'Unsaved/{query_id}.csv.metadata', s3_bucket=const.DEFAULT_S3_PRIVATE_BUCKET)
 
     return execute_query(athena, res)
 
@@ -144,11 +147,15 @@ def get_table_data_from_athena(database, query, source='result'):
 
         os.remove(f_path)
 
+    query_id = res['QueryExecutionId']
+    s3.delete_file(s3_path=f'Unsaved/{query_id}.csv', s3_bucket=const.DEFAULT_S3_PRIVATE_BUCKET)
+    s3.delete_file(s3_path=f'Unsaved/{query_id}.csv.metadata', s3_bucket=const.DEFAULT_S3_PRIVATE_BUCKET)
+
     return result_df
 
 
 # 1000행 이상의 결과값 추출 하는 경우 활용
-def fetchall_athena(database, query):
+def fetchall_athena(database, query, source='result'):
     client = boto3.client('athena', region_name='ap-northeast-2')
     query_id = client.start_query_execution(
         QueryString=query,
@@ -167,26 +174,41 @@ def fetchall_athena(database, query):
             raise Exception('Athena query with the string "{}" failed or was cancelled'.format(query))
         time.sleep(10)
 
-    results_paginator = client.get_paginator('get_query_results')
-    results_iter = results_paginator.paginate(
-        QueryExecutionId=query_id,
-        PaginationConfig={
-            'PageSize': 1000
-        }
-    )
+    if source == 's3':
+        s3_path = f'Unsaved/{query_id}.csv'
 
-    data_list = []
-    for results_page in results_iter:
-        for row in results_page['ResultSet']['Rows']:
-            data_list.append(row['Data'])
+        tmp_path = get_tmp_path() + f"/athena/"
+        os.makedirs(tmp_path, exist_ok=True)
 
-    column_names = [x['VarCharValue'] for x in data_list[0]]
+        f_path = s3.download_file(s3_path=s3_path, s3_bucket=const.DEFAULT_S3_PRIVATE_BUCKET, local_path=tmp_path)
+        df = pd.read_csv(f_path, encoding='utf-8-sig')
 
-    results = []
-    for datum in data_list[1:]:
-        results.append([x['VarCharValue'] if 'VarCharValue' in x.keys() else '' for x in datum])
+        os.remove(f_path)
 
-    df = pd.DataFrame(results, columns=column_names)
+    else:
+        results_paginator = client.get_paginator('get_query_results')
+        results_iter = results_paginator.paginate(
+            QueryExecutionId=query_id,
+            PaginationConfig={
+                'PageSize': 1000
+            }
+        )
+
+        data_list = []
+        for results_page in results_iter:
+            for row in results_page['ResultSet']['Rows']:
+                data_list.append(row['Data'])
+
+        column_names = [x['VarCharValue'] for x in data_list[0]]
+
+        results = []
+        for datum in data_list[1:]:
+            results.append([x['VarCharValue'] if 'VarCharValue' in x.keys() else '' for x in datum])
+
+        df = pd.DataFrame(results, columns=column_names)
+
+    s3.delete_file(s3_path=f'Unsaved/{query_id}.csv', s3_bucket=const.DEFAULT_S3_PRIVATE_BUCKET)
+    s3.delete_file(s3_path=f'Unsaved/{query_id}.csv.metadata', s3_bucket=const.DEFAULT_S3_PRIVATE_BUCKET)
 
     return df
 
