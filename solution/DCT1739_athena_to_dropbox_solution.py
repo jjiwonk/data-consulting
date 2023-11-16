@@ -1,5 +1,5 @@
 from utils import athena
-from utils.dropbox_util import upload_file
+from utils.dropbox_util import upload_v2
 from worker.abstract_worker import Worker
 import os
 
@@ -12,10 +12,11 @@ class AthenaToDropbox(Worker):
         file_name = info['file_name']
         dropbox_path = info['dropbox_path']
         query = info['query']
+        source = info['source']
         try:
-            df = athena.fetchall_athena('dmp_athena', query)
+            df = athena.fetchall_athena('dmp_athena', query, source)
             df.to_csv(file_name, index=False, encoding='utf-8')
-            upload_file(file_name, dropbox_path + '/' + file_name)
+            upload_v2(file_name, dropbox_path + '/' + file_name)
             os.remove(file_name)
             return 'AthenaToDropbox Job complete.'
         except Exception as e:
