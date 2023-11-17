@@ -1,0 +1,305 @@
+Index: analysis/DCT1826_organic_predict/organic_predict_2.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>from setting import directory as dr\nimport pandas as pd\nimport numpy as np\nfrom dateutil.relativedelta import relativedelta\nfrom prophet import Prophet\nimport holidays\nfrom prophet.diagnostics import cross_validation, performance_metrics\nfrom prophet.plot import plot_cross_validation_metric\nimport itertools\nimport matplotlib\nmatplotlib.use('Qt5Agg')\n\ndef outlier_remove(data, threshold=1.5):\n    q1, q3 = np.percentile(data.y, [25, 74])\n    IQR = q3 - q1\n    lower_bound = q1 - (threshold * IQR)\n    upper_bound = q3 + (threshold * IQR)\n    replace_value = round(np.mean(data.y))\n    outlier = [x for x in model_data.y if x < lower_bound or x > upper_bound]\n    data.loc[data['y'].isin(outlier), 'y'] = replace_value\n    return data\n\n\ndef get_model_data():\n    # 오가닉 학습 데이터\n    result_dir = dr.dropbox_dir + '/광고사업부/데이터컨설팅/데이터 분석 프로젝트/29CM'\n    file_name = '/organic.csv'\n    data = pd.read_csv(result_dir + file_name)\n    data['date'] = pd.to_datetime(data['date'])  # 날짜 열을 날짜 형식으로 변환\n    data = data.loc[data['date'] >= '2022-03-01']\n    data = data.rename(columns={'date': 'ds', '앱설치': 'y'})\n\n    # 프로모션 진행 여부 데이터\n    file_name = '/promotion.csv'\n    promotion_df = pd.read_csv(result_dir + file_name)\n    # '프로모션 진행 여부' 열의 값을 숫자로 변환\n    promotion_df['프로모션 진행 여부'] = (promotion_df['프로모션 진행 여부'] == 'O').astype(int)\n    promotion_df = promotion_df.rename(columns={'날짜': 'ds', '프로모션 진행 여부': 'promotion'})\n    promotion_df['ds'] = pd.to_datetime(promotion_df['ds'])  # 날짜 열을 날짜 형식으로 변환\n    data = data.merge(promotion_df, on='ds', how='left')\n    data = data.fillna(0)\n\n    season_df = pd.DataFrame({'ds': data.ds})\n    season_df['season'] = 1\n    spring_month = [3,4,5]\n    summer_month = [6,7,8]\n    fall_month = [9, 10]\n    winter_month = [11, 12, 1, 2]\n    season_df.loc[season_df['ds'].dt.month.isin(spring_month), 'season'] = 1\n    season_df.loc[season_df['ds'].dt.month.isin(summer_month), 'season'] = 2\n    season_df.loc[season_df['ds'].dt.month.isin(fall_month), 'season'] = 3\n    season_df.loc[season_df['ds'].dt.month.isin(winter_month), 'season'] = 4\n\n    data = data.merge(season_df, on='ds', how='left')\n    model_data = data[['ds', 'y', 'promotion', 'season']]\n\n    return model_data\n\n\n# 휴일 정보 생성\n# date_list = pd.date_range('2022-02-17', '2023-09-30')  # 데이터 기간에 맞게 수정\n# kr_holidays = holidays.KR()\n# holiday_df = pd.DataFrame(columns=['ds', 'holiday'])\n# holiday_df['ds'] = sorted(date_list)\n# holiday_df['holiday'] = holiday_df['ds'].apply(lambda x: kr_holidays.get(x) if x in kr_holidays else 'non-holiday')\n\n\ndef get_proper_params(tmp_data):\n    search_space = {\n        'changepoint_prior_scale': [0.05, 0.1, 0.5, 1.0],\n        'seasonality_prior_scale': [0.05, 0.1, 1.0],\n        'seasonality_mode': ['additive', 'multiplicative'],\n        'weekly_seasonality': [10, 20, 30, 40],\n        'daily_seasonality': [10, 20, 30, 40]\n    }\n    param_combined = [dict(zip(search_space.keys(), v)) for v in itertools.product(*search_space.values())]\n    mapes = []\n    for param in param_combined:\n       print('params', param)\n       _m = Prophet(**param)\n       _m.add_regressor('season')\n       _m.add_seasonality(name='monthly', period=30.5, fourier_order=5)\n       _m.fit(tmp_data)\n       _cv_df = cross_validation(_m, initial='400 days', period='180 days', horizon='60 days', parallel=None)\n       _df_p = performance_metrics(_cv_df, rolling_window=1)\n       mapes.append(_df_p['mape'].values[0])\n\n    tuning_results = pd.DataFrame(param_combined)\n    tuning_results['mapes'] = mapes\n    tuning_results.sort_values('mapes', inplace=True, ignore_index=True)\n\n    params = dict(tuning_results.iloc[0, :-1])\n\n    return params\n\n\ndef get_predicted_install(params, tmp_data, year, month, season_month):\n    # Prophet 객체 생성\n    m = Prophet(**params)\n    m.add_regressor('season')\n    m.add_regressor('promotion')\n    m.add_seasonality(name='monthly', period=30.5, fourier_order=5)\n    # tmp_data = tmp_data.loc[(tmp_data['ds'].dt.year <= year) & (tmp_data['ds'].dt.month < month)]\n    m.fit(tmp_data)\n\n    # predict_days = ((tmp_data.ds.max() + relativedelta(months=2)).replace(day=1) - relativedelta(days=1)).day\n    predict_days = 60\n    future = m.make_future_dataframe(periods=predict_days, freq='d')\n    future['season'] = 0\n    future.loc[future['ds'].dt.month.isin(season_month), 'season'] = 1\n    future['promotion'] = tmp_data['promotion']\n    future['promotion'] = future['promotion'].fillna(0)\n    forecast = m.predict(future)\n    # fig1 = m.plot(forecast)\n    # fig2 = m.plot_components(forecast)\n\n    # 모델 평가 지표\n    # initial은 전체 기간의 70~80%, period는 패턴 주기에 따라 조정 (분기별 설정), horizon은 예측기간\n    df_cv = cross_validation(m, initial='365 days', period='180 days', horizon='60 days')\n    df_pm = performance_metrics(df_cv)\n    # fig3 = plot_cross_validation_metric(df_cv, metric='mape')\n    model_eval = df_pm.iloc[len(df_pm)-1]\n\n    # 모델이 우수한 성능으로 평가되는 지표\n    # rmse: 0.5 이하\n    # mae: 0.1 미만\n    # mape: 0.1 미만\n\n    predicted_install = round(forecast.loc[(forecast['ds'].dt.year == year) & (forecast['ds'].dt.month == month), 'yhat'].sum())\n\n    return model_eval, predicted_install\n\n\nmodel_data = get_model_data()\nmodel_data.ds.sort_values()\nparams = get_proper_params(model_data)\n# params = {'changepoint_prior_scale': 0.1, 'seasonality_prior_scale': 0.05, 'seasonality_mode': 'multiplicative', 'weekly_seasonality': 10, 'daily_seasonality': 40}\nseason_month = [3, 4, 5, 6, 9, 10, 11]\n# 2023년 12월 install 예측치 총량\neval_4, install_4 = get_predicted_install(params, model_data, 2023, 4, season_month)\neval_5, install_5 = get_predicted_install(params, model_data, 2023, 5, season_month)\neval_6, install_6 = get_predicted_install(params, model_data, 2023, 6, season_month)\neval_7, install_7 = get_predicted_install(params, model_data, 2023, 7, season_month)\neval_8, install_8 = get_predicted_install(params, model_data, 2023, 8, season_month)\neval_9, install_9 = get_predicted_install(params, model_data, 2023, 9, season_month)\neval_10, install_10 = get_predicted_install(params, model_data, 2023, 10, season_month)\neval_11, install_11 = get_predicted_install(params, model_data, 2023, 11, season_month)\neval_12, install_12 = get_predicted_install(params, model_data, 2023, 12, season_month)\n\n\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/analysis/DCT1826_organic_predict/organic_predict_2.py b/analysis/DCT1826_organic_predict/organic_predict_2.py
+--- a/analysis/DCT1826_organic_predict/organic_predict_2.py	(revision 1917d9d0af7e7ec96cde184db81aacdbff59d0bb)
++++ b/analysis/DCT1826_organic_predict/organic_predict_2.py	(date 1699944269299)
+@@ -44,8 +44,8 @@
+     season_df['season'] = 1
+     spring_month = [3,4,5]
+     summer_month = [6,7,8]
+-    fall_month = [9, 10]
+-    winter_month = [11, 12, 1, 2]
++    fall_month = [9, 10, 11]
++    winter_month = [12, 1, 2]
+     season_df.loc[season_df['ds'].dt.month.isin(spring_month), 'season'] = 1
+     season_df.loc[season_df['ds'].dt.month.isin(summer_month), 'season'] = 2
+     season_df.loc[season_df['ds'].dt.month.isin(fall_month), 'season'] = 3
+Index: .idea/misc.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/.idea/misc.xml b/.idea/misc.xml
+new file mode 100644
+--- /dev/null	(date 1690784236835)
++++ b/.idea/misc.xml	(date 1690784236835)
+@@ -0,0 +1,7 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<project version="4">
++  <component name="ProjectRootManager" version="2" project-jdk-name="data-consulting" project-jdk-type="Python SDK" />
++  <component name="PyPackaging">
++    <option name="earlyReleasesAsUpgrades" value="true" />
++  </component>
++</project>
+\ No newline at end of file
+Index: .idea/inspectionProfiles/profiles_settings.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/.idea/inspectionProfiles/profiles_settings.xml b/.idea/inspectionProfiles/profiles_settings.xml
+new file mode 100644
+--- /dev/null	(date 1690782727513)
++++ b/.idea/inspectionProfiles/profiles_settings.xml	(date 1690782727513)
+@@ -0,0 +1,6 @@
++<component name="InspectionProjectProfileManager">
++  <settings>
++    <option name="USE_PROJECT_PROFILE" value="false" />
++    <version value="1.0" />
++  </settings>
++</component>
+\ No newline at end of file
+Index: .idea/.gitignore
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/.idea/.gitignore b/.idea/.gitignore
+new file mode 100644
+--- /dev/null	(date 1690782727581)
++++ b/.idea/.gitignore	(date 1690782727581)
+@@ -0,0 +1,3 @@
++# Default ignored files
++/shelf/
++/workspace.xml
+Index: .idea/vcs.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/.idea/vcs.xml b/.idea/vcs.xml
+new file mode 100644
+--- /dev/null	(date 1690782727521)
++++ b/.idea/vcs.xml	(date 1690782727521)
+@@ -0,0 +1,6 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<project version="4">
++  <component name="VcsDirectoryMappings">
++    <mapping directory="" vcs="Git" />
++  </component>
++</project>
+\ No newline at end of file
+Index: setting/directory.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>dropbox_dir = 'C:/Dropbox'\ndownload_dir = 'C:/Users/asdad/Downloads'
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/setting/directory.py b/setting/directory.py
+--- a/setting/directory.py	(revision 1917d9d0af7e7ec96cde184db81aacdbff59d0bb)
++++ b/setting/directory.py	(date 1695283471795)
+@@ -1,2 +1,2 @@
+-dropbox_dir = 'C:/Dropbox'
+-download_dir = 'C:/Users/asdad/Downloads'
+\ No newline at end of file
++dropbox_dir = '/Users/kibeomsong/Dropbox (주식회사매드업)'
++download_dir = '/Users/kibeomsong/Downloads'
+\ No newline at end of file
+Index: analysis/DCT1720_29CM_regression_analysis/regression_analysis_2nd.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>import pandas as pd\nimport matplotlib.pyplot as plt\nimport seaborn as sns\nfrom setting import directory as dr\n\n# 데이터 로드 함수\ndef load_data(file_path):\n    return pd.read_csv(file_path)\n\n# 데이터 파일 경로 설정\nresult_dir = dr.dropbox_dir + '/광고사업부/데이터컨설팅/데이터 분석 프로젝트/29CM/DCT1747'\nfile_name = '/prep_data.csv'\ndata = load_data(result_dir + file_name)\n\ndata_label_first_purchase = data[data['label'] == '첫구매']\ndata_label_first_purchase = data_label_first_purchase[data_label_first_purchase['media'] != '토스']\n\ndata_label_first_purchase_facebook = data_label_first_purchase[data_label_first_purchase['media'] == '페이스북']\ndata_label_first_purchase_kakao = data_label_first_purchase[data_label_first_purchase['media'] == '카카오모먼트']\ndata_label_first_purchase_ACe = data_label_first_purchase[data_label_first_purchase['media'] == 'ACe']\ndata_label_first_purchase_google = data_label_first_purchase[data_label_first_purchase['media'] == '구글']\ndata_label_first_purchase_criteo = data_label_first_purchase[data_label_first_purchase['media'] == '크리테오']\n\ndata_label_install = data[data['label'] == '인스톨']\n\n# 'install', '광고 Spend', 'first_purchase' 간의 상관 관계 계산\ncorrelation_install_spend = data_label_first_purchase['spend'].corr(data_label_first_purchase['install'])\ncorrelation_first_purchase_install = data_label_first_purchase['install'].corr(data_label_first_purchase['first_purchase'])\ncorrelation_first_purchase_spend = data_label_first_purchase['spend'].corr(data_label_first_purchase['first_purchase'])\n\nprint(\"Correlation between 'install' and '광고 Spend':\", correlation_install_spend)\nprint(\"Correlation between 'first_purchase' and 'install':\", correlation_first_purchase_install)\nprint(\"Correlation between 'first_purchase' and '광고 Spend':\", correlation_first_purchase_spend)\n\n# 산점도 그래프 그리기\nplt.figure(figsize=(8, 6))\nsns.scatterplot(x='spend', y='first_purchase', data=data_label_first_purchase)\nplt.title('spend vs. first_purchase')\nplt.xlabel('spend')\nplt.ylabel('first_purchase')\nplt.show()\n\n#월별 첫구매, 광고비 추이\ndata_label_first_purchase['date'] = pd.to_datetime(data_label_first_purchase['date'])\ndata_label_first_purchase.set_index('date', inplace=True)\n\ndata_label_install['date'] = pd.to_datetime(data_label_install['date'])\ndata_label_install.set_index('date', inplace=True)\n\nfig, ax1 = plt.subplots(figsize=(12, 6))\ncolor = 'tab:red'\nax1.set_xlabel('date')\nax1.set_ylabel('first_purchase', color=color)\nax1.plot(data_label_install.index, data_label_install['first_purchase'], color=color)\nax1.tick_params(axis='y', labelcolor=color)\n\nax2 = ax1.twinx()  # 두 번째 Y축 생성\ncolor = 'tab:blue'\nax2.set_ylabel('spend', color=color)\nax2.plot(data_label_install.index, data_label_install['spend'], color=color)\nax2.tick_params(axis='y', labelcolor=color)\n\nplt.title('trend')\nplt.show()\n\n\n################# 회귀 분석 #################\n\n\n# 데이터프레임에서 광고비 및 첫구매 데이터 추출\nX = data_label_first_purchase_criteo['spend']\ny = data_label_first_purchase_criteo['first_purchase']\n\n# 광고비를 n개의 구간으로 나누기\nn = 5  # 원하는 구간의 수\nbins = np.linspace(0, data_label_first_purchase_criteo['spend'].max(), n + 1)  # 최소값부터 최대값까지 구간 나누기\ndata_label_first_purchase_criteo['binned'] = pd.cut(data_label_first_purchase_criteo['spend'], bins=bins)\n\n# 각 구간별로 회귀 분석 수행\nresults_list = []\n\nfor label, group in data_label_first_purchase_criteo.groupby('binned'):\n    X_group = sm.add_constant(group['spend'])\n    y_group = group['first_purchase']\n    model = sm.OLS(y_group, X_group)\n    results = model.fit()\n    results_list.append((label, results))\n\n# 결과 출력\nfor label, results in results_list:\n    print(f\"구간: {label}\")\n    print(results.summary())\n    print(\"\\n\")\n\n# 그래프를 그릴 서브플롯 생성\nfig, axs = plt.subplots(nrows=1, ncols=n, figsize=(15, 3))  # n개의 서브플롯을 가로로 나열\n\n# 각 구간별로 그래프 그리기\nfor i, (label, group) in enumerate(data_label_first_purchase_criteo.groupby('binned')):\n    X_group = sm.add_constant(group['spend'])\n    y_group = group['first_purchase']\n    model = sm.OLS(y_group, X_group)\n    results = model.fit()\n\n    # 산점도 그리기\n    axs[i].scatter(group['spend'], group['first_purchase'], label=label)\n\n    # 회귀선 그리기\n    X_line = np.linspace(group['spend'].min(), group['spend'].max(), 100)\n    y_line = results.params[0] + results.params[1] * X_line\n    axs[i].plot(X_line, y_line, color='red', label='regression line')\n\n    axs[i].set_title(f\"range: {label}\")\n    axs[i].set_xlabel('spend')\n    axs[i].set_ylabel('first_purchase')\n    axs[i].legend()\n\nplt.tight_layout()\nplt.show()\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/analysis/DCT1720_29CM_regression_analysis/regression_analysis_2nd.py b/analysis/DCT1720_29CM_regression_analysis/regression_analysis_2nd.py
+--- a/analysis/DCT1720_29CM_regression_analysis/regression_analysis_2nd.py	(revision 1917d9d0af7e7ec96cde184db81aacdbff59d0bb)
++++ b/analysis/DCT1720_29CM_regression_analysis/regression_analysis_2nd.py	(date 1697506205135)
+@@ -22,6 +22,7 @@
+ data_label_first_purchase_criteo = data_label_first_purchase[data_label_first_purchase['media'] == '크리테오']
+ 
+ data_label_install = data[data['label'] == '인스톨']
++data_label_install_facebook = data_label_install[data_label_install['media'] == '페이스북']
+ 
+ # 'install', '광고 Spend', 'first_purchase' 간의 상관 관계 계산
+ correlation_install_spend = data_label_first_purchase['spend'].corr(data_label_first_purchase['install'])
+@@ -68,19 +69,19 @@
+ 
+ 
+ # 데이터프레임에서 광고비 및 첫구매 데이터 추출
+-X = data_label_first_purchase_criteo['spend']
+-y = data_label_first_purchase_criteo['first_purchase']
++X = data_label_install_facebook['install']
++y = data_label_install_facebook['first_purchase']
+ 
+ # 광고비를 n개의 구간으로 나누기
+ n = 5  # 원하는 구간의 수
+-bins = np.linspace(0, data_label_first_purchase_criteo['spend'].max(), n + 1)  # 최소값부터 최대값까지 구간 나누기
+-data_label_first_purchase_criteo['binned'] = pd.cut(data_label_first_purchase_criteo['spend'], bins=bins)
++bins = np.linspace(0, data_label_install_facebook['install'].max(), n + 1)  # 최소값부터 최대값까지 구간 나누기
++data_label_install_facebook['binned'] = pd.cut(data_label_install_facebook['install'], bins=bins)
+ 
+ # 각 구간별로 회귀 분석 수행
+ results_list = []
+ 
+-for label, group in data_label_first_purchase_criteo.groupby('binned'):
+-    X_group = sm.add_constant(group['spend'])
++for label, group in data_label_install_facebook.groupby('binned'):
++    X_group = sm.add_constant(group['install'])
+     y_group = group['first_purchase']
+     model = sm.OLS(y_group, X_group)
+     results = model.fit()
+@@ -96,24 +97,47 @@
+ fig, axs = plt.subplots(nrows=1, ncols=n, figsize=(15, 3))  # n개의 서브플롯을 가로로 나열
+ 
+ # 각 구간별로 그래프 그리기
+-for i, (label, group) in enumerate(data_label_first_purchase_criteo.groupby('binned')):
+-    X_group = sm.add_constant(group['spend'])
++for i, (label, group) in enumerate(data_label_install_facebook.groupby('binned')):
++    X_group = sm.add_constant(group['install'])
+     y_group = group['first_purchase']
+     model = sm.OLS(y_group, X_group)
+     results = model.fit()
+ 
+     # 산점도 그리기
+-    axs[i].scatter(group['spend'], group['first_purchase'], label=label)
++    axs[i].scatter(group['install'], group['first_purchase'], label=label)
+ 
+     # 회귀선 그리기
+-    X_line = np.linspace(group['spend'].min(), group['spend'].max(), 100)
++    X_line = np.linspace(group['install'].min(), group['install'].max(), 100)
+     y_line = results.params[0] + results.params[1] * X_line
+     axs[i].plot(X_line, y_line, color='red', label='regression line')
+ 
+     axs[i].set_title(f"range: {label}")
+-    axs[i].set_xlabel('spend')
++    axs[i].set_xlabel('install')
+     axs[i].set_ylabel('first_purchase')
+     axs[i].legend()
+ 
+ plt.tight_layout()
+ plt.show()
++
++data_label_install_facebook.to_csv('data_label_install_facebook.csv', encoding='cp949')
++
++data_label_install_facebook['date'] = pd.to_datetime(data_label_install_facebook['date']).dt.strftime('%Y-%m')
++
++grouped = data_label_install_facebook.groupby(["campaign", "binned"])
++
++# 각 그룹에 대해 집계 함수 적용
++result = grouped.agg({
++    "date": lambda x: ', '.join(x),
++    "spend": "sum",
++    "imp": "sum",
++    "install": "mean",
++    "CPI": "mean",
++    "cpa": "mean"
++}).reset_index()
++
++result_df = pd.DataFrame(result)
++result_df = result_df.sort_values(by='binned')
++result_df = result_df[result_df['spend'] != 0]
++
++
++
+Index: analysis/DCT1720_29CM_regression_analysis/regression_analysis_new.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>import pandas as pd\nimport matplotlib.pyplot as plt\nimport statsmodels.api as sm\nfrom setting import directory as dr\n\n# 데이터 로드 함수\ndef load_data(file_path):\n    return pd.read_csv(file_path)\n\n\n# 함수형 회귀 분석 코드\ndef perform_regression_analysis(data, num_bins=None, media=None, install_date_time=None):\n\n    # 데이터프레임에서 \"label\" 열을 더미 변수로 변환\n    data = pd.get_dummies(data, columns=['label'], prefix='label')\n    data = data.groupby(\n        ['install_date', 'media', 'campaign', 'label_첫구매', 'label_구분불가', 'label_인스톨']).sum().reset_index()\n\n    data['label_첫구매'] = data['label_첫구매'].apply(lambda x: 1 if x == True else 0)\n    data['label_구분불가'] = data['label_구분불가'].apply(lambda x: 1 if x == True else 0)\n    data['label_인스톨'] = data['label_인스톨'].apply(lambda x: 1 if x == True else 0)\n\n    if media is not None:\n        data = data[data['media'] == media]\n        max_install = data['install'].max()\n    else:\n        max_install = data['install'].max()\n\n    if install_date_time is not None:\n        data = data[data['install_date_time'] == install_date_time]\n\n    bin_size = max_install // num_bins\n\n    print(media, max_install)\n    print(data)\n\n    for i in range(num_bins):\n        start = i * bin_size\n        end = (i + 1) * bin_size\n        data_bin = data[(data['install'] >= start) & (data['install'] < end)]\n\n        # 데이터가 없을 경우 스킵\n        if data_bin.empty:\n            continue\n\n        X = data_bin[['install']]  # 더미 변수 추가\n        X = sm.add_constant(X)\n        Y = data_bin['new_purchase']\n\n        model = sm.OLS(Y, X).fit()\n        summary = model.summary()\n\n        # Adjusted R-squared 값을 추출하여 출력\n        adjusted_r_squared = float(summary.tables[0].data[1][3])\n        print(f\"Regression Summary for install_{start}_{end}:\")\n        print(f\"Adjusted R-squared: {adjusted_r_squared}\")\n        # print(summary)\n        print(\"---------------next---------------\")\n\n        plt.scatter(data_bin['install'], data_bin['new_purchase'], alpha=0.5,\n                    label=f'Actual data install_{start}_{end}')\n        plt.plot(data_bin['install'], model.predict(), label=f'Regression Model install_{start}_{end}')\n\n    plt.xlabel('install')\n    plt.ylabel('new_purchase')\n    plt.title('Regression Analysis')\n    plt.legend(loc='best')  # 범례 위치를 최적으로 조정\n    plt.show()\n\n# 데이터 파일 경로 설정\nresult_dir = dr.dropbox_dir + '/광고사업부/데이터컨설팅/데이터 분석 프로젝트/29CM/DCT1720'\nfile_name = '/prep_data.csv'\ndata = load_data(result_dir + file_name)\n\n# 선택한 media와 install_date_time에 따른 회귀 분석 실행\nselected_media = 'Kakao'\ninput_num = 1\nselected_install_date_time = None\nperform_regression_analysis(data, num_bins=input_num, media=selected_media, install_date_time=selected_install_date_time)\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/analysis/DCT1720_29CM_regression_analysis/regression_analysis_new.py b/analysis/DCT1720_29CM_regression_analysis/regression_analysis_new.py
+--- a/analysis/DCT1720_29CM_regression_analysis/regression_analysis_new.py	(revision 1917d9d0af7e7ec96cde184db81aacdbff59d0bb)
++++ b/analysis/DCT1720_29CM_regression_analysis/regression_analysis_new.py	(date 1696582473183)
+@@ -7,18 +7,11 @@
+ def load_data(file_path):
+     return pd.read_csv(file_path)
+ 
+-
+ # 함수형 회귀 분석 코드
+-def perform_regression_analysis(data, num_bins=None, media=None, install_date_time=None):
++def perform_regression_analysis(data, num_bins=None, media=None, install_date_time=None, label=None):
+ 
+     # 데이터프레임에서 "label" 열을 더미 변수로 변환
+-    data = pd.get_dummies(data, columns=['label'], prefix='label')
+-    data = data.groupby(
+-        ['install_date', 'media', 'campaign', 'label_첫구매', 'label_구분불가', 'label_인스톨']).sum().reset_index()
+-
+-    data['label_첫구매'] = data['label_첫구매'].apply(lambda x: 1 if x == True else 0)
+-    data['label_구분불가'] = data['label_구분불가'].apply(lambda x: 1 if x == True else 0)
+-    data['label_인스톨'] = data['label_인스톨'].apply(lambda x: 1 if x == True else 0)
++    data = data.groupby(['install_date', 'media', 'campaign', 'label']).sum().reset_index()
+ 
+     if media is not None:
+         data = data[data['media'] == media]
+@@ -26,9 +19,16 @@
+     else:
+         max_install = data['install'].max()
+ 
++    if label is not None:
++        data = data[data['label'] == label]
++
+     if install_date_time is not None:
+         data = data[data['install_date_time'] == install_date_time]
+ 
++    data = pd.get_dummies(data, columns=['label'])
++
++    # data['label_'+str(label)] = data['label_'+str(label)].apply(lambda x: 1 if x == True else 0)
++
+     bin_size = max_install // num_bins
+ 
+     print(media, max_install)
+@@ -73,7 +73,11 @@
+ data = load_data(result_dir + file_name)
+ 
+ # 선택한 media와 install_date_time에 따른 회귀 분석 실행
+-selected_media = 'Kakao'
+-input_num = 1
++selected_media = 'Meta'
++selected_label = None
++input_num = 5
+ selected_install_date_time = None
+-perform_regression_analysis(data, num_bins=input_num, media=selected_media, install_date_time=selected_install_date_time)
++perform_regression_analysis(data, num_bins=input_num, media=selected_media, install_date_time=selected_install_date_time, label=selected_label)
++
++
++
+Index: .idea/data-consulting.iml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/.idea/data-consulting.iml b/.idea/data-consulting.iml
+new file mode 100644
+--- /dev/null	(date 1690784236831)
++++ b/.idea/data-consulting.iml	(date 1690784236831)
+@@ -0,0 +1,12 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<module type="PYTHON_MODULE" version="4">
++  <component name="NewModuleRootManager">
++    <content url="file://$MODULE_DIR$" />
++    <orderEntry type="jdk" jdkName="data-consulting" jdkType="Python SDK" />
++    <orderEntry type="sourceFolder" forTests="false" />
++  </component>
++  <component name="PyDocumentationSettings">
++    <option name="format" value="PLAIN" />
++    <option name="myDocStringFormat" value="Plain" />
++  </component>
++</module>
+\ No newline at end of file
+Index: .idea/modules.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/.idea/modules.xml b/.idea/modules.xml
+new file mode 100644
+--- /dev/null	(date 1690782727463)
++++ b/.idea/modules.xml	(date 1690782727463)
+@@ -0,0 +1,8 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<project version="4">
++  <component name="ProjectModuleManager">
++    <modules>
++      <module fileurl="file://$PROJECT_DIR$/.idea/data-consulting.iml" filepath="$PROJECT_DIR$/.idea/data-consulting.iml" />
++    </modules>
++  </component>
++</project>
+\ No newline at end of file
